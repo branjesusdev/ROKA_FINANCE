@@ -1682,6 +1682,17 @@ class $TransactionsTable extends Transactions
       'REFERENCES debts (id) ON DELETE SET NULL',
     ),
   );
+  static const VerificationMeta _provisionIdMeta = const VerificationMeta(
+    'provisionId',
+  );
+  @override
+  late final GeneratedColumn<String> provisionId = GeneratedColumn<String>(
+    'provision_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1695,6 +1706,7 @@ class $TransactionsTable extends Transactions
     nature,
     notes,
     debtId,
+    provisionId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1775,6 +1787,15 @@ class $TransactionsTable extends Transactions
         debtId.isAcceptableOrUnknown(data['debt_id']!, _debtIdMeta),
       );
     }
+    if (data.containsKey('provision_id')) {
+      context.handle(
+        _provisionIdMeta,
+        provisionId.isAcceptableOrUnknown(
+          data['provision_id']!,
+          _provisionIdMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1832,6 +1853,10 @@ class $TransactionsTable extends Transactions
         DriftSqlType.string,
         data['${effectivePrefix}debt_id'],
       ),
+      provisionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}provision_id'],
+      ),
     );
   }
 
@@ -1860,6 +1885,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   final ExpenseNature? nature;
   final String? notes;
   final String? debtId;
+  final String? provisionId;
   const TransactionRow({
     required this.id,
     required this.kind,
@@ -1872,6 +1898,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     this.nature,
     this.notes,
     this.debtId,
+    this.provisionId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1903,6 +1930,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     if (!nullToAbsent || debtId != null) {
       map['debt_id'] = Variable<String>(debtId);
     }
+    if (!nullToAbsent || provisionId != null) {
+      map['provision_id'] = Variable<String>(provisionId);
+    }
     return map;
   }
 
@@ -1929,6 +1959,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       debtId: debtId == null && nullToAbsent
           ? const Value.absent()
           : Value(debtId),
+      provisionId: provisionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(provisionId),
     );
   }
 
@@ -1953,6 +1986,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       ),
       notes: serializer.fromJson<String?>(json['notes']),
       debtId: serializer.fromJson<String?>(json['debtId']),
+      provisionId: serializer.fromJson<String?>(json['provisionId']),
     );
   }
   @override
@@ -1974,6 +2008,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       ),
       'notes': serializer.toJson<String?>(notes),
       'debtId': serializer.toJson<String?>(debtId),
+      'provisionId': serializer.toJson<String?>(provisionId),
     };
   }
 
@@ -1989,6 +2024,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     Value<ExpenseNature?> nature = const Value.absent(),
     Value<String?> notes = const Value.absent(),
     Value<String?> debtId = const Value.absent(),
+    Value<String?> provisionId = const Value.absent(),
   }) => TransactionRow(
     id: id ?? this.id,
     kind: kind ?? this.kind,
@@ -2001,6 +2037,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     nature: nature.present ? nature.value : this.nature,
     notes: notes.present ? notes.value : this.notes,
     debtId: debtId.present ? debtId.value : this.debtId,
+    provisionId: provisionId.present ? provisionId.value : this.provisionId,
   );
   TransactionRow copyWithCompanion(TransactionsCompanion data) {
     return TransactionRow(
@@ -2021,6 +2058,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       nature: data.nature.present ? data.nature.value : this.nature,
       notes: data.notes.present ? data.notes.value : this.notes,
       debtId: data.debtId.present ? data.debtId.value : this.debtId,
+      provisionId: data.provisionId.present
+          ? data.provisionId.value
+          : this.provisionId,
     );
   }
 
@@ -2037,7 +2077,8 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           ..write('accountId: $accountId, ')
           ..write('nature: $nature, ')
           ..write('notes: $notes, ')
-          ..write('debtId: $debtId')
+          ..write('debtId: $debtId, ')
+          ..write('provisionId: $provisionId')
           ..write(')'))
         .toString();
   }
@@ -2055,6 +2096,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     nature,
     notes,
     debtId,
+    provisionId,
   );
   @override
   bool operator ==(Object other) =>
@@ -2070,7 +2112,8 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           other.accountId == this.accountId &&
           other.nature == this.nature &&
           other.notes == this.notes &&
-          other.debtId == this.debtId);
+          other.debtId == this.debtId &&
+          other.provisionId == this.provisionId);
 }
 
 class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
@@ -2085,6 +2128,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   final Value<ExpenseNature?> nature;
   final Value<String?> notes;
   final Value<String?> debtId;
+  final Value<String?> provisionId;
   final Value<int> rowid;
   const TransactionsCompanion({
     this.id = const Value.absent(),
@@ -2098,6 +2142,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.nature = const Value.absent(),
     this.notes = const Value.absent(),
     this.debtId = const Value.absent(),
+    this.provisionId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   TransactionsCompanion.insert({
@@ -2112,6 +2157,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.nature = const Value.absent(),
     this.notes = const Value.absent(),
     this.debtId = const Value.absent(),
+    this.provisionId = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        kind = Value(kind),
@@ -2131,6 +2177,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Expression<String>? nature,
     Expression<String>? notes,
     Expression<String>? debtId,
+    Expression<String>? provisionId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2145,6 +2192,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       if (nature != null) 'nature': nature,
       if (notes != null) 'notes': notes,
       if (debtId != null) 'debt_id': debtId,
+      if (provisionId != null) 'provision_id': provisionId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2161,6 +2209,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Value<ExpenseNature?>? nature,
     Value<String?>? notes,
     Value<String?>? debtId,
+    Value<String?>? provisionId,
     Value<int>? rowid,
   }) {
     return TransactionsCompanion(
@@ -2175,6 +2224,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       nature: nature ?? this.nature,
       notes: notes ?? this.notes,
       debtId: debtId ?? this.debtId,
+      provisionId: provisionId ?? this.provisionId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2219,6 +2269,9 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     if (debtId.present) {
       map['debt_id'] = Variable<String>(debtId.value);
     }
+    if (provisionId.present) {
+      map['provision_id'] = Variable<String>(provisionId.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2239,6 +2292,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
           ..write('nature: $nature, ')
           ..write('notes: $notes, ')
           ..write('debtId: $debtId, ')
+          ..write('provisionId: $provisionId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -6055,6 +6109,486 @@ class FixedMovementsCompanion extends UpdateCompanion<FixedMovementRow> {
   }
 }
 
+class $ProvisionsTable extends Provisions
+    with TableInfo<$ProvisionsTable, ProvisionRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ProvisionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _amountCentsMeta = const VerificationMeta(
+    'amountCents',
+  );
+  @override
+  late final GeneratedColumn<int> amountCents = GeneratedColumn<int>(
+    'amount_cents',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _everyMonthsMeta = const VerificationMeta(
+    'everyMonths',
+  );
+  @override
+  late final GeneratedColumn<int> everyMonths = GeneratedColumn<int>(
+    'every_months',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nextDueMeta = const VerificationMeta(
+    'nextDue',
+  );
+  @override
+  late final GeneratedColumn<DateTime> nextDue = GeneratedColumn<DateTime>(
+    'next_due',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _categoryIdMeta = const VerificationMeta(
+    'categoryId',
+  );
+  @override
+  late final GeneratedColumn<String> categoryId = GeneratedColumn<String>(
+    'category_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES categories (id)',
+    ),
+  );
+  static const VerificationMeta _isActiveMeta = const VerificationMeta(
+    'isActive',
+  );
+  @override
+  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
+    'is_active',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_active" IN (0, 1))',
+    ),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    amountCents,
+    everyMonths,
+    nextDue,
+    categoryId,
+    isActive,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'provisions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ProvisionRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('amount_cents')) {
+      context.handle(
+        _amountCentsMeta,
+        amountCents.isAcceptableOrUnknown(
+          data['amount_cents']!,
+          _amountCentsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_amountCentsMeta);
+    }
+    if (data.containsKey('every_months')) {
+      context.handle(
+        _everyMonthsMeta,
+        everyMonths.isAcceptableOrUnknown(
+          data['every_months']!,
+          _everyMonthsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_everyMonthsMeta);
+    }
+    if (data.containsKey('next_due')) {
+      context.handle(
+        _nextDueMeta,
+        nextDue.isAcceptableOrUnknown(data['next_due']!, _nextDueMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nextDueMeta);
+    }
+    if (data.containsKey('category_id')) {
+      context.handle(
+        _categoryIdMeta,
+        categoryId.isAcceptableOrUnknown(data['category_id']!, _categoryIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_categoryIdMeta);
+    }
+    if (data.containsKey('is_active')) {
+      context.handle(
+        _isActiveMeta,
+        isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_isActiveMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ProvisionRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ProvisionRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      amountCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}amount_cents'],
+      )!,
+      everyMonths: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}every_months'],
+      )!,
+      nextDue: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}next_due'],
+      )!,
+      categoryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category_id'],
+      )!,
+      isActive: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_active'],
+      )!,
+    );
+  }
+
+  @override
+  $ProvisionsTable createAlias(String alias) {
+    return $ProvisionsTable(attachedDatabase, alias);
+  }
+}
+
+class ProvisionRow extends DataClass implements Insertable<ProvisionRow> {
+  final String id;
+  final String name;
+  final int amountCents;
+  final int everyMonths;
+  final DateTime nextDue;
+  final String categoryId;
+  final bool isActive;
+  const ProvisionRow({
+    required this.id,
+    required this.name,
+    required this.amountCents,
+    required this.everyMonths,
+    required this.nextDue,
+    required this.categoryId,
+    required this.isActive,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['amount_cents'] = Variable<int>(amountCents);
+    map['every_months'] = Variable<int>(everyMonths);
+    map['next_due'] = Variable<DateTime>(nextDue);
+    map['category_id'] = Variable<String>(categoryId);
+    map['is_active'] = Variable<bool>(isActive);
+    return map;
+  }
+
+  ProvisionsCompanion toCompanion(bool nullToAbsent) {
+    return ProvisionsCompanion(
+      id: Value(id),
+      name: Value(name),
+      amountCents: Value(amountCents),
+      everyMonths: Value(everyMonths),
+      nextDue: Value(nextDue),
+      categoryId: Value(categoryId),
+      isActive: Value(isActive),
+    );
+  }
+
+  factory ProvisionRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ProvisionRow(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      amountCents: serializer.fromJson<int>(json['amountCents']),
+      everyMonths: serializer.fromJson<int>(json['everyMonths']),
+      nextDue: serializer.fromJson<DateTime>(json['nextDue']),
+      categoryId: serializer.fromJson<String>(json['categoryId']),
+      isActive: serializer.fromJson<bool>(json['isActive']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'amountCents': serializer.toJson<int>(amountCents),
+      'everyMonths': serializer.toJson<int>(everyMonths),
+      'nextDue': serializer.toJson<DateTime>(nextDue),
+      'categoryId': serializer.toJson<String>(categoryId),
+      'isActive': serializer.toJson<bool>(isActive),
+    };
+  }
+
+  ProvisionRow copyWith({
+    String? id,
+    String? name,
+    int? amountCents,
+    int? everyMonths,
+    DateTime? nextDue,
+    String? categoryId,
+    bool? isActive,
+  }) => ProvisionRow(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    amountCents: amountCents ?? this.amountCents,
+    everyMonths: everyMonths ?? this.everyMonths,
+    nextDue: nextDue ?? this.nextDue,
+    categoryId: categoryId ?? this.categoryId,
+    isActive: isActive ?? this.isActive,
+  );
+  ProvisionRow copyWithCompanion(ProvisionsCompanion data) {
+    return ProvisionRow(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      amountCents: data.amountCents.present
+          ? data.amountCents.value
+          : this.amountCents,
+      everyMonths: data.everyMonths.present
+          ? data.everyMonths.value
+          : this.everyMonths,
+      nextDue: data.nextDue.present ? data.nextDue.value : this.nextDue,
+      categoryId: data.categoryId.present
+          ? data.categoryId.value
+          : this.categoryId,
+      isActive: data.isActive.present ? data.isActive.value : this.isActive,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ProvisionRow(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('amountCents: $amountCents, ')
+          ..write('everyMonths: $everyMonths, ')
+          ..write('nextDue: $nextDue, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('isActive: $isActive')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    name,
+    amountCents,
+    everyMonths,
+    nextDue,
+    categoryId,
+    isActive,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ProvisionRow &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.amountCents == this.amountCents &&
+          other.everyMonths == this.everyMonths &&
+          other.nextDue == this.nextDue &&
+          other.categoryId == this.categoryId &&
+          other.isActive == this.isActive);
+}
+
+class ProvisionsCompanion extends UpdateCompanion<ProvisionRow> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<int> amountCents;
+  final Value<int> everyMonths;
+  final Value<DateTime> nextDue;
+  final Value<String> categoryId;
+  final Value<bool> isActive;
+  final Value<int> rowid;
+  const ProvisionsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.amountCents = const Value.absent(),
+    this.everyMonths = const Value.absent(),
+    this.nextDue = const Value.absent(),
+    this.categoryId = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ProvisionsCompanion.insert({
+    required String id,
+    required String name,
+    required int amountCents,
+    required int everyMonths,
+    required DateTime nextDue,
+    required String categoryId,
+    required bool isActive,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       amountCents = Value(amountCents),
+       everyMonths = Value(everyMonths),
+       nextDue = Value(nextDue),
+       categoryId = Value(categoryId),
+       isActive = Value(isActive);
+  static Insertable<ProvisionRow> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<int>? amountCents,
+    Expression<int>? everyMonths,
+    Expression<DateTime>? nextDue,
+    Expression<String>? categoryId,
+    Expression<bool>? isActive,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (amountCents != null) 'amount_cents': amountCents,
+      if (everyMonths != null) 'every_months': everyMonths,
+      if (nextDue != null) 'next_due': nextDue,
+      if (categoryId != null) 'category_id': categoryId,
+      if (isActive != null) 'is_active': isActive,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ProvisionsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<int>? amountCents,
+    Value<int>? everyMonths,
+    Value<DateTime>? nextDue,
+    Value<String>? categoryId,
+    Value<bool>? isActive,
+    Value<int>? rowid,
+  }) {
+    return ProvisionsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      amountCents: amountCents ?? this.amountCents,
+      everyMonths: everyMonths ?? this.everyMonths,
+      nextDue: nextDue ?? this.nextDue,
+      categoryId: categoryId ?? this.categoryId,
+      isActive: isActive ?? this.isActive,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (amountCents.present) {
+      map['amount_cents'] = Variable<int>(amountCents.value);
+    }
+    if (everyMonths.present) {
+      map['every_months'] = Variable<int>(everyMonths.value);
+    }
+    if (nextDue.present) {
+      map['next_due'] = Variable<DateTime>(nextDue.value);
+    }
+    if (categoryId.present) {
+      map['category_id'] = Variable<String>(categoryId.value);
+    }
+    if (isActive.present) {
+      map['is_active'] = Variable<bool>(isActive.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ProvisionsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('amountCents: $amountCents, ')
+          ..write('everyMonths: $everyMonths, ')
+          ..write('nextDue: $nextDue, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('isActive: $isActive, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -6072,6 +6606,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $FinanceSettingsTableTable financeSettingsTable =
       $FinanceSettingsTableTable(this);
   late final $FixedMovementsTable fixedMovements = $FixedMovementsTable(this);
+  late final $ProvisionsTable provisions = $ProvisionsTable(this);
   late final Index transactionsDateIdx = Index(
     'transactions_date_idx',
     'CREATE INDEX transactions_date_idx ON transactions (date)',
@@ -6093,6 +6628,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     investments,
     financeSettingsTable,
     fixedMovements,
+    provisions,
     transactionsDateIdx,
   ];
   @override
@@ -6202,6 +6738,24 @@ final class $$CategoriesTableReferences
     ).filter((f) => f.categoryId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_fixedMovementsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$ProvisionsTable, List<ProvisionRow>>
+  _provisionsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.provisions,
+    aliasName: 'categories__id__provisions__category_id',
+  );
+
+  $$ProvisionsTableProcessedTableManager get provisionsRefs {
+    final manager = $$ProvisionsTableTableManager(
+      $_db,
+      $_db.provisions,
+    ).filter((f) => f.categoryId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_provisionsRefsTable($_db));
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -6319,6 +6873,31 @@ class $$CategoriesTableFilterComposer
           }) => $$FixedMovementsTableFilterComposer(
             $db: $db,
             $table: $db.fixedMovements,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> provisionsRefs(
+    Expression<bool> Function($$ProvisionsTableFilterComposer f) f,
+  ) {
+    final $$ProvisionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.provisions,
+      getReferencedColumn: (t) => t.categoryId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ProvisionsTableFilterComposer(
+            $db: $db,
+            $table: $db.provisions,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -6482,6 +7061,31 @@ class $$CategoriesTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> provisionsRefs<T extends Object>(
+    Expression<T> Function($$ProvisionsTableAnnotationComposer a) f,
+  ) {
+    final $$ProvisionsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.provisions,
+      getReferencedColumn: (t) => t.categoryId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ProvisionsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.provisions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$CategoriesTableTableManager
@@ -6501,6 +7105,7 @@ class $$CategoriesTableTableManager
             bool transactionsRefs,
             bool budgetLinesRefs,
             bool fixedMovementsRefs,
+            bool provisionsRefs,
           })
         > {
   $$CategoriesTableTableManager(_$AppDatabase db, $CategoriesTable table)
@@ -6567,6 +7172,7 @@ class $$CategoriesTableTableManager
                 transactionsRefs = false,
                 budgetLinesRefs = false,
                 fixedMovementsRefs = false,
+                provisionsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -6574,6 +7180,7 @@ class $$CategoriesTableTableManager
                     if (transactionsRefs) db.transactions,
                     if (budgetLinesRefs) db.budgetLines,
                     if (fixedMovementsRefs) db.fixedMovements,
+                    if (provisionsRefs) db.provisions,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -6641,6 +7248,27 @@ class $$CategoriesTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (provisionsRefs)
+                        await $_getPrefetchedData<
+                          CategoryRow,
+                          $CategoriesTable,
+                          ProvisionRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$CategoriesTableReferences
+                              ._provisionsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$CategoriesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).provisionsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.categoryId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -6665,6 +7293,7 @@ typedef $$CategoriesTableProcessedTableManager =
         bool transactionsRefs,
         bool budgetLinesRefs,
         bool fixedMovementsRefs,
+        bool provisionsRefs,
       })
     >;
 typedef $$AccountsTableCreateCompanionBuilder = AccountsCompanion Function({
@@ -7499,6 +8128,7 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       Value<ExpenseNature?> nature,
       Value<String?> notes,
       Value<String?> debtId,
+      Value<String?> provisionId,
       Value<int> rowid,
     });
 typedef $$TransactionsTableUpdateCompanionBuilder =
@@ -7514,6 +8144,7 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<ExpenseNature?> nature,
       Value<String?> notes,
       Value<String?> debtId,
+      Value<String?> provisionId,
       Value<int> rowid,
     });
 
@@ -7621,6 +8252,11 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<String> get notes => $composableBuilder(
     column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get provisionId => $composableBuilder(
+    column: $table.provisionId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7743,6 +8379,11 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get provisionId => $composableBuilder(
+    column: $table.provisionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$CategoriesTableOrderingComposer get categoryId {
     final $$CategoriesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -7849,6 +8490,11 @@ class $$TransactionsTableAnnotationComposer
 
   GeneratedColumn<String> get notes =>
       $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<String> get provisionId => $composableBuilder(
+    column: $table.provisionId,
+    builder: (column) => column,
+  );
 
   $$CategoriesTableAnnotationComposer get categoryId {
     final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
@@ -7959,6 +8605,7 @@ class $$TransactionsTableTableManager
                 Value<ExpenseNature?> nature = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
                 Value<String?> debtId = const Value.absent(),
+                Value<String?> provisionId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TransactionsCompanion(
                 id: id,
@@ -7972,6 +8619,7 @@ class $$TransactionsTableTableManager
                 nature: nature,
                 notes: notes,
                 debtId: debtId,
+                provisionId: provisionId,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -7987,6 +8635,7 @@ class $$TransactionsTableTableManager
                 Value<ExpenseNature?> nature = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
                 Value<String?> debtId = const Value.absent(),
+                Value<String?> provisionId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TransactionsCompanion.insert(
                 id: id,
@@ -8000,6 +8649,7 @@ class $$TransactionsTableTableManager
                 nature: nature,
                 notes: notes,
                 debtId: debtId,
+                provisionId: provisionId,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -10649,6 +11299,361 @@ typedef $$FixedMovementsTableProcessedTableManager =
       FixedMovementRow,
       PrefetchHooks Function({bool categoryId})
     >;
+typedef $$ProvisionsTableCreateCompanionBuilder = ProvisionsCompanion Function({
+  required String id,
+  required String name,
+  required int amountCents,
+  required int everyMonths,
+  required DateTime nextDue,
+  required String categoryId,
+  required bool isActive,
+  Value<int> rowid,
+});
+typedef $$ProvisionsTableUpdateCompanionBuilder = ProvisionsCompanion Function({
+  Value<String> id,
+  Value<String> name,
+  Value<int> amountCents,
+  Value<int> everyMonths,
+  Value<DateTime> nextDue,
+  Value<String> categoryId,
+  Value<bool> isActive,
+  Value<int> rowid,
+});
+
+final class $$ProvisionsTableReferences
+    extends BaseReferences<_$AppDatabase, $ProvisionsTable, ProvisionRow> {
+  $$ProvisionsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $CategoriesTable _categoryIdTable(_$AppDatabase db) =>
+      db.categories.createAlias('provisions__category_id__categories__id');
+
+  $$CategoriesTableProcessedTableManager get categoryId {
+    final $_column = $_itemColumn<String>('category_id')!;
+
+    final manager = $$CategoriesTableTableManager(
+      $_db,
+      $_db.categories,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_categoryIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$ProvisionsTableFilterComposer
+    extends Composer<_$AppDatabase, $ProvisionsTable> {
+  $$ProvisionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get amountCents => $composableBuilder(
+    column: $table.amountCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get everyMonths => $composableBuilder(
+    column: $table.everyMonths,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get nextDue => $composableBuilder(
+    column: $table.nextDue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$CategoriesTableFilterComposer get categoryId {
+    final $$CategoriesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.categoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoriesTableFilterComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ProvisionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ProvisionsTable> {
+  $$ProvisionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get amountCents => $composableBuilder(
+    column: $table.amountCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get everyMonths => $composableBuilder(
+    column: $table.everyMonths,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get nextDue => $composableBuilder(
+    column: $table.nextDue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$CategoriesTableOrderingComposer get categoryId {
+    final $$CategoriesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.categoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoriesTableOrderingComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ProvisionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ProvisionsTable> {
+  $$ProvisionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<int> get amountCents => $composableBuilder(
+    column: $table.amountCents,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get everyMonths => $composableBuilder(
+    column: $table.everyMonths,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get nextDue =>
+      $composableBuilder(column: $table.nextDue, builder: (column) => column);
+
+  GeneratedColumn<bool> get isActive =>
+      $composableBuilder(column: $table.isActive, builder: (column) => column);
+
+  $$CategoriesTableAnnotationComposer get categoryId {
+    final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.categoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoriesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ProvisionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ProvisionsTable,
+          ProvisionRow,
+          $$ProvisionsTableFilterComposer,
+          $$ProvisionsTableOrderingComposer,
+          $$ProvisionsTableAnnotationComposer,
+          $$ProvisionsTableCreateCompanionBuilder,
+          $$ProvisionsTableUpdateCompanionBuilder,
+          (ProvisionRow, $$ProvisionsTableReferences),
+          ProvisionRow,
+          PrefetchHooks Function({bool categoryId})
+        > {
+  $$ProvisionsTableTableManager(_$AppDatabase db, $ProvisionsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ProvisionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ProvisionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ProvisionsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<int> amountCents = const Value.absent(),
+                Value<int> everyMonths = const Value.absent(),
+                Value<DateTime> nextDue = const Value.absent(),
+                Value<String> categoryId = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ProvisionsCompanion(
+                id: id,
+                name: name,
+                amountCents: amountCents,
+                everyMonths: everyMonths,
+                nextDue: nextDue,
+                categoryId: categoryId,
+                isActive: isActive,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                required int amountCents,
+                required int everyMonths,
+                required DateTime nextDue,
+                required String categoryId,
+                required bool isActive,
+                Value<int> rowid = const Value.absent(),
+              }) => ProvisionsCompanion.insert(
+                id: id,
+                name: name,
+                amountCents: amountCents,
+                everyMonths: everyMonths,
+                nextDue: nextDue,
+                categoryId: categoryId,
+                isActive: isActive,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$ProvisionsTable, ProvisionRow>(table),
+                  $$ProvisionsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({categoryId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (categoryId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.categoryId,
+                        referencedTable: $$ProvisionsTableReferences
+                            ._categoryIdTable(db),
+                        referencedColumn: $$ProvisionsTableReferences
+                            ._categoryIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$ProvisionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ProvisionsTable,
+      ProvisionRow,
+      $$ProvisionsTableFilterComposer,
+      $$ProvisionsTableOrderingComposer,
+      $$ProvisionsTableAnnotationComposer,
+      $$ProvisionsTableCreateCompanionBuilder,
+      $$ProvisionsTableUpdateCompanionBuilder,
+      (ProvisionRow, $$ProvisionsTableReferences),
+      ProvisionRow,
+      PrefetchHooks Function({bool categoryId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -10677,4 +11682,6 @@ class $AppDatabaseManager {
       $$FinanceSettingsTableTableTableManager(_db, _db.financeSettingsTable);
   $$FixedMovementsTableTableManager get fixedMovements =>
       $$FixedMovementsTableTableManager(_db, _db.fixedMovements);
+  $$ProvisionsTableTableManager get provisions =>
+      $$ProvisionsTableTableManager(_db, _db.provisions);
 }

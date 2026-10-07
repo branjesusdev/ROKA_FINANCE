@@ -18,14 +18,15 @@ void main() {
     () async {
       final db = createTestDatabase();
 
-      final categories = await DriftCategoryRepository(db).getAll();
+      final categories = await DriftCategoryRepository(db)
+          .getAll(includeArchived: true);
       expect(categories, hasLength(DefaultCategories.all.length));
       expect(
         categories.where((c) => c.kind == CategoryKind.expense),
         hasLength(DefaultCategories.expenses.length),
       );
       expect(
-        categories.singleWhere((c) => c.countsAsSaving).name,
+        categories.singleWhere((c) => c.countsAsSaving && !c.isArchived).name,
         'Inversiones',
       );
 

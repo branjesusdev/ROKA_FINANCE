@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:finance_app/domain/categories/default_categories.dart';
 import 'package:finance_app/domain/fixed/fixed_movement.dart';
+import 'package:finance_app/domain/provisions/provision.dart';
 import 'package:finance_app/domain/savings/finance_settings.dart';
 import 'package:finance_app/domain/shared/money.dart';
 import 'package:finance_app/domain/shared/percentage.dart';
@@ -11,6 +12,7 @@ import 'package:finance_app/domain/transactions/transaction.dart';
 import 'package:finance_app/infrastructure/persistence/drift/app_database.dart';
 import 'package:finance_app/infrastructure/repositories/drift_category_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_fixed_movement_repository.dart';
+import 'package:finance_app/infrastructure/repositories/drift_provision_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_settings_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_transaction_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -29,8 +31,44 @@ void main() {
 
   AppDatabase open(File file) => AppDatabase(NativeDatabase(file));
 
-  /// Quita lo que agregó v3 a una base recién creada.
+  /// Quita lo que agregó v5 a una base recién creada.
+  Future<void> downgradeToV4(AppDatabase db) async {
+    await db.customStatement('DROP TABLE provisions');
+    await db.customStatement(
+      'ALTER TABLE transactions DROP COLUMN provision_id',
+    );
+    await db.customStatement(
+      "DELETE FROM categories WHERE id = '${DefaultCategories.provisions.id}'",
+    );
+    await db.customStatement('PRAGMA user_version = 4');
+  }
+
+  /// Quita lo que agregaron v4 y v5.
+  Future<void> downgradeToV3(AppDatabase db) async {
+    await downgradeToV4(db);
+    for (final column in [
+      'dependents',
+      'solo_provider',
+      'kids_monthly_buffer_cents',
+    ]) {
+      await db.customStatement(
+        'ALTER TABLE finance_settings DROP COLUMN $column',
+      );
+    }
+    for (final category in [
+      DefaultCategories.untracked,
+      DefaultCategories.balanceAdjustment,
+    ]) {
+      await db.customStatement(
+        "DELETE FROM categories WHERE id = '${category.id}'",
+      );
+    }
+    await db.customStatement('PRAGMA user_version = 3');
+  }
+
+  /// Quita lo que agregaron v3 en adelante.
   Future<void> downgradeToV2(AppDatabase db) async {
+    await downgradeToV3(db);
     for (final column in ['reminder_minute', 'smart_notifications']) {
       await db.customStatement(
         'ALTER TABLE finance_settings DROP COLUMN $column',
@@ -41,6 +79,37 @@ void main() {
     );
     await db.customStatement('PRAGMA user_version = 2');
   }
+
+  test('v4 → v5 conserva los movimientos y agrega apartados', () async {
+    final file = File('${dir.path}/db.sqlite');
+    final v4 = open(file);
+    await DriftTransactionRepository(v4)
+        .save(expense(5000, category: 'seed-expense-food'));
+    await downgradeToV4(v4);
+    await v4.close();
+
+    final v5 = open(file);
+    addTearDown(v5.close);
+    final transactions = await DriftTransactionRepository(v5)
+        .getRecent(limit: 5);
+    expect(transactions.single.provisionId, equals(null));
+    expect(
+      (await DriftCategoryRepository(v5).getAll(includeArchived: true))
+          .map((c) => c.id),
+      contains(DefaultCategories.provisions.id),
+    );
+    final provisions = DriftProvisionRepository(v5);
+    final soat = Provision(
+      id: 'soat',
+      name: 'SOAT',
+      amount: const Money.pesos(447000),
+      everyMonths: 12,
+      nextDue: DateTime(2026, 11),
+      categoryId: 'seed-expense-transport',
+    );
+    await provisions.save(soat);
+    expect(await provisions.getAll(), [soat]);
+  });
 
   test('v2 → v3 agrega minuto del recordatorio, avisos y Mercado', () async {
     final file = File('${dir.path}/db.sqlite');

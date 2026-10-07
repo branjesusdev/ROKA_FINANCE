@@ -20,6 +20,7 @@ Cada fase termina con `flutter analyze` limpio + `flutter test` verde + resumen 
 | 11 ✅ | Metas, fondo de emergencia, regla de ahorro configurable, inversiones | Progreso y faltantes |
 | 12 ✅ | Análisis de gasto y salud financiera (fugas, variaciones, desglose) | Insights descriptivos |
 | 12b ✅ | Home por ciclo de sueldo (día 20), barra de iconos, colores por categoría, fijos mensuales automáticos, registro por voz (en el dispositivo), recordatorio diario 6 p. m. | Esquema v2 con migración; tests de ciclo, fijos, voz y migración |
+| 12c ✅ | Pagos del año (apartados): gimnasio trimestral, SOAT, tecnomecánica, colegio… Cuota por ciclo y por día, semáforo de atraso, "Ya lo pagué" usa lo apartado; se protege del tope diario | Esquema v5 con migración; tests de planificador, casos de uso y migración |
 | 13 | Testing, refactor, `/code-review`, `/security-review` | Sin warnings, sin logs con datos |
 
 Futuro (fuera de v1): exportar/importar backup local, bloqueo con biometría / cifrado de DB

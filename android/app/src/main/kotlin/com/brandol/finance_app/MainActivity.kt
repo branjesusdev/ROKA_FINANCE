@@ -86,8 +86,7 @@ class MainActivity : FlutterActivity() {
             "Servicios: ${services.ifEmpty { listOf("ninguno") }.joinToString()}",
             "Ventanas: ${dialogs.ifEmpty { listOf("ninguna") }.joinToString()}",
             "Disponible: ${SpeechRecognizer.isRecognitionAvailable(this)} · en el equipo: $onDevice",
-        ).joinToString("
-")
+        ).joinToString("\n")
     }
 
     @Deprecated("Requerido por FlutterActivity (no usa Activity Result API)")

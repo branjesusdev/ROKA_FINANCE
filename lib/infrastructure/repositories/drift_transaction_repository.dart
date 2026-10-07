@@ -59,6 +59,25 @@ final class DriftTransactionRepository implements TransactionRepository {
         _recent(limit).watch().map(_toDomain),
       );
 
+  @override
+  Future<List<Transaction>> getLinkedToProvision(String provisionId) =>
+      guardStorage(
+        'transactions.getLinkedToProvision',
+        () async => _toDomain(
+          await (_newestFirst()
+                ..where((t) => t.provisionId.equals(provisionId)))
+              .get(),
+        ),
+      );
+
+  @override
+  Stream<List<Transaction>> watchLinkedToProvisions() => guardStorageStream(
+    'transactions.watchLinkedToProvisions',
+    (_newestFirst()..where((t) => t.provisionId.isNotNull())).watch().map(
+      _toDomain,
+    ),
+  );
+
   SimpleSelectStatement<$TransactionsTable, TransactionRow> _newestFirst() =>
       _db.select(_db.transactions)..orderBy([
         (t) => OrderingTerm.desc(t.date),

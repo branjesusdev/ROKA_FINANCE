@@ -11,6 +11,8 @@ abstract final class ValidationCodes {
   static const monthsMustBePositive = 'months_must_be_positive';
   static const dayOutOfRange = 'day_out_of_range';
   static const hourOutOfRange = 'hour_out_of_range';
+  static const monthsOutOfRange = 'months_out_of_range';
+  static const notFound = 'not_found';
 }
 
 Future<Result<T>> invalid<T>(String code) =>

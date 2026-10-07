@@ -53,6 +53,19 @@ abstract final class DefaultCategories {
     'seed-expense-untracked',
   };
 
+  /// Plata apartada para pagos que no son mensuales (SOAT, matrícula…).
+  /// Cuenta como ahorro, no como gasto. Archivada: solo la usan los
+  /// apartados. Añadida en el esquema v5.
+  static const provisions = Category(
+    id: 'seed-expense-provisions',
+    name: 'Apartados',
+    kind: CategoryKind.expense,
+    iconKey: 'provisions',
+    sortOrder: 15,
+    isArchived: true,
+    countsAsSaving: true,
+  );
+
   /// Añadida en el esquema v2 (también se inserta al migrar).
   static const sports = Category(
     id: 'seed-expense-sports',
@@ -150,6 +163,7 @@ abstract final class DefaultCategories {
     sports,
     groceries,
     untracked,
+    provisions,
   ];
 
   static const incomes = <Category>[

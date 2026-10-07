@@ -20,6 +20,7 @@ abstract final class CategoryStyle {
     'shopping': (Icons.shopping_bag, Color(0xFF0891B2)),
     'family': (Icons.family_restroom, Color(0xFF0D9488)),
     'investments': (Icons.trending_up, Color(0xFF047857)),
+    'provisions': (Icons.event_repeat, Color(0xFF0F766E)),
     'salary': (Icons.payments, Color(0xFF15803D)),
     'additional_income': (Icons.work, Color(0xFF4D7C0F)),
     'extraordinary_income': (Icons.card_giftcard, Color(0xFFA16207)),

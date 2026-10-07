@@ -57,6 +57,14 @@ final class FakeTransactionRepository implements TransactionRepository {
   @override
   Stream<List<Transaction>> watchRecent({required int limit}) =>
       Stream.fromFuture(getRecent(limit: limit));
+
+  @override
+  Future<List<Transaction>> getLinkedToProvision(String provisionId) async =>
+      saved.values.where((t) => t.provisionId == provisionId).toList();
+
+  @override
+  Stream<List<Transaction>> watchLinkedToProvisions() =>
+      Stream.value(saved.values.where((t) => t.provisionId != null).toList());
 }
 
 /// Avisos sin plataforma: registra lo programado.

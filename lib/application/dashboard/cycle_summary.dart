@@ -6,6 +6,8 @@ import 'package:finance_app/domain/cycles/pay_cycle.dart';
 import 'package:finance_app/domain/fixed/fixed_movement.dart';
 import 'package:finance_app/domain/fixed/fixed_movement_scheduler.dart';
 import 'package:finance_app/domain/insights/cash_flow_calculator.dart';
+import 'package:finance_app/domain/provisions/provision.dart';
+import 'package:finance_app/domain/provisions/provision_planner.dart';
 import 'package:finance_app/domain/savings/finance_settings.dart';
 import 'package:finance_app/domain/shared/money.dart';
 import 'package:finance_app/domain/shared/percentage.dart';
@@ -45,6 +47,7 @@ final class CycleSummary {
     this.previousCycle,
     this.usageLight,
     this.dailyCap,
+    this.provisionPlan = ProvisionPlan.empty,
   });
 
   final PayCycle cycle;
@@ -76,6 +79,9 @@ final class CycleSummary {
 
   /// Semáforo de gasto sobre ingreso. `null` si no hay ingresos.
   final TrafficLight? usageLight;
+
+  /// Pagos que no son mensuales (SOAT, matrícula…): cuánto apartar.
+  final ProvisionPlan provisionPlan;
 
   Money get income => cashFlow.income;
 
@@ -131,6 +137,8 @@ final class CycleSummaryBuilder {
     required List<FixedMovement> fixedMovements,
     required FinanceSettings settings,
     List<BudgetLine> budgetLines = const [],
+    List<Provision> provisions = const [],
+    List<Transaction> provisionTransactions = const [],
     PayCycle? previousCycle,
   }) {
     final savingIds = {
@@ -158,6 +166,15 @@ final class CycleSummaryBuilder {
     final savingsTarget = cashFlow.income.applyPercentage(
       settings.savingsTargetRate,
     );
+    final provisionPlan = const ProvisionPlanner().plan(
+      provisions: provisions,
+      linked: provisionTransactions,
+      cycle: cycle,
+      today: today,
+    );
+    // Lo apartado para pagos no mensuales no cuenta para la meta de ahorro.
+    final savedThisCycle =
+        cashFlow.savingContributions - provisionPlan.setAsideThisCycle;
     final leftAfterFixed =
         cashFlow.adjustments +
         cashFlow.income -
@@ -189,10 +206,9 @@ final class CycleSummaryBuilder {
               cycleTransactions,
               upcoming.upcomingExpensesByCategory,
             ) +
-            _kidsReserve(settings, cycleTransactions),
-        savingsReserve: (savingsTarget - cashFlow.savingContributions).max(
-          Money.zero,
-        ),
+            _kidsReserve(settings, cycleTransactions) +
+            provisionPlan.pendingThisCycle,
+        savingsReserve: (savingsTarget - savedThisCycle).max(Money.zero),
         thresholds: settings.thresholds,
       ),
       previousLeft: previousCycleTransactions.isEmpty
@@ -204,6 +220,7 @@ final class CycleSummaryBuilder {
       usageLight: usage == null
           ? null
           : settings.thresholds.classifyUsage(usage),
+      provisionPlan: provisionPlan,
     );
   }
 

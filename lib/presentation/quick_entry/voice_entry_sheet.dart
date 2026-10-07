@@ -225,8 +225,7 @@ class _VoiceEntrySheetState extends ConsumerState<VoiceEntrySheet> {
                 [
                   if (_errorCode != null) 'Código: $_errorCode',
                   if (_diagnostics.isNotEmpty) _diagnostics,
-                ].join('
-'),
+                ].join('\n'),
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,

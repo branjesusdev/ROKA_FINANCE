@@ -3,6 +3,7 @@ import 'package:finance_app/domain/budgets/budget_line.dart';
 import 'package:finance_app/domain/categories/default_categories.dart';
 import 'package:finance_app/domain/cycles/pay_cycle.dart';
 import 'package:finance_app/domain/fixed/fixed_movement.dart';
+import 'package:finance_app/domain/provisions/provision.dart';
 import 'package:finance_app/domain/savings/finance_settings.dart';
 import 'package:finance_app/domain/shared/money.dart';
 import 'package:finance_app/domain/shared/percentage.dart';
@@ -25,6 +26,7 @@ void main() {
     List<Transaction> previous = const [],
     List<FixedMovement> fixed = const [],
     List<BudgetLine> budgets = const [],
+    List<Provision> provisions = const [],
   }) => const CycleSummaryBuilder().build(
     cycle: cycle,
     today: today,
@@ -34,6 +36,8 @@ void main() {
     fixedMovements: fixed,
     settings: const FinanceSettings(),
     budgetLines: budgets,
+    provisions: provisions,
+    provisionTransactions: current.where((t) => t.provisionId != null).toList(),
   );
 
   test('lo que queda = ingresos − todo lo que salió del ciclo', () {
@@ -142,5 +146,44 @@ void main() {
     expect(cap.reserved, const Money.pesos(750000));
     expect(cap.cap, const Money.pesos(2000000).divide(17));
     expect(cap.spentToday, const Money.pesos(30000), reason: 'sin mercado');
+  });
+
+  test('los pagos del año se apartan del tope diario y lo apartado no '
+      'cuenta como meta de ahorro', () {
+    final soat = Provision(
+      id: 'soat',
+      name: 'SOAT',
+      amount: const Money.pesos(340000),
+      everyMonths: 12,
+      nextDue: DateTime(2026, 11),
+      categoryId: transport,
+    );
+    final salary = income(3400000, date: DateTime(2026, 9, 20));
+    final without = build(current: [salary]).dailyCap!;
+    final deposit = Transaction(
+      id: 'dep',
+      kind: TransactionKind.expense,
+      amount: const Money.pesos(70000),
+      categoryId: DefaultCategories.provisions.id,
+      date: DateTime(2026, 10),
+      createdAt: DateTime(2026, 10),
+      provisionId: 'soat',
+    );
+
+    final pending = build(current: [salary], provisions: [soat]);
+    // 2 sueldos antes del 1 nov: 170.000 por ciclo.
+    expect(pending.provisionPlan.pendingThisCycle, const Money.pesos(170000));
+    expect(
+      pending.dailyCap!.reserved,
+      without.reserved + const Money.pesos(170000),
+    );
+
+    final partly = build(current: [salary, deposit], provisions: [soat]);
+    expect(partly.provisionPlan.pendingThisCycle, const Money.pesos(100000));
+    // La meta de ahorro (10%) sigue completa: el apartado no la cubre.
+    expect(
+      partly.dailyCap!.reserved,
+      without.reserved + const Money.pesos(100000),
+    );
   });
 }

@@ -19,6 +19,7 @@ import 'package:finance_app/domain/insights/spending_insights_analyzer.dart';
 import 'package:finance_app/domain/investments/investment.dart';
 import 'package:finance_app/domain/investments/portfolio_calculator.dart';
 import 'package:finance_app/domain/markets/watchlist.dart';
+import 'package:finance_app/domain/provisions/provision.dart';
 import 'package:finance_app/domain/savings/essential_expense_estimator.dart';
 import 'package:finance_app/domain/savings/finance_settings.dart';
 import 'package:finance_app/domain/savings/goal_progress_calculator.dart';
@@ -149,6 +150,15 @@ final fixedMovementsProvider = StreamProvider<List<FixedMovement>>(
   (ref) => ref.watch(fixedMovementRepositoryProvider).watchAll(),
 );
 
+final provisionsProvider = StreamProvider<List<Provision>>(
+  (ref) => ref.watch(provisionRepositoryProvider).watchAll(),
+);
+
+/// Movimientos de los apartados (aportes, devoluciones y pagos).
+final provisionTransactionsProvider = StreamProvider<List<Transaction>>(
+  (ref) => ref.watch(transactionRepositoryProvider).watchLinkedToProvisions(),
+);
+
 /// Resuelve los ciclos con el día de pago y los sueldos registrados: el
 /// ciclo arranca el día que llega el sueldo.
 final payCycleResolverProvider = FutureProvider<PayCycleResolver>((ref) async {
@@ -184,6 +194,8 @@ final cycleSummaryProvider = FutureProvider<CycleSummary>((ref) async {
   final month = ref.watch(currentMonthProvider);
   final categories = ref.watch(categoriesProvider.future);
   final fixed = ref.watch(fixedMovementsProvider.future);
+  final provisions = ref.watch(provisionsProvider.future);
+  final provisionTransactions = ref.watch(provisionTransactionsProvider.future);
   final settings = ref.watch(settingsProvider.future);
   final budgetLines = ref.watch(budgetLinesProvider(month).future);
   final resolver = await ref.watch(payCycleResolverProvider.future);
@@ -205,6 +217,8 @@ final cycleSummaryProvider = FutureProvider<CycleSummary>((ref) async {
     fixedMovements: await fixed,
     settings: await settings,
     budgetLines: await budgetLines,
+    provisions: await provisions,
+    provisionTransactions: await provisionTransactions,
   );
 });
 

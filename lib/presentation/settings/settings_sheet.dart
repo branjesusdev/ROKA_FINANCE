@@ -7,6 +7,7 @@ import 'package:finance_app/domain/cycles/pay_cycle.dart';
 import 'package:finance_app/domain/savings/finance_settings.dart';
 import 'package:finance_app/presentation/fixed/fixed_movements_screen.dart';
 import 'package:finance_app/presentation/home/widgets/reconcile_sheet.dart';
+import 'package:finance_app/presentation/provisions/provisions_screen.dart';
 import 'package:finance_app/presentation/settings/household_section.dart';
 import 'package:finance_app/presentation/shared/data_providers.dart';
 import 'package:finance_app/presentation/shared/form_widgets.dart';
@@ -143,6 +144,20 @@ class SettingsSheet extends ConsumerWidget {
               ..push(
                 MaterialPageRoute<void>(
                   builder: (_) => const FixedMovementsScreen(),
+                ),
+              ),
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.calendar_month),
+            title: const Text('Pagos del año'),
+            subtitle: const Text('SOAT, tecnomecánica, gimnasio, colegio…'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context)
+              ..pop()
+              ..push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const ProvisionsScreen(),
                 ),
               ),
           ),

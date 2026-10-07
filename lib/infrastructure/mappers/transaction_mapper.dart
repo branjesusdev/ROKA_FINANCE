@@ -16,6 +16,7 @@ extension TransactionRowMapper on TransactionRow {
     nature: nature,
     notes: notes,
     debtId: debtId,
+    provisionId: provisionId,
   );
 }
 
@@ -34,5 +35,6 @@ extension TransactionCompanionMapper on Transaction {
     nature: Value(nature),
     notes: Value(notes),
     debtId: Value(debtId),
+    provisionId: Value(provisionId),
   );
 }

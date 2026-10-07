@@ -4,6 +4,7 @@ import 'package:finance_app/application/cycles/reconcile_balance.dart';
 import 'package:finance_app/application/debts/debt_use_cases.dart';
 import 'package:finance_app/application/fixed/fixed_movement_use_cases.dart';
 import 'package:finance_app/application/markets/load_watchlist.dart';
+import 'package:finance_app/application/provisions/provision_use_cases.dart';
 import 'package:finance_app/application/reminders/sync_reminders.dart';
 import 'package:finance_app/application/savings/savings_use_cases.dart';
 import 'package:finance_app/application/settings/cycle_settings_use_cases.dart';
@@ -191,4 +192,32 @@ final reconcileBalanceProvider = Provider(
 
 final updateHouseholdProvider = Provider(
   (ref) => UpdateHousehold(ref.watch(settingsRepositoryProvider)),
+);
+
+final saveProvisionProvider = Provider(
+  (ref) => SaveProvision(
+    provisions: ref.watch(provisionRepositoryProvider),
+    ids: ref.watch(idGeneratorProvider),
+  ),
+);
+
+final deleteProvisionProvider = Provider(
+  (ref) => DeleteProvision(ref.watch(provisionRepositoryProvider)),
+);
+
+final setAsideForProvisionProvider = Provider(
+  (ref) => SetAsideForProvision(
+    transactions: ref.watch(transactionRepositoryProvider),
+    clock: ref.watch(clockProvider),
+    ids: ref.watch(idGeneratorProvider),
+  ),
+);
+
+final payProvisionProvider = Provider(
+  (ref) => PayProvision(
+    provisions: ref.watch(provisionRepositoryProvider),
+    transactions: ref.watch(transactionRepositoryProvider),
+    clock: ref.watch(clockProvider),
+    ids: ref.watch(idGeneratorProvider),
+  ),
 );

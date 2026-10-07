@@ -5,6 +5,7 @@ import 'package:finance_app/presentation/home/widgets/cycle_header.dart';
 import 'package:finance_app/presentation/home/widgets/cycle_savings_card.dart';
 import 'package:finance_app/presentation/home/widgets/daily_cap_card.dart';
 import 'package:finance_app/presentation/home/widgets/kind_toggle.dart';
+import 'package:finance_app/presentation/home/widgets/provisions_card.dart';
 import 'package:finance_app/presentation/home/widgets/recent_movements_card.dart';
 import 'package:finance_app/presentation/home/widgets/upcoming_fixed_card.dart';
 import 'package:finance_app/presentation/shared/async_view.dart';
@@ -47,6 +48,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             DailyCapCard(cap: cap),
             _spacing,
           ],
+          ProvisionsCard(plan: summary.provisionPlan),
+          _spacing,
           const DailyBarsCard(),
           _spacing,
           if (summary.previousLeft case final left? when left.isPositive) ...[

@@ -33,6 +33,7 @@ part 'app_database.g.dart';
     Investments,
     FinanceSettingsTable,
     FixedMovements,
+    Provisions,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -44,7 +45,7 @@ class AppDatabase extends _$AppDatabase {
   static const fileName = 'finance_app';
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -101,6 +102,14 @@ class AppDatabase extends _$AppDatabase {
           await into(categories)
               .insert(category.toCompanion(), mode: InsertMode.insertOrIgnore);
         }
+      }
+      if (from < 5) {
+        await migrator.createTable(provisions);
+        await migrator.addColumn(transactions, transactions.provisionId);
+        await into(categories).insert(
+          DefaultCategories.provisions.toCompanion(),
+          mode: InsertMode.insertOrIgnore,
+        );
       }
     },
     beforeOpen: (_) => customStatement('PRAGMA foreign_keys = ON'),

@@ -1,4 +1,5 @@
 import 'package:finance_app/domain/categories/category.dart';
+import 'package:finance_app/domain/categories/default_categories.dart';
 import 'package:finance_app/domain/investments/investment.dart';
 import 'package:finance_app/domain/shared/money.dart';
 import 'package:finance_app/domain/wealth/asset.dart';
@@ -58,7 +59,8 @@ void main() {
     final active = await repository.getAll();
     final all = await repository.getAll(includeArchived: true);
     expect(active.map((c) => c.id), isNot(contains(food.id)));
-    expect(all, hasLength(active.length + 1));
+    final archivedSeeds = DefaultCategories.all.where((c) => c.isArchived);
+    expect(all, hasLength(active.length + archivedSeeds.length + 1));
     expect(
       active.first.kind,
       CategoryKind.expense,

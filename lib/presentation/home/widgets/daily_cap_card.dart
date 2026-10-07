@@ -58,7 +58,7 @@ class DailyCapCard extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               'Ya apartamos ${Formatters.money(cap.reserved)} para tus gastos '
-              'del mes (mercado, servicios…) y tu ahorro.',
+              'del mes (mercado, servicios…), tus pagos del año y tu ahorro.',
               style: theme.textTheme.bodySmall?.copyWith(color: muted),
             ),
           ],

@@ -21,6 +21,7 @@ final class Transaction {
     this.nature,
     this.notes,
     this.debtId,
+    this.provisionId,
   });
 
   final String id;
@@ -36,6 +37,9 @@ final class Transaction {
 
   /// Si es el pago de una deuda, su id.
   final String? debtId;
+
+  /// Si es un aporte a un apartado o su uso al pagar, su id.
+  final String? provisionId;
 
   bool get isIncome => kind == TransactionKind.income;
   bool get isExpense => kind == TransactionKind.expense;
@@ -53,7 +57,8 @@ final class Transaction {
       other.accountId == accountId &&
       other.nature == nature &&
       other.notes == notes &&
-      other.debtId == debtId;
+      other.debtId == debtId &&
+      other.provisionId == provisionId;
 
   @override
   int get hashCode => Object.hash(
@@ -68,5 +73,6 @@ final class Transaction {
     nature,
     notes,
     debtId,
+    provisionId,
   );
 }

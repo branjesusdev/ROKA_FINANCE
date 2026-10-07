@@ -16,4 +16,10 @@ abstract interface class TransactionRepository {
   Future<List<Transaction>> getRecent({required int limit});
 
   Stream<List<Transaction>> watchRecent({required int limit});
+
+  /// Movimientos de un apartado (todas las fechas).
+  Future<List<Transaction>> getLinkedToProvision(String provisionId);
+
+  /// Movimientos vinculados a algún apartado (todas las fechas).
+  Stream<List<Transaction>> watchLinkedToProvisions();
 }

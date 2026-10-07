@@ -52,9 +52,14 @@ void main() {
       find.textContaining(RegExp(r'^Ciclo 20 \S+ – 19 oct')),
       findsOneWidget,
     );
+    expect(find.text('Patrimonio neto'), findsNothing);
+    await tester.scrollUntilVisible(
+      find.text('Gastos'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Gastos'), findsOneWidget);
     expect(find.text('Ingresos'), findsOneWidget);
-    expect(find.text('Patrimonio neto'), findsNothing);
     await tester.scrollUntilVisible(
       find.text('Fijos del mes'),
       300,
@@ -98,6 +103,11 @@ void main() {
 
     expect(find.text('Gasto registrado'), findsOneWidget);
     expect(find.text(r'-$ 5.000'), findsOneWidget, reason: 'últimos');
+    await tester.scrollUntilVisible(
+      find.text('100%'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('100%'), findsOneWidget, reason: 'desglose por categoría');
 
     await tearDownApp(tester);
@@ -118,6 +128,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Gasto registrado'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Alimentación'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Alimentación'), findsWidgets);
 
     await tearDownApp(tester);

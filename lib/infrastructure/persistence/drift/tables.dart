@@ -12,6 +12,7 @@ import 'package:finance_app/domain/wealth/asset.dart';
 // Esquema SQLite v2. Montos en centavos (INTEGER), enums como TEXT (nombre),
 // porcentajes en puntos básicos. Cambios de esquema = nueva migración.
 // v2: movimientos fijos, día de pago y recordatorio diario.
+// v5: apartados (pagos que no son mensuales) y vínculo en movimientos.
 
 @DataClassName('CategoryRow')
 class Categories extends Table {
@@ -56,6 +57,9 @@ class Transactions extends Table {
   TextColumn get notes => text().nullable()();
   TextColumn get debtId =>
       text().nullable().references(Debts, #id, onDelete: KeyAction.setNull)();
+  // Sin FK: SQLite no deja agregar columnas con referencias en una
+  // migración. Al borrar un apartado, el repositorio limpia el vínculo.
+  TextColumn get provisionId => text().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -207,6 +211,20 @@ class FixedMovements extends Table {
   IntColumn get dayOfMonth => integer()();
   BoolColumn get isActive => boolean()();
   DateTimeColumn get lastPostedOn => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+@DataClassName('ProvisionRow')
+class Provisions extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  IntColumn get amountCents => integer()();
+  IntColumn get everyMonths => integer()();
+  DateTimeColumn get nextDue => dateTime()();
+  TextColumn get categoryId => text().references(Categories, #id)();
+  BoolColumn get isActive => boolean()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};

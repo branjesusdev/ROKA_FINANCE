@@ -33,6 +33,14 @@ final class Money implements Comparable<Money> {
   /// Divide en [parts] partes iguales redondeando al centavo.
   Money divide(int parts) => Money((cents / parts).round());
 
+  /// Divide en [parts] partes redondeando hacia arriba al peso: al sumar
+  /// las partes nunca falta.
+  Money divideUp(int parts) {
+    final perPart = (cents / parts).ceil();
+    final remainder = perPart % centsPerPeso;
+    return Money(remainder == 0 ? perPart : perPart + centsPerPeso - remainder);
+  }
+
   Money applyPercentage(Percentage percentage) =>
       times(percentage.basisPoints / Percentage.basisPointsPerUnit);
 

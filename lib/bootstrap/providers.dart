@@ -7,6 +7,7 @@ import 'package:finance_app/domain/debts/debt_repository.dart';
 import 'package:finance_app/domain/fixed/fixed_movement_repository.dart';
 import 'package:finance_app/domain/investments/investment_repository.dart';
 import 'package:finance_app/domain/markets/market_quote.dart';
+import 'package:finance_app/domain/provisions/provision_repository.dart';
 import 'package:finance_app/domain/savings/savings_goal_repository.dart';
 import 'package:finance_app/domain/savings/settings_repository.dart';
 import 'package:finance_app/domain/shared/clock.dart';
@@ -23,6 +24,7 @@ import 'package:finance_app/infrastructure/repositories/drift_category_repositor
 import 'package:finance_app/infrastructure/repositories/drift_debt_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_fixed_movement_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_investment_repository.dart';
+import 'package:finance_app/infrastructure/repositories/drift_provision_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_savings_goal_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_settings_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_transaction_repository.dart';
@@ -85,6 +87,10 @@ final settingsRepositoryProvider = Provider<SettingsRepository>(
 
 final fixedMovementRepositoryProvider = Provider<FixedMovementRepository>(
   (ref) => DriftFixedMovementRepository(ref.watch(appDatabaseProvider)),
+);
+
+final provisionRepositoryProvider = Provider<ProvisionRepository>(
+  (ref) => DriftProvisionRepository(ref.watch(appDatabaseProvider)),
 );
 
 /// Adapters de plataforma. En tests se sobrescriben con fakes.

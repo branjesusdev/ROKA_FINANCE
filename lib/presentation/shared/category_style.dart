@@ -5,23 +5,25 @@ import 'package:flutter/material.dart';
 /// color identifica la categoría en gráficos, listas y selectores; siempre
 /// va acompañado del nombre (nunca solo color).
 abstract final class CategoryStyle {
+  // Paleta sin rosados ni morados; colores distinguibles entre sí.
   static const _styles = <String, (IconData, Color)>{
-    'food': (Icons.restaurant, Color(0xFFF57C00)),
-    'housing': (Icons.home, Color(0xFF6D4C41)),
-    'transport': (Icons.directions_bus, Color(0xFF1E88E5)),
-    'education': (Icons.school, Color(0xFF3949AB)),
-    'health': (Icons.local_hospital, Color(0xFFE53935)),
-    'sports': (Icons.sports_soccer, Color(0xFF43A047)),
-    'entertainment': (Icons.movie, Color(0xFF8E24AA)),
-    'debts': (Icons.credit_card, Color(0xFFD81B60)),
-    'services': (Icons.bolt, Color(0xFFFFB300)),
-    'shopping': (Icons.shopping_bag, Color(0xFF00ACC1)),
-    'family': (Icons.family_restroom, Color(0xFFF06292)),
-    'investments': (Icons.trending_up, Color(0xFF00897B)),
-    'salary': (Icons.payments, Color(0xFF2E7D32)),
-    'additional_income': (Icons.work, Color(0xFF7CB342)),
-    'extraordinary_income': (Icons.card_giftcard, Color(0xFFC0CA33)),
-    'other': (Icons.more_horiz, Color(0xFF757575)),
+    'food': (Icons.restaurant, Color(0xFFEA580C)),
+    'groceries': (Icons.shopping_cart, Color(0xFF65A30D)),
+    'housing': (Icons.home, Color(0xFF78350F)),
+    'transport': (Icons.directions_bus, Color(0xFF2563EB)),
+    'education': (Icons.school, Color(0xFF3730A3)),
+    'health': (Icons.local_hospital, Color(0xFFDC2626)),
+    'sports': (Icons.sports_soccer, Color(0xFF16A34A)),
+    'entertainment': (Icons.movie, Color(0xFF0369A1)),
+    'debts': (Icons.credit_card, Color(0xFF475569)),
+    'services': (Icons.bolt, Color(0xFFCA8A04)),
+    'shopping': (Icons.shopping_bag, Color(0xFF0891B2)),
+    'family': (Icons.family_restroom, Color(0xFF0D9488)),
+    'investments': (Icons.trending_up, Color(0xFF047857)),
+    'salary': (Icons.payments, Color(0xFF15803D)),
+    'additional_income': (Icons.work, Color(0xFF4D7C0F)),
+    'extraordinary_income': (Icons.card_giftcard, Color(0xFFA16207)),
+    'other': (Icons.more_horiz, Color(0xFF6B7280)),
   };
 
   static const _fallback = Color(0xFF9E9E9E);

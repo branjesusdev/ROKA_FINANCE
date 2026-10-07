@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 /// Estilo accesible del semáforo: color + icono + texto (nunca solo color).
 abstract final class TrafficLightStyle {
   static Color color(TrafficLight light, ColorScheme scheme) => switch (light) {
-    TrafficLight.ok => const Color(0xFF2E7D32),
-    TrafficLight.warning => const Color(0xFFB26A00),
+    TrafficLight.ok => const Color(0xFF15803D),
+    TrafficLight.warning => const Color(0xFFB45309),
     TrafficLight.critical => scheme.error,
   };
 

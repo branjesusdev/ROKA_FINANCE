@@ -44,7 +44,7 @@ class AppDatabase extends _$AppDatabase {
   static const fileName = 'finance_app';
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -71,6 +71,36 @@ class AppDatabase extends _$AppDatabase {
           DefaultCategories.sports.toCompanion(),
           mode: InsertMode.insertOrIgnore,
         );
+      }
+      if (from < 3) {
+        await migrator.addColumn(
+          financeSettingsTable,
+          financeSettingsTable.reminderMinute,
+        );
+        await migrator.addColumn(
+          financeSettingsTable,
+          financeSettingsTable.smartNotifications,
+        );
+        await into(categories).insert(
+          DefaultCategories.groceries.toCompanion(),
+          mode: InsertMode.insertOrIgnore,
+        );
+      }
+      if (from < 4) {
+        for (final column in [
+          financeSettingsTable.dependents,
+          financeSettingsTable.soloProvider,
+          financeSettingsTable.kidsMonthlyBufferCents,
+        ]) {
+          await migrator.addColumn(financeSettingsTable, column);
+        }
+        for (final category in [
+          DefaultCategories.untracked,
+          DefaultCategories.balanceAdjustment,
+        ]) {
+          await into(categories)
+              .insert(category.toCompanion(), mode: InsertMode.insertOrIgnore);
+        }
       }
     },
     beforeOpen: (_) => customStatement('PRAGMA foreign_keys = ON'),

@@ -35,6 +35,8 @@ class _VoiceEntrySheetState extends ConsumerState<VoiceEntrySheet> {
   _Phase _phase = _Phase.listening;
   String _text = '';
   String? _error;
+  String? _errorCode;
+  String _diagnostics = '';
 
   static const _examples = [
     'Gasté 25 mil en almuerzo',
@@ -61,6 +63,7 @@ class _VoiceEntrySheetState extends ConsumerState<VoiceEntrySheet> {
       _phase = _Phase.listening;
       _text = '';
       _error = null;
+      _errorCode = null;
     });
     unawaited(_subscription?.cancel());
     _subscription = _speech.listen().listen(
@@ -72,6 +75,7 @@ class _VoiceEntrySheetState extends ConsumerState<VoiceEntrySheet> {
         error is SpeechUnavailable
             ? error.reason
             : SpeechUnavailableReason.notAvailable,
+        code: error is SpeechUnavailable ? error.code : null,
       ),
       onDone: () {
         if (mounted && _phase == _Phase.listening) _finish();
@@ -79,22 +83,51 @@ class _VoiceEntrySheetState extends ConsumerState<VoiceEntrySheet> {
     );
   }
 
-  void _fail(SpeechUnavailableReason reason) {
+  void _fail(SpeechUnavailableReason reason, {String? code}) {
     if (!mounted) return;
     setState(() {
       _phase = _Phase.failed;
+      _errorCode = code;
+      _diagnostics = '';
       _error = switch (reason) {
         SpeechUnavailableReason.offlineLanguageMissing =>
-          'Para dictar sin enviar tu voz a internet, descarga el español sin '
-              'conexión: Ajustes del teléfono › Google › Voz › Reconocimiento '
-              'sin conexión.',
+          'El reconocedor de voz de tu teléfono no tiene español sin '
+              'conexión. Si ya lo descargaste en Google, toca "Dictar con '
+              'Google".',
         SpeechUnavailableReason.noMatch =>
           'No te entendí. Intenta de nuevo hablando cerca del teléfono.',
         SpeechUnavailableReason.notAvailable =>
-          'No se pudo usar el micrófono. Revisa el permiso de micrófono de '
-              'la app.',
+          'El reconocedor de voz del teléfono no respondió. Toca "Dictar con '
+              'Google" (usa el mismo dictado del teclado).',
       };
     });
+    unawaited(_loadDiagnostics());
+  }
+
+  Future<void> _loadDiagnostics() async {
+    final info = await _speech.diagnostics();
+    if (mounted && _phase == _Phase.failed) {
+      setState(() => _diagnostics = info);
+    }
+  }
+
+  /// Respaldo: ventana de dictado de Google.
+  Future<void> _dictateWithGoogle() async {
+    unawaited(_subscription?.cancel());
+    try {
+      final text = await _speech.listenWithSystemDialog();
+      if (!mounted) return;
+      if (text == null || text.trim().isEmpty) {
+        return _fail(SpeechUnavailableReason.noMatch);
+      }
+      setState(() {
+        _phase = _Phase.listening;
+        _text = text;
+      });
+      _finish();
+    } on SpeechUnavailable catch (e) {
+      _fail(e.reason, code: e.code);
+    }
   }
 
   void _finish() {
@@ -171,7 +204,10 @@ class _VoiceEntrySheetState extends ConsumerState<VoiceEntrySheet> {
               style: theme.textTheme.titleMedium,
             )
           else ...[
-            Text('Di algo como:', style: theme.textTheme.bodyMedium),
+            Text(
+              'Habla cuando quieras. Di algo como:',
+              style: theme.textTheme.bodyMedium,
+            ),
             const SizedBox(height: 8),
             for (final example in _examples)
               Text(
@@ -183,7 +219,27 @@ class _VoiceEntrySheetState extends ConsumerState<VoiceEntrySheet> {
               ),
           ],
           if (!listening) ...[
+            if (_errorCode != null || _diagnostics.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              SelectableText(
+                [
+                  if (_errorCode != null) 'Código: $_errorCode',
+                  if (_diagnostics.isNotEmpty) _diagnostics,
+                ].join('
+'),
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
+            FilledButton.icon(
+              icon: const Icon(Icons.keyboard_voice_outlined),
+              label: const Text('Dictar con Google'),
+              onPressed: _dictateWithGoogle,
+            ),
+            const SizedBox(height: 8),
             TextButton(
               onPressed: () {
                 final navigator = Navigator.of(context);

@@ -5,6 +5,8 @@ import 'package:finance_app/domain/shared/money.dart';
 import 'package:finance_app/domain/transactions/transaction.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/builders.dart';
+
 void main() {
   final today = DateTime(2026, 10, 3, 18);
   final cycle = PayCycle.containing(today, payday: 20);
@@ -70,5 +72,57 @@ void main() {
     ]);
 
     expect(result.due.single.date, DateTime(2026, 10));
+  });
+
+  group('ciclo que arrancó con sueldo adelantado', () {
+    // Sueldo el 6 oct con día de pago 20: ciclo 6 oct → 19 nov.
+    final long = PayCycle.between(
+      start: DateTime(2026, 10, 6),
+      endExclusive: DateTime(2026, 11, 20),
+      payday: 20,
+    );
+
+    test('un día del mes que cae dos veces en el ciclo se registra dos '
+        'veces', () {
+      final result = const FixedMovementScheduler().schedule(
+        movements: [fixed('Colegio', 10)],
+        cycle: long,
+        today: DateTime(2026, 11, 12),
+      );
+
+      expect(result.due.map((s) => s.date), [
+        DateTime(2026, 10, 10),
+        DateTime(2026, 11, 10),
+      ]);
+    });
+
+    test('el sueldo fijo no se duplica si ya se anotó a mano', () {
+      final result = const FixedMovementScheduler().schedule(
+        movements: [fixed('Sueldo', 20, kind: TransactionKind.income)],
+        cycle: long,
+        today: DateTime(2026, 10, 25),
+        cycleTransactions: [
+          income(4000000, category: 'cat', date: DateTime(2026, 10, 6)),
+        ],
+      );
+
+      expect(result.due, isEmpty);
+      expect(result.upcoming, isEmpty);
+      expect(result.covered.single.date, DateTime(2026, 10, 20));
+    });
+
+    test('el sueldo fijo futuro tampoco suma como ingreso pendiente', () {
+      final result = const FixedMovementScheduler().schedule(
+        movements: [fixed('Sueldo', 20, kind: TransactionKind.income)],
+        cycle: long,
+        today: DateTime(2026, 10, 7),
+        cycleTransactions: [
+          income(4000000, category: 'cat', date: DateTime(2026, 10, 6)),
+        ],
+      );
+
+      expect(result.upcomingIncome, Money.zero);
+      expect(result.covered, isEmpty, reason: 'aún no llega su día');
+    });
   });
 }

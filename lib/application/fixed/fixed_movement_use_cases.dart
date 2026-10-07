@@ -1,11 +1,10 @@
 import 'package:finance_app/application/common/guard_use_case.dart';
 import 'package:finance_app/application/common/validation.dart';
+import 'package:finance_app/application/cycles/load_current_cycle.dart';
 import 'package:finance_app/core/result.dart';
-import 'package:finance_app/domain/cycles/pay_cycle.dart';
 import 'package:finance_app/domain/fixed/fixed_movement.dart';
 import 'package:finance_app/domain/fixed/fixed_movement_repository.dart';
 import 'package:finance_app/domain/fixed/fixed_movement_scheduler.dart';
-import 'package:finance_app/domain/savings/settings_repository.dart';
 import 'package:finance_app/domain/shared/clock.dart';
 import 'package:finance_app/domain/shared/id_generator.dart';
 import 'package:finance_app/domain/shared/money.dart';
@@ -20,13 +19,13 @@ import 'package:finance_app/domain/transactions/transaction_repository.dart';
 final class SaveFixedMovement {
   const new({
     required this._fixed,
-    required this._settings,
+    required this._currentCycle,
     required this._clock,
     required this._ids,
   });
 
   final FixedMovementRepository _fixed;
-  final SettingsRepository _settings;
+  final LoadCurrentCycle _currentCycle;
   final Clock _clock;
   final IdGenerator _ids;
 
@@ -53,11 +52,12 @@ final class SaveFixedMovement {
     return guardUseCase(() async {
       var lastPosted = lastPostedOn;
       if (id == null && !registerInCurrentCycle) {
-        final settings = await _settings.get();
-        lastPosted = PayCycle.containing(
-          _clock.now(),
-          payday: settings.payday,
-        ).dateForDayOfMonth(dayOfMonth);
+        final now = _clock.now();
+        final today = DateTime(now.year, now.month, now.day);
+        final passed = (await _currentCycle(now)).cycle
+            .datesForDayOfMonth(dayOfMonth)
+            .where((d) => !d.isAfter(today));
+        lastPosted = passed.isEmpty ? null : passed.last;
       }
       final movement = FixedMovement(
         id: id ?? _ids.next(),
@@ -85,30 +85,44 @@ final class DeleteFixedMovement {
 
 /// Registra como movimientos los fijos cuyo día ya llegó en el ciclo actual.
 /// Idempotente: se puede llamar en cada apertura de la app.
+///
+/// Un ingreso fijo que el usuario ya anotó a mano (sueldo adelantado) se
+/// marca como registrado sin duplicarlo.
 final class PostDueFixedMovements {
   const new({
     required this._fixed,
     required this._transactions,
-    required this._settings,
+    required this._currentCycle,
     required this._clock,
     required this._ids,
   });
 
   final FixedMovementRepository _fixed;
   final TransactionRepository _transactions;
-  final SettingsRepository _settings;
+  final LoadCurrentCycle _currentCycle;
   final Clock _clock;
   final IdGenerator _ids;
 
   /// Devuelve cuántos movimientos se registraron.
   Future<Result<int>> call() => guardUseCase(() async {
     final now = _clock.now();
-    final settings = await _settings.get();
+    final current = await _currentCycle(now);
     final schedule = const FixedMovementScheduler().schedule(
       movements: await _fixed.getAll(),
-      cycle: PayCycle.containing(now, payday: settings.payday),
+      cycle: current.cycle,
       today: now,
+      cycleTransactions: current.transactions,
     );
+    // Última fecha registrada por fijo (puede tener varias en el ciclo).
+    final postedUntil = <String, ScheduledFixed>{};
+    void markPosted(ScheduledFixed item) {
+      final known = postedUntil[item.movement.id];
+      if (known == null || item.date.isAfter(known.date)) {
+        postedUntil[item.movement.id] = item;
+      }
+    }
+
+    schedule.covered.forEach(markPosted);
     for (final item in schedule.due) {
       final movement = item.movement;
       await _transactions.save(
@@ -123,7 +137,10 @@ final class PostDueFixedMovements {
           nature: movement.isExpense ? ExpenseNature.essential : null,
         ),
       );
-      await _fixed.save(movement.copyWith(lastPostedOn: item.date));
+      markPosted(item);
+    }
+    for (final item in postedUntil.values) {
+      await _fixed.save(item.movement.copyWith(lastPostedOn: item.date));
     }
     return schedule.due.length;
   });

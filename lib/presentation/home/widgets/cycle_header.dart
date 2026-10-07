@@ -1,4 +1,5 @@
 import 'package:finance_app/application/dashboard/cycle_summary.dart';
+import 'package:finance_app/presentation/home/widgets/reconcile_sheet.dart';
 import 'package:finance_app/presentation/shared/formatters.dart';
 import 'package:finance_app/presentation/shared/traffic_light_badge.dart';
 import 'package:flutter/material.dart';
@@ -17,7 +18,6 @@ class CycleHeader extends StatelessWidget {
     final left = summary.left;
     final light = summary.usageLight;
     final spent = summary.spentShare;
-    final daily = summary.dailyAllowance;
     final previous = summary.previousLeft;
 
     return Column(
@@ -65,32 +65,54 @@ class CycleHeader extends StatelessWidget {
               ),
           ],
         ),
+        if (summary.deficit case final deficit?) ...[
+          const SizedBox(height: 12),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.report_problem_outlined,
+                size: 18,
+                color: theme.colorScheme.error,
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  'Déficit hasta tu próximo sueldo: '
+                  '${Formatters.money(deficit)}',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: theme.colorScheme.error,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          Text(
+            'Es lo que falta para cubrir los fijos que quedan.',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodySmall?.copyWith(color: muted),
+          ),
+        ],
         if (summary.income.isZero) ...[
           const SizedBox(height: 12),
           Text(
-            'Registra tu sueldo (o créalo como fijo) para ver cuánto te '
-            'queda.',
+            'Registra tu sueldo el día que llegue (aunque sea antes de la '
+            'fecha): ese día arranca tu ciclo y verás cuánto puedes gastar.',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodySmall?.copyWith(color: muted),
           ),
         ],
-        if (daily != null) ...[
-          const SizedBox(height: 12),
-          Text(
-            'Para llegar al próximo pago con lo que queda (después de fijos): '
-            'unos ${Formatters.money(daily)} por día.',
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodySmall?.copyWith(color: muted),
-          ),
-        ],
-        if (previous != null) ...[
+        if (previous != null && !previous.isPositive) ...[
           const SizedBox(height: 4),
           Text(
-            'El ciclo pasado te quedaron ${Formatters.money(previous)}.',
+            'El ciclo pasado cerró en ${Formatters.money(previous)}.',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodySmall?.copyWith(color: muted),
           ),
         ],
+        const SizedBox(height: 4),
+        const ReconcileButton(),
       ],
     );
   }

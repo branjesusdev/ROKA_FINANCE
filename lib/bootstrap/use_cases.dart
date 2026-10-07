@@ -1,7 +1,10 @@
 import 'package:finance_app/application/budgets/budget_use_cases.dart';
+import 'package:finance_app/application/cycles/load_current_cycle.dart';
+import 'package:finance_app/application/cycles/reconcile_balance.dart';
 import 'package:finance_app/application/debts/debt_use_cases.dart';
 import 'package:finance_app/application/fixed/fixed_movement_use_cases.dart';
-import 'package:finance_app/application/reminders/sync_daily_reminder.dart';
+import 'package:finance_app/application/markets/load_watchlist.dart';
+import 'package:finance_app/application/reminders/sync_reminders.dart';
 import 'package:finance_app/application/savings/savings_use_cases.dart';
 import 'package:finance_app/application/settings/cycle_settings_use_cases.dart';
 import 'package:finance_app/application/transactions/delete_transaction.dart';
@@ -119,10 +122,17 @@ final addContributionProvider = Provider(
   ),
 );
 
+final loadCurrentCycleProvider = Provider(
+  (ref) => LoadCurrentCycle(
+    settings: ref.watch(settingsRepositoryProvider),
+    transactions: ref.watch(transactionRepositoryProvider),
+  ),
+);
+
 final saveFixedMovementProvider = Provider(
   (ref) => SaveFixedMovement(
     fixed: ref.watch(fixedMovementRepositoryProvider),
-    settings: ref.watch(settingsRepositoryProvider),
+    currentCycle: ref.watch(loadCurrentCycleProvider),
     clock: ref.watch(clockProvider),
     ids: ref.watch(idGeneratorProvider),
   ),
@@ -136,7 +146,7 @@ final postDueFixedMovementsProvider = Provider(
   (ref) => PostDueFixedMovements(
     fixed: ref.watch(fixedMovementRepositoryProvider),
     transactions: ref.watch(transactionRepositoryProvider),
-    settings: ref.watch(settingsRepositoryProvider),
+    currentCycle: ref.watch(loadCurrentCycleProvider),
     clock: ref.watch(clockProvider),
     ids: ref.watch(idGeneratorProvider),
   ),
@@ -150,9 +160,35 @@ final updateDailyReminderProvider = Provider(
   (ref) => UpdateDailyReminder(ref.watch(settingsRepositoryProvider)),
 );
 
-final syncDailyReminderProvider = Provider(
-  (ref) => SyncDailyReminder(
+final syncRemindersProvider = Provider(
+  (ref) => SyncReminders(
     settings: ref.watch(settingsRepositoryProvider),
     scheduler: ref.watch(reminderSchedulerProvider),
+    clock: ref.watch(clockProvider),
   ),
+);
+
+final testReminderProvider = Provider(
+  (ref) => TestReminder(
+    scheduler: ref.watch(reminderSchedulerProvider),
+    clock: ref.watch(clockProvider),
+  ),
+);
+
+final loadWatchlistProvider = Provider(
+  (ref) => LoadWatchlist(ref.watch(marketDataSourceProvider)),
+);
+
+final reconcileBalanceProvider = Provider(
+  (ref) => ReconcileBalance(
+    currentCycle: ref.watch(loadCurrentCycleProvider),
+    transactions: ref.watch(transactionRepositoryProvider),
+    fixed: ref.watch(fixedMovementRepositoryProvider),
+    clock: ref.watch(clockProvider),
+    ids: ref.watch(idGeneratorProvider),
+  ),
+);
+
+final updateHouseholdProvider = Provider(
+  (ref) => UpdateHousehold(ref.watch(settingsRepositoryProvider)),
 );

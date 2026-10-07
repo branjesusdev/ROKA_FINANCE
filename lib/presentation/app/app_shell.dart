@@ -1,14 +1,17 @@
 import 'dart:async';
 
+import 'package:finance_app/application/dashboard/cycle_summary.dart';
 import 'package:finance_app/bootstrap/use_cases.dart';
 import 'package:finance_app/presentation/app/app_theme.dart';
 import 'package:finance_app/presentation/budgets/budget_screen.dart';
+import 'package:finance_app/presentation/cfo/cfo_screen.dart';
 import 'package:finance_app/presentation/goals/goals_screen.dart';
 import 'package:finance_app/presentation/home/home_screen.dart';
 import 'package:finance_app/presentation/insights/insights_screen.dart';
 import 'package:finance_app/presentation/quick_entry/quick_entry_sheet.dart';
 import 'package:finance_app/presentation/quick_entry/voice_entry_sheet.dart';
 import 'package:finance_app/presentation/settings/settings_sheet.dart';
+import 'package:finance_app/presentation/shared/data_providers.dart';
 import 'package:finance_app/presentation/transactions/transactions_screen.dart';
 import 'package:finance_app/presentation/wealth/wealth_screen.dart';
 import 'package:flutter/material.dart';
@@ -40,6 +43,7 @@ class _AppShellState extends ConsumerState<AppShell>
       Icons.account_balance,
     ),
     _Section('Metas', Icons.savings_outlined, Icons.savings),
+    _Section('Tu CFO', Icons.auto_awesome_outlined, Icons.auto_awesome),
   ];
 
   @override
@@ -57,13 +61,21 @@ class _AppShellState extends ConsumerState<AppShell>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) unawaited(_postDueFixed());
+    if (state != AppLifecycleState.resumed) return;
+    unawaited(_postDueFixed());
+    unawaited(_syncReminders(ref.read(cycleSummaryProvider).value));
   }
 
   Future<void> _onOpened() async {
     await _postDueFixed();
-    await ref.read(syncDailyReminderProvider).call();
+    // Sin resumen aún: programa al menos el recordatorio diario.
+    await _syncReminders(ref.read(cycleSummaryProvider).value);
   }
+
+  /// Los avisos con montos (tope del día, fijos, cierre) se recalculan con
+  /// cada cambio de datos.
+  Future<void> _syncReminders(CycleSummary? summary) =>
+      ref.read(syncRemindersProvider).call(summary: summary);
 
   Future<void> _postDueFixed() =>
       ref.read(postDueFixedMovementsProvider).call();
@@ -75,6 +87,9 @@ class _AppShellState extends ConsumerState<AppShell>
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(cycleSummaryProvider, (_, next) {
+      if (next.value case final summary?) unawaited(_syncReminders(summary));
+    });
     final isHome = _index == _homeIndex;
     return Scaffold(
       extendBody: true,
@@ -104,6 +119,7 @@ class _AppShellState extends ConsumerState<AppShell>
           const BudgetScreen(),
           const WealthScreen(),
           const GoalsScreen(),
+          const CfoScreen(),
         ],
       ),
       floatingActionButton: Column(
@@ -186,7 +202,7 @@ class _IconNavBar extends StatelessWidget {
                           ? sections[i].selectedIcon
                           : sections[i].icon,
                       color: i == selected ? Colors.white : _inactive,
-                      size: 28,
+                      size: 26,
                     ),
                   ),
                 ),

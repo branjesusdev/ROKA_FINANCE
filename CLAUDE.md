@@ -36,6 +36,9 @@ Dominio y casos de uso no cambian. No añadir dependencias cloud/analytics/ads.
 
 ## Privacidad
 Nunca loguear montos, descripciones ni registros completos. Nada sale del dispositivo.
+Única excepción: precios públicos de acciones ("Tu CFO") vía port `MarketDataSource`
+(Yahoo, gratis, sin clave): solo envía el símbolo y solo cuando el usuario lo pide.
+Notificaciones con montos: `NotificationVisibility.private` (ocultas en pantalla bloqueada).
 
 ## Testing
 Prioridad: servicios de dominio y casos de uso (fakes en memoria, sin mocks salvo necesidad).

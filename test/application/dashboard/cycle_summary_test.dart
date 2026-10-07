@@ -1,4 +1,5 @@
 import 'package:finance_app/application/dashboard/cycle_summary.dart';
+import 'package:finance_app/domain/budgets/budget_line.dart';
 import 'package:finance_app/domain/categories/default_categories.dart';
 import 'package:finance_app/domain/cycles/pay_cycle.dart';
 import 'package:finance_app/domain/fixed/fixed_movement.dart';
@@ -6,6 +7,7 @@ import 'package:finance_app/domain/savings/finance_settings.dart';
 import 'package:finance_app/domain/shared/money.dart';
 import 'package:finance_app/domain/shared/percentage.dart';
 import 'package:finance_app/domain/shared/traffic_light.dart';
+import 'package:finance_app/domain/shared/year_month.dart';
 import 'package:finance_app/domain/transactions/transaction.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -22,6 +24,7 @@ void main() {
     List<Transaction> current = const [],
     List<Transaction> previous = const [],
     List<FixedMovement> fixed = const [],
+    List<BudgetLine> budgets = const [],
   }) => const CycleSummaryBuilder().build(
     cycle: cycle,
     today: today,
@@ -30,6 +33,7 @@ void main() {
     categories: DefaultCategories.all,
     fixedMovements: fixed,
     settings: const FinanceSettings(),
+    budgetLines: budgets,
   );
 
   test('lo que queda = ingresos − todo lo que salió del ciclo', () {
@@ -96,5 +100,47 @@ void main() {
     expect(summary.previousLeft, const Money.pesos(500000));
     expect(summary.leftVsPrevious, const Money.pesos(3500000));
     expect(build().previousLeft, isNull);
+  });
+
+  test('tope diario: aparta fijos, mercado presupuestado y ahorro; ignora '
+      'el mercado del día', () {
+    final groceries = DefaultCategories.groceries.id;
+    final summary = build(
+      current: [
+        income(
+          4000000,
+          category: DefaultCategories.salaryId,
+          date: cycle.start,
+        ),
+        expense(200000, category: groceries, date: DateTime(2026, 10)),
+        expense(30000, category: food, date: today),
+        expense(50000, category: groceries, date: today),
+      ],
+      fixed: [
+        const FixedMovement(
+          id: 'rent',
+          name: 'Arriendo',
+          kind: TransactionKind.expense,
+          amount: Money.pesos(1000000),
+          categoryId: 'seed-expense-housing',
+          dayOfMonth: 5,
+        ),
+      ],
+      budgets: [
+        BudgetLine(
+          id: 'b1',
+          period: YearMonth.fromDate(today),
+          categoryId: groceries,
+          limit: const Money.pesos(600000),
+        ),
+      ],
+    );
+
+    final cap = summary.dailyCap!;
+    // Libre: 4.000.000 − 280.000 gastado − 1.000.000 arriendo + 30.000 de
+    // hoy − 350.000 de mercado por gastar − 400.000 de ahorro (10%).
+    expect(cap.reserved, const Money.pesos(750000));
+    expect(cap.cap, const Money.pesos(2000000).divide(17));
+    expect(cap.spentToday, const Money.pesos(30000), reason: 'sin mercado');
   });
 }

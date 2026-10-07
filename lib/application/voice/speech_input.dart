@@ -20,9 +20,12 @@ enum SpeechUnavailableReason {
 }
 
 final class SpeechUnavailable implements Exception {
-  const new(this.reason);
+  const new(this.reason, {this.code});
 
   final SpeechUnavailableReason reason;
+
+  /// Código técnico del reconocedor (para diagnosticar en cada teléfono).
+  final String? code;
 }
 
 /// Port de dictado por voz, reconocido en el dispositivo.
@@ -32,4 +35,13 @@ abstract interface class SpeechInput {
   Stream<SpeechChunk> listen();
 
   Future<void> stop();
+
+  /// Respaldo: abre la ventana de dictado de Google (la misma del teclado),
+  /// que usa el español sin conexión si está descargado. Devuelve el texto
+  /// o `null` si se canceló. Lanza [SpeechUnavailable] si no existe.
+  Future<String?> listenWithSystemDialog();
+
+  /// Resumen técnico de los reconocedores de voz del teléfono (sin datos
+  /// personales), para diagnosticar fallas en cada marca.
+  Future<String> diagnostics();
 }

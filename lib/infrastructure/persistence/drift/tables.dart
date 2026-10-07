@@ -185,6 +185,13 @@ class FinanceSettingsTable extends Table {
   IntColumn get reminderHour => integer().withDefault(
     const Constant(FinanceSettings.defaultReminderHour),
   )();
+  IntColumn get reminderMinute => integer().withDefault(const Constant(0))();
+  BoolColumn get smartNotifications =>
+      boolean().withDefault(const Constant(true))();
+  IntColumn get dependents => integer().withDefault(const Constant(0))();
+  BoolColumn get soloProvider => boolean().withDefault(const Constant(false))();
+  IntColumn get kidsMonthlyBufferCents =>
+      integer().withDefault(const Constant(0))();
 
   @override
   Set<Column<Object>> get primaryKey => {id};

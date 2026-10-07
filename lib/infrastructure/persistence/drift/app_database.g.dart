@@ -4785,6 +4785,70 @@ class $FinanceSettingsTableTable extends FinanceSettingsTable
     requiredDuringInsert: false,
     defaultValue: const Constant(FinanceSettings.defaultReminderHour),
   );
+  static const VerificationMeta _reminderMinuteMeta = const VerificationMeta(
+    'reminderMinute',
+  );
+  @override
+  late final GeneratedColumn<int> reminderMinute = GeneratedColumn<int>(
+    'reminder_minute',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _smartNotificationsMeta =
+      const VerificationMeta('smartNotifications');
+  @override
+  late final GeneratedColumn<bool> smartNotifications = GeneratedColumn<bool>(
+    'smart_notifications',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("smart_notifications" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _dependentsMeta = const VerificationMeta(
+    'dependents',
+  );
+  @override
+  late final GeneratedColumn<int> dependents = GeneratedColumn<int>(
+    'dependents',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _soloProviderMeta = const VerificationMeta(
+    'soloProvider',
+  );
+  @override
+  late final GeneratedColumn<bool> soloProvider = GeneratedColumn<bool>(
+    'solo_provider',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("solo_provider" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _kidsMonthlyBufferCentsMeta =
+      const VerificationMeta('kidsMonthlyBufferCents');
+  @override
+  late final GeneratedColumn<int> kidsMonthlyBufferCents = GeneratedColumn<int>(
+    'kids_monthly_buffer_cents',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -4795,6 +4859,11 @@ class $FinanceSettingsTableTable extends FinanceSettingsTable
     payday,
     dailyReminder,
     reminderHour,
+    reminderMinute,
+    smartNotifications,
+    dependents,
+    soloProvider,
+    kidsMonthlyBufferCents,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -4879,6 +4948,48 @@ class $FinanceSettingsTableTable extends FinanceSettingsTable
         ),
       );
     }
+    if (data.containsKey('reminder_minute')) {
+      context.handle(
+        _reminderMinuteMeta,
+        reminderMinute.isAcceptableOrUnknown(
+          data['reminder_minute']!,
+          _reminderMinuteMeta,
+        ),
+      );
+    }
+    if (data.containsKey('smart_notifications')) {
+      context.handle(
+        _smartNotificationsMeta,
+        smartNotifications.isAcceptableOrUnknown(
+          data['smart_notifications']!,
+          _smartNotificationsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('dependents')) {
+      context.handle(
+        _dependentsMeta,
+        dependents.isAcceptableOrUnknown(data['dependents']!, _dependentsMeta),
+      );
+    }
+    if (data.containsKey('solo_provider')) {
+      context.handle(
+        _soloProviderMeta,
+        soloProvider.isAcceptableOrUnknown(
+          data['solo_provider']!,
+          _soloProviderMeta,
+        ),
+      );
+    }
+    if (data.containsKey('kids_monthly_buffer_cents')) {
+      context.handle(
+        _kidsMonthlyBufferCentsMeta,
+        kidsMonthlyBufferCents.isAcceptableOrUnknown(
+          data['kids_monthly_buffer_cents']!,
+          _kidsMonthlyBufferCentsMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -4920,6 +5031,26 @@ class $FinanceSettingsTableTable extends FinanceSettingsTable
         DriftSqlType.int,
         data['${effectivePrefix}reminder_hour'],
       )!,
+      reminderMinute: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}reminder_minute'],
+      )!,
+      smartNotifications: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}smart_notifications'],
+      )!,
+      dependents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}dependents'],
+      )!,
+      soloProvider: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}solo_provider'],
+      )!,
+      kidsMonthlyBufferCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}kids_monthly_buffer_cents'],
+      )!,
     );
   }
 
@@ -4938,6 +5069,11 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
   final int payday;
   final bool dailyReminder;
   final int reminderHour;
+  final int reminderMinute;
+  final bool smartNotifications;
+  final int dependents;
+  final bool soloProvider;
+  final int kidsMonthlyBufferCents;
   const SettingsRow({
     required this.id,
     required this.savingsTargetBasisPoints,
@@ -4947,6 +5083,11 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     required this.payday,
     required this.dailyReminder,
     required this.reminderHour,
+    required this.reminderMinute,
+    required this.smartNotifications,
+    required this.dependents,
+    required this.soloProvider,
+    required this.kidsMonthlyBufferCents,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -4965,6 +5106,11 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     map['payday'] = Variable<int>(payday);
     map['daily_reminder'] = Variable<bool>(dailyReminder);
     map['reminder_hour'] = Variable<int>(reminderHour);
+    map['reminder_minute'] = Variable<int>(reminderMinute);
+    map['smart_notifications'] = Variable<bool>(smartNotifications);
+    map['dependents'] = Variable<int>(dependents);
+    map['solo_provider'] = Variable<bool>(soloProvider);
+    map['kids_monthly_buffer_cents'] = Variable<int>(kidsMonthlyBufferCents);
     return map;
   }
 
@@ -4978,6 +5124,11 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       payday: Value(payday),
       dailyReminder: Value(dailyReminder),
       reminderHour: Value(reminderHour),
+      reminderMinute: Value(reminderMinute),
+      smartNotifications: Value(smartNotifications),
+      dependents: Value(dependents),
+      soloProvider: Value(soloProvider),
+      kidsMonthlyBufferCents: Value(kidsMonthlyBufferCents),
     );
   }
 
@@ -5003,6 +5154,13 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       payday: serializer.fromJson<int>(json['payday']),
       dailyReminder: serializer.fromJson<bool>(json['dailyReminder']),
       reminderHour: serializer.fromJson<int>(json['reminderHour']),
+      reminderMinute: serializer.fromJson<int>(json['reminderMinute']),
+      smartNotifications: serializer.fromJson<bool>(json['smartNotifications']),
+      dependents: serializer.fromJson<int>(json['dependents']),
+      soloProvider: serializer.fromJson<bool>(json['soloProvider']),
+      kidsMonthlyBufferCents: serializer.fromJson<int>(
+        json['kidsMonthlyBufferCents'],
+      ),
     );
   }
   @override
@@ -5023,6 +5181,11 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       'payday': serializer.toJson<int>(payday),
       'dailyReminder': serializer.toJson<bool>(dailyReminder),
       'reminderHour': serializer.toJson<int>(reminderHour),
+      'reminderMinute': serializer.toJson<int>(reminderMinute),
+      'smartNotifications': serializer.toJson<bool>(smartNotifications),
+      'dependents': serializer.toJson<int>(dependents),
+      'soloProvider': serializer.toJson<bool>(soloProvider),
+      'kidsMonthlyBufferCents': serializer.toJson<int>(kidsMonthlyBufferCents),
     };
   }
 
@@ -5035,6 +5198,11 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     int? payday,
     bool? dailyReminder,
     int? reminderHour,
+    int? reminderMinute,
+    bool? smartNotifications,
+    int? dependents,
+    bool? soloProvider,
+    int? kidsMonthlyBufferCents,
   }) => SettingsRow(
     id: id ?? this.id,
     savingsTargetBasisPoints:
@@ -5048,6 +5216,12 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     payday: payday ?? this.payday,
     dailyReminder: dailyReminder ?? this.dailyReminder,
     reminderHour: reminderHour ?? this.reminderHour,
+    reminderMinute: reminderMinute ?? this.reminderMinute,
+    smartNotifications: smartNotifications ?? this.smartNotifications,
+    dependents: dependents ?? this.dependents,
+    soloProvider: soloProvider ?? this.soloProvider,
+    kidsMonthlyBufferCents:
+        kidsMonthlyBufferCents ?? this.kidsMonthlyBufferCents,
   );
   SettingsRow copyWithCompanion(FinanceSettingsTableCompanion data) {
     return SettingsRow(
@@ -5071,6 +5245,21 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       reminderHour: data.reminderHour.present
           ? data.reminderHour.value
           : this.reminderHour,
+      reminderMinute: data.reminderMinute.present
+          ? data.reminderMinute.value
+          : this.reminderMinute,
+      smartNotifications: data.smartNotifications.present
+          ? data.smartNotifications.value
+          : this.smartNotifications,
+      dependents: data.dependents.present
+          ? data.dependents.value
+          : this.dependents,
+      soloProvider: data.soloProvider.present
+          ? data.soloProvider.value
+          : this.soloProvider,
+      kidsMonthlyBufferCents: data.kidsMonthlyBufferCents.present
+          ? data.kidsMonthlyBufferCents.value
+          : this.kidsMonthlyBufferCents,
     );
   }
 
@@ -5084,7 +5273,12 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           ..write('smallExpenseThresholdCents: $smallExpenseThresholdCents, ')
           ..write('payday: $payday, ')
           ..write('dailyReminder: $dailyReminder, ')
-          ..write('reminderHour: $reminderHour')
+          ..write('reminderHour: $reminderHour, ')
+          ..write('reminderMinute: $reminderMinute, ')
+          ..write('smartNotifications: $smartNotifications, ')
+          ..write('dependents: $dependents, ')
+          ..write('soloProvider: $soloProvider, ')
+          ..write('kidsMonthlyBufferCents: $kidsMonthlyBufferCents')
           ..write(')'))
         .toString();
   }
@@ -5099,6 +5293,11 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     payday,
     dailyReminder,
     reminderHour,
+    reminderMinute,
+    smartNotifications,
+    dependents,
+    soloProvider,
+    kidsMonthlyBufferCents,
   );
   @override
   bool operator ==(Object other) =>
@@ -5111,7 +5310,12 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           other.smallExpenseThresholdCents == this.smallExpenseThresholdCents &&
           other.payday == this.payday &&
           other.dailyReminder == this.dailyReminder &&
-          other.reminderHour == this.reminderHour);
+          other.reminderHour == this.reminderHour &&
+          other.reminderMinute == this.reminderMinute &&
+          other.smartNotifications == this.smartNotifications &&
+          other.dependents == this.dependents &&
+          other.soloProvider == this.soloProvider &&
+          other.kidsMonthlyBufferCents == this.kidsMonthlyBufferCents);
 }
 
 class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
@@ -5123,6 +5327,11 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
   final Value<int> payday;
   final Value<bool> dailyReminder;
   final Value<int> reminderHour;
+  final Value<int> reminderMinute;
+  final Value<bool> smartNotifications;
+  final Value<int> dependents;
+  final Value<bool> soloProvider;
+  final Value<int> kidsMonthlyBufferCents;
   const FinanceSettingsTableCompanion({
     this.id = const Value.absent(),
     this.savingsTargetBasisPoints = const Value.absent(),
@@ -5132,6 +5341,11 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     this.payday = const Value.absent(),
     this.dailyReminder = const Value.absent(),
     this.reminderHour = const Value.absent(),
+    this.reminderMinute = const Value.absent(),
+    this.smartNotifications = const Value.absent(),
+    this.dependents = const Value.absent(),
+    this.soloProvider = const Value.absent(),
+    this.kidsMonthlyBufferCents = const Value.absent(),
   });
   FinanceSettingsTableCompanion.insert({
     this.id = const Value.absent(),
@@ -5142,6 +5356,11 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     this.payday = const Value.absent(),
     this.dailyReminder = const Value.absent(),
     this.reminderHour = const Value.absent(),
+    this.reminderMinute = const Value.absent(),
+    this.smartNotifications = const Value.absent(),
+    this.dependents = const Value.absent(),
+    this.soloProvider = const Value.absent(),
+    this.kidsMonthlyBufferCents = const Value.absent(),
   }) : savingsTargetBasisPoints = Value(savingsTargetBasisPoints),
        warningFromBasisPoints = Value(warningFromBasisPoints),
        criticalAboveBasisPoints = Value(criticalAboveBasisPoints),
@@ -5155,6 +5374,11 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     Expression<int>? payday,
     Expression<bool>? dailyReminder,
     Expression<int>? reminderHour,
+    Expression<int>? reminderMinute,
+    Expression<bool>? smartNotifications,
+    Expression<int>? dependents,
+    Expression<bool>? soloProvider,
+    Expression<int>? kidsMonthlyBufferCents,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -5169,6 +5393,12 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
       if (payday != null) 'payday': payday,
       if (dailyReminder != null) 'daily_reminder': dailyReminder,
       if (reminderHour != null) 'reminder_hour': reminderHour,
+      if (reminderMinute != null) 'reminder_minute': reminderMinute,
+      if (smartNotifications != null) 'smart_notifications': smartNotifications,
+      if (dependents != null) 'dependents': dependents,
+      if (soloProvider != null) 'solo_provider': soloProvider,
+      if (kidsMonthlyBufferCents != null)
+        'kids_monthly_buffer_cents': kidsMonthlyBufferCents,
     });
   }
 
@@ -5181,6 +5411,11 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     Value<int>? payday,
     Value<bool>? dailyReminder,
     Value<int>? reminderHour,
+    Value<int>? reminderMinute,
+    Value<bool>? smartNotifications,
+    Value<int>? dependents,
+    Value<bool>? soloProvider,
+    Value<int>? kidsMonthlyBufferCents,
   }) {
     return FinanceSettingsTableCompanion(
       id: id ?? this.id,
@@ -5195,6 +5430,12 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
       payday: payday ?? this.payday,
       dailyReminder: dailyReminder ?? this.dailyReminder,
       reminderHour: reminderHour ?? this.reminderHour,
+      reminderMinute: reminderMinute ?? this.reminderMinute,
+      smartNotifications: smartNotifications ?? this.smartNotifications,
+      dependents: dependents ?? this.dependents,
+      soloProvider: soloProvider ?? this.soloProvider,
+      kidsMonthlyBufferCents:
+          kidsMonthlyBufferCents ?? this.kidsMonthlyBufferCents,
     );
   }
 
@@ -5233,6 +5474,23 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     if (reminderHour.present) {
       map['reminder_hour'] = Variable<int>(reminderHour.value);
     }
+    if (reminderMinute.present) {
+      map['reminder_minute'] = Variable<int>(reminderMinute.value);
+    }
+    if (smartNotifications.present) {
+      map['smart_notifications'] = Variable<bool>(smartNotifications.value);
+    }
+    if (dependents.present) {
+      map['dependents'] = Variable<int>(dependents.value);
+    }
+    if (soloProvider.present) {
+      map['solo_provider'] = Variable<bool>(soloProvider.value);
+    }
+    if (kidsMonthlyBufferCents.present) {
+      map['kids_monthly_buffer_cents'] = Variable<int>(
+        kidsMonthlyBufferCents.value,
+      );
+    }
     return map;
   }
 
@@ -5246,7 +5504,12 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
           ..write('smallExpenseThresholdCents: $smallExpenseThresholdCents, ')
           ..write('payday: $payday, ')
           ..write('dailyReminder: $dailyReminder, ')
-          ..write('reminderHour: $reminderHour')
+          ..write('reminderHour: $reminderHour, ')
+          ..write('reminderMinute: $reminderMinute, ')
+          ..write('smartNotifications: $smartNotifications, ')
+          ..write('dependents: $dependents, ')
+          ..write('soloProvider: $soloProvider, ')
+          ..write('kidsMonthlyBufferCents: $kidsMonthlyBufferCents')
           ..write(')'))
         .toString();
   }
@@ -9621,6 +9884,11 @@ typedef $$FinanceSettingsTableTableCreateCompanionBuilder =
       Value<int> payday,
       Value<bool> dailyReminder,
       Value<int> reminderHour,
+      Value<int> reminderMinute,
+      Value<bool> smartNotifications,
+      Value<int> dependents,
+      Value<bool> soloProvider,
+      Value<int> kidsMonthlyBufferCents,
     });
 typedef $$FinanceSettingsTableTableUpdateCompanionBuilder =
     FinanceSettingsTableCompanion Function({
@@ -9632,6 +9900,11 @@ typedef $$FinanceSettingsTableTableUpdateCompanionBuilder =
       Value<int> payday,
       Value<bool> dailyReminder,
       Value<int> reminderHour,
+      Value<int> reminderMinute,
+      Value<bool> smartNotifications,
+      Value<int> dependents,
+      Value<bool> soloProvider,
+      Value<int> kidsMonthlyBufferCents,
     });
 
 class $$FinanceSettingsTableTableFilterComposer
@@ -9680,6 +9953,31 @@ class $$FinanceSettingsTableTableFilterComposer
 
   ColumnFilters<int> get reminderHour => $composableBuilder(
     column: $table.reminderHour,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get reminderMinute => $composableBuilder(
+    column: $table.reminderMinute,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get smartNotifications => $composableBuilder(
+    column: $table.smartNotifications,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get dependents => $composableBuilder(
+    column: $table.dependents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get soloProvider => $composableBuilder(
+    column: $table.soloProvider,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get kidsMonthlyBufferCents => $composableBuilder(
+    column: $table.kidsMonthlyBufferCents,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -9732,6 +10030,31 @@ class $$FinanceSettingsTableTableOrderingComposer
     column: $table.reminderHour,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get reminderMinute => $composableBuilder(
+    column: $table.reminderMinute,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get smartNotifications => $composableBuilder(
+    column: $table.smartNotifications,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get dependents => $composableBuilder(
+    column: $table.dependents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get soloProvider => $composableBuilder(
+    column: $table.soloProvider,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get kidsMonthlyBufferCents => $composableBuilder(
+    column: $table.kidsMonthlyBufferCents,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$FinanceSettingsTableTableAnnotationComposer
@@ -9776,6 +10099,31 @@ class $$FinanceSettingsTableTableAnnotationComposer
 
   GeneratedColumn<int> get reminderHour => $composableBuilder(
     column: $table.reminderHour,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get reminderMinute => $composableBuilder(
+    column: $table.reminderMinute,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get smartNotifications => $composableBuilder(
+    column: $table.smartNotifications,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get dependents => $composableBuilder(
+    column: $table.dependents,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get soloProvider => $composableBuilder(
+    column: $table.soloProvider,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get kidsMonthlyBufferCents => $composableBuilder(
+    column: $table.kidsMonthlyBufferCents,
     builder: (column) => column,
   );
 }
@@ -9831,6 +10179,11 @@ class $$FinanceSettingsTableTableTableManager
                 Value<int> payday = const Value.absent(),
                 Value<bool> dailyReminder = const Value.absent(),
                 Value<int> reminderHour = const Value.absent(),
+                Value<int> reminderMinute = const Value.absent(),
+                Value<bool> smartNotifications = const Value.absent(),
+                Value<int> dependents = const Value.absent(),
+                Value<bool> soloProvider = const Value.absent(),
+                Value<int> kidsMonthlyBufferCents = const Value.absent(),
               }) => FinanceSettingsTableCompanion(
                 id: id,
                 savingsTargetBasisPoints: savingsTargetBasisPoints,
@@ -9840,6 +10193,11 @@ class $$FinanceSettingsTableTableTableManager
                 payday: payday,
                 dailyReminder: dailyReminder,
                 reminderHour: reminderHour,
+                reminderMinute: reminderMinute,
+                smartNotifications: smartNotifications,
+                dependents: dependents,
+                soloProvider: soloProvider,
+                kidsMonthlyBufferCents: kidsMonthlyBufferCents,
               ),
           createCompanionCallback:
               ({
@@ -9851,6 +10209,11 @@ class $$FinanceSettingsTableTableTableManager
                 Value<int> payday = const Value.absent(),
                 Value<bool> dailyReminder = const Value.absent(),
                 Value<int> reminderHour = const Value.absent(),
+                Value<int> reminderMinute = const Value.absent(),
+                Value<bool> smartNotifications = const Value.absent(),
+                Value<int> dependents = const Value.absent(),
+                Value<bool> soloProvider = const Value.absent(),
+                Value<int> kidsMonthlyBufferCents = const Value.absent(),
               }) => FinanceSettingsTableCompanion.insert(
                 id: id,
                 savingsTargetBasisPoints: savingsTargetBasisPoints,
@@ -9860,6 +10223,11 @@ class $$FinanceSettingsTableTableTableManager
                 payday: payday,
                 dailyReminder: dailyReminder,
                 reminderHour: reminderHour,
+                reminderMinute: reminderMinute,
+                smartNotifications: smartNotifications,
+                dependents: dependents,
+                soloProvider: soloProvider,
+                kidsMonthlyBufferCents: kidsMonthlyBufferCents,
               ),
           withReferenceMapper: (p0) => p0
               .map(

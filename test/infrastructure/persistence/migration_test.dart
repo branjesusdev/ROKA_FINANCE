@@ -29,7 +29,41 @@ void main() {
 
   AppDatabase open(File file) => AppDatabase(NativeDatabase(file));
 
-  test('v1 → v2 conserva los datos y agrega fijos, día de pago y '
+  /// Quita lo que agregó v3 a una base recién creada.
+  Future<void> downgradeToV2(AppDatabase db) async {
+    for (final column in ['reminder_minute', 'smart_notifications']) {
+      await db.customStatement(
+        'ALTER TABLE finance_settings DROP COLUMN $column',
+      );
+    }
+    await db.customStatement(
+      "DELETE FROM categories WHERE id = '${DefaultCategories.groceries.id}'",
+    );
+    await db.customStatement('PRAGMA user_version = 2');
+  }
+
+  test('v2 → v3 agrega minuto del recordatorio, avisos y Mercado', () async {
+    final file = File('${dir.path}/db.sqlite');
+    final v2 = open(file);
+    await DriftSettingsRepository(v2)
+        .save(const FinanceSettings(payday: 15, reminderHour: 17));
+    await downgradeToV2(v2);
+    await v2.close();
+
+    final v3 = open(file);
+    addTearDown(v3.close);
+    final settings = await DriftSettingsRepository(v3).get();
+    expect(settings.payday, 15);
+    expect(settings.reminderHour, 17);
+    expect(settings.reminderMinute, 0);
+    expect(settings.smartNotifications, isTrue);
+    expect(
+      (await DriftCategoryRepository(v3).getAll()).map((c) => c.id),
+      contains(DefaultCategories.groceries.id),
+    );
+  });
+
+  test('v1 → v3 conserva los datos y agrega fijos, día de pago y '
       'recordatorio', () async {
     final file = File('${dir.path}/db.sqlite');
 
@@ -39,6 +73,7 @@ void main() {
         .save(expense(5000, category: 'seed-expense-food'));
     await DriftSettingsRepository(v1)
         .save(const FinanceSettings(savingsTargetRate: Percentage.whole(15)));
+    await downgradeToV2(v1);
     await v1.customStatement('DROP TABLE fixed_movements');
     for (final column in ['payday', 'daily_reminder', 'reminder_hour']) {
       await v1.customStatement(

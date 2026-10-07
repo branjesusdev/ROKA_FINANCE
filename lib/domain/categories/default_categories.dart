@@ -5,6 +5,54 @@ import 'package:finance_app/domain/categories/category.dart';
 abstract final class DefaultCategories {
   static const debtsId = 'seed-expense-debts';
 
+  /// El ingreso en esta categoría marca el inicio de un ciclo.
+  static const salaryId = 'seed-income-salary';
+
+  /// Añadida en el esquema v3 (también se inserta al migrar).
+  static const groceries = Category(
+    id: 'seed-expense-groceries',
+    name: 'Mercado',
+    kind: CategoryKind.expense,
+    iconKey: 'groceries',
+    sortOrder: 13,
+  );
+
+  /// Cuadre de saldo: lo que falta frente al dinero real (gastos que no se
+  /// anotaron). Archivada: no aparece al registrar, solo la usa el cuadre.
+  /// Añadida en el esquema v4.
+  static const untracked = Category(
+    id: 'seed-expense-untracked',
+    name: 'Gastos sin registrar',
+    kind: CategoryKind.expense,
+    iconKey: 'untracked',
+    sortOrder: 14,
+    isArchived: true,
+  );
+
+  /// Cuadre de saldo: dinero real que no estaba registrado (p. ej. lo que
+  /// tenías al empezar). No cuenta como ingreso. Añadida en el esquema v4.
+  static const balanceAdjustment = Category(
+    id: 'seed-income-balance',
+    name: 'Saldo inicial / ajuste',
+    kind: CategoryKind.income,
+    iconKey: 'balance',
+    sortOrder: 4,
+    isArchived: true,
+  );
+
+  /// Gastos que no son del día a día: se planean por mes (mercado,
+  /// arriendo, servicios…) o son un cuadre. No cuentan para el tope diario.
+  static const monthlyPlannedIds = {
+    'seed-expense-housing',
+    'seed-expense-education',
+    'seed-expense-health',
+    debtsId,
+    'seed-expense-services',
+    'seed-expense-family',
+    'seed-expense-groceries',
+    'seed-expense-untracked',
+  };
+
   /// Añadida en el esquema v2 (también se inserta al migrar).
   static const sports = Category(
     id: 'seed-expense-sports',
@@ -100,11 +148,13 @@ abstract final class DefaultCategories {
       sortOrder: 11,
     ),
     sports,
+    groceries,
+    untracked,
   ];
 
   static const incomes = <Category>[
     Category(
-      id: 'seed-income-salary',
+      id: salaryId,
       name: 'Salario',
       kind: CategoryKind.income,
       iconKey: 'salary',
@@ -130,6 +180,7 @@ abstract final class DefaultCategories {
       iconKey: 'other',
       sortOrder: 3,
     ),
+    balanceAdjustment,
   ];
 
   static const List<Category> all = [...expenses, ...incomes];

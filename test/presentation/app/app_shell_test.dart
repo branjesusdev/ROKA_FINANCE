@@ -69,7 +69,13 @@ void main() {
   testWidgets('la barra inferior solo tiene iconos', (tester) async {
     await pumpApp(tester);
 
-    for (final label in ['Inicio', 'Movimientos', 'Presupuesto', 'Metas']) {
+    for (final label in [
+      'Inicio',
+      'Movimientos',
+      'Presupuesto',
+      'Metas',
+      'Tu CFO',
+    ]) {
       expect(find.byTooltip(label), findsOneWidget);
       expect(find.text(label), findsNothing);
     }
@@ -127,6 +133,7 @@ void main() {
       'Presupuesto',
       'Patrimonio',
       'Metas',
+      'Tu CFO',
       'Inicio',
     ]) {
       await tester.tap(find.byTooltip(section));
@@ -138,6 +145,7 @@ void main() {
     );
     expect(find.text('Deudas y créditos', skipOffstage: false), findsOneWidget);
     expect(find.text('Configurar fondo', skipOffstage: false), findsOneWidget);
+    expect(find.text('Qué está pasando', skipOffstage: false), findsOneWidget);
 
     await tester.tap(find.byTooltip('Análisis'));
     await tester.pumpAndSettle();
@@ -147,7 +155,9 @@ void main() {
 
     await tester.tap(find.byTooltip('Ajustes'));
     await tester.pumpAndSettle();
-    expect(find.text('Día en que llega tu sueldo'), findsOneWidget);
+    expect(find.text('Día en que normalmente llega tu sueldo'), findsOneWidget);
+    await tester.ensureVisible(find.text('Gastos e ingresos fijos'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Gastos e ingresos fijos'));
     await tester.pumpAndSettle();
     expect(find.text('Nuevo fijo'), findsOneWidget);

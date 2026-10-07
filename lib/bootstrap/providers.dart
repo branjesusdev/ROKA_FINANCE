@@ -6,12 +6,14 @@ import 'package:finance_app/domain/categories/category_repository.dart';
 import 'package:finance_app/domain/debts/debt_repository.dart';
 import 'package:finance_app/domain/fixed/fixed_movement_repository.dart';
 import 'package:finance_app/domain/investments/investment_repository.dart';
+import 'package:finance_app/domain/markets/market_quote.dart';
 import 'package:finance_app/domain/savings/savings_goal_repository.dart';
 import 'package:finance_app/domain/savings/settings_repository.dart';
 import 'package:finance_app/domain/shared/clock.dart';
 import 'package:finance_app/domain/shared/id_generator.dart';
 import 'package:finance_app/domain/transactions/transaction_repository.dart';
 import 'package:finance_app/domain/wealth/asset_repository.dart';
+import 'package:finance_app/infrastructure/markets/yahoo_market_data_source.dart';
 import 'package:finance_app/infrastructure/notifications/local_reminder_scheduler.dart';
 import 'package:finance_app/infrastructure/persistence/drift/app_database.dart';
 import 'package:finance_app/infrastructure/repositories/drift_account_repository.dart';
@@ -91,3 +93,8 @@ final reminderSchedulerProvider = Provider<ReminderScheduler>(
 );
 
 final speechInputProvider = Provider<SpeechInput>((ref) => DeviceSpeechInput());
+
+/// Precios públicos de mercado (solo envía el símbolo consultado).
+final marketDataSourceProvider = Provider<MarketDataSource>(
+  (ref) => YahooMarketDataSource(),
+);

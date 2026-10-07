@@ -17,6 +17,11 @@ extension SettingsRowMapper on SettingsRow {
     payday: payday,
     dailyReminder: dailyReminder,
     reminderHour: reminderHour,
+    reminderMinute: reminderMinute,
+    smartNotifications: smartNotifications,
+    dependents: dependents,
+    soloProvider: soloProvider,
+    kidsMonthlyBuffer: Money(kidsMonthlyBufferCents),
   );
 }
 
@@ -31,5 +36,10 @@ extension SettingsCompanionMapper on FinanceSettings {
         payday: Value(payday),
         dailyReminder: Value(dailyReminder),
         reminderHour: Value(reminderHour),
+        reminderMinute: Value(reminderMinute),
+        smartNotifications: Value(smartNotifications),
+        dependents: Value(dependents),
+        soloProvider: Value(soloProvider),
+        kidsMonthlyBufferCents: Value(kidsMonthlyBuffer.cents),
       );
 }

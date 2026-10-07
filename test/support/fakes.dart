@@ -59,25 +59,35 @@ final class FakeTransactionRepository implements TransactionRepository {
       Stream.fromFuture(getRecent(limit: limit));
 }
 
-/// Recordatorios sin plataforma: registra lo programado.
+/// Avisos sin plataforma: registra lo programado.
 final class FakeReminderScheduler implements ReminderScheduler {
-  int? scheduledHour;
-  bool cancelled = false;
+  List<Reminder> scheduled = [];
+  final shown = <Reminder>[];
+  bool granted = true;
+
+  /// Hora del recordatorio diario programado (id 1), si hay.
+  int? get scheduledHour =>
+      scheduled.where((r) => r.id == 1).firstOrNull?.at.hour;
 
   @override
-  Future<bool> requestPermission() async => true;
+  Future<bool> requestPermission() async => granted;
 
   @override
-  Future<void> scheduleDaily({required int hour}) async {
-    scheduledHour = hour;
-    cancelled = false;
-  }
+  Future<void> replaceAll(List<Reminder> reminders) async =>
+      scheduled = [...reminders];
 
   @override
-  Future<void> cancelDaily() async {
-    scheduledHour = null;
-    cancelled = true;
-  }
+  Future<void> add(Reminder reminder) async => scheduled.add(reminder);
+
+  @override
+  Future<void> showNow(Reminder reminder) async => shown.add(reminder);
+
+  @override
+  Future<ReminderDiagnostics> diagnostics() async => ReminderDiagnostics(
+    notificationsEnabled: granted,
+    exactAlarms: true,
+    pending: scheduled.length,
+  );
 }
 
 /// Dictado simulado: emite [phrase] como resultado final.
@@ -92,4 +102,10 @@ final class FakeSpeechInput implements SpeechInput {
 
   @override
   Future<void> stop() async {}
+
+  @override
+  Future<String?> listenWithSystemDialog() async => phrase;
+
+  @override
+  Future<String> diagnostics() async => '';
 }

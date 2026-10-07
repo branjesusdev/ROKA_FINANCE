@@ -1,6 +1,9 @@
 import 'package:finance_app/domain/transactions/transaction.dart';
+import 'package:finance_app/presentation/days/daily_bars_card.dart';
 import 'package:finance_app/presentation/home/widgets/category_breakdown_card.dart';
 import 'package:finance_app/presentation/home/widgets/cycle_header.dart';
+import 'package:finance_app/presentation/home/widgets/cycle_savings_card.dart';
+import 'package:finance_app/presentation/home/widgets/daily_cap_card.dart';
 import 'package:finance_app/presentation/home/widgets/kind_toggle.dart';
 import 'package:finance_app/presentation/home/widgets/recent_movements_card.dart';
 import 'package:finance_app/presentation/home/widgets/upcoming_fixed_card.dart';
@@ -39,6 +42,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         children: [
           CycleHeader(summary: summary),
           _spacing,
+          if (summary.dailyCap case final cap?
+              when summary.income.isPositive) ...[
+            DailyCapCard(cap: cap),
+            _spacing,
+          ],
+          const DailyBarsCard(),
+          _spacing,
+          if (summary.previousLeft case final left? when left.isPositive) ...[
+            CycleSavingsCard(amount: left, cycle: summary.cycle),
+            _spacing,
+          ],
           KindToggle(
             selected: _kind,
             onChanged: (kind) => setState(() => _kind = kind),

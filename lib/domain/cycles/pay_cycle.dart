@@ -4,6 +4,10 @@ import 'package:meta/meta.dart';
 /// Ciclo de sueldo: desde el día de pago hasta el día anterior al siguiente
 /// pago (p. ej. 20 sep → 19 oct). Cada ciclo empieza "de cero".
 ///
+/// [PayCycle.containing] da el ciclo "nominal" según el día configurado; el
+/// ciclo real (que arranca cuando llega el sueldo) lo calcula
+/// `PayCycleResolver`.
+///
 /// Si el día de pago no existe en un mes (31 en febrero) se usa el último
 /// día de ese mes.
 @immutable
@@ -20,6 +24,21 @@ final class PayCycle {
       payday,
       start,
       paydayIn(start.year, start.month + 1, payday),
+    );
+  }
+
+  /// Ciclo con fechas explícitas (p. ej. arrancó el día que llegó el
+  /// sueldo).
+  factory between({
+    required DateTime start,
+    required DateTime endExclusive,
+    required int payday,
+  }) {
+    assert(endExclusive.isAfter(start), 'ciclo vacío');
+    return PayCycle._(
+      payday,
+      DateTime(start.year, start.month, start.day),
+      DateTime(endExclusive.year, endExclusive.month, endExclusive.day),
     );
   }
 
@@ -67,6 +86,18 @@ final class PayCycle {
         ? paydayIn(start.year, start.month + 1, day)
         : inStartMonth;
   }
+
+  /// Todas las fechas del día [day] dentro del ciclo. Un ciclo largo (sueldo
+  /// adelantado) puede contener dos veces el mismo día del mes.
+  List<DateTime> datesForDayOfMonth(int day) => [
+    for (
+      var month = DateTime(start.year, start.month);
+      month.isBefore(endExclusive);
+      month = DateTime(month.year, month.month + 1)
+    )
+      if (contains(paydayIn(month.year, month.month, day)))
+        paydayIn(month.year, month.month, day),
+  ];
 
   /// [day] del mes indicado, limitado al último día de ese mes. Acepta
   /// meses fuera de rango (13 = enero del año siguiente).

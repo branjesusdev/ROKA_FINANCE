@@ -1,4 +1,7 @@
+import 'package:finance_app/domain/budgets/budget_line.dart';
 import 'package:finance_app/domain/categories/category.dart';
+import 'package:finance_app/domain/categories/default_categories.dart';
+import 'package:finance_app/domain/cycles/daily_spending_cap.dart';
 import 'package:finance_app/domain/cycles/pay_cycle.dart';
 import 'package:finance_app/domain/fixed/fixed_movement.dart';
 import 'package:finance_app/domain/fixed/fixed_movement_scheduler.dart';
@@ -37,7 +40,11 @@ final class CycleSummary {
     required this.incomeTotals,
     required this.upcomingFixed,
     required this.previousLeft,
+    required this.savingsTarget,
+    this.monthlyFixedExpenses = Money.zero,
+    this.previousCycle,
     this.usageLight,
+    this.dailyCap,
   });
 
   final PayCycle cycle;
@@ -51,8 +58,21 @@ final class CycleSummary {
   /// Fijos que aún no llegan en este ciclo.
   final FixedSchedule upcomingFixed;
 
-  /// Lo que quedó al cerrar el ciclo anterior (`null` sin datos).
+  /// Lo que quedó al cerrar el ciclo anterior (`null` sin datos). Al
+  /// empezar un ciclo nuevo, ese sobrante cuenta como ahorro.
   final Money? previousLeft;
+
+  final PayCycle? previousCycle;
+
+  /// Ahorro de referencia del ciclo (% del ingreso configurado).
+  final Money savingsTarget;
+
+  /// Total de los gastos fijos activos de un mes (para apartarlos al
+  /// recibir el sueldo).
+  final Money monthlyFixedExpenses;
+
+  /// Tope del gasto del día a día. `null` si el ciclo ya terminó.
+  final DailySpendingCap? dailyCap;
 
   /// Semáforo de gasto sobre ingreso. `null` si no hay ingresos.
   final TrafficLight? usageLight;
@@ -62,8 +82,20 @@ final class CycleSummary {
   /// Gastos reales + aportes a ahorro/inversión (dinero que salió).
   Money get outflow => cashFlow.expenses + cashFlow.savingContributions;
 
-  /// Lo que queda hoy en la billetera del ciclo.
-  Money get left => income - outflow;
+  /// Lo que queda hoy en la billetera del ciclo (incluye el saldo que
+  /// tenías al cuadrar).
+  Money get left => cashFlow.adjustments + income - outflow;
+
+  /// Gastos que no se anotaron y salieron al cuadrar el saldo.
+  Money get untracked => Money.sum(
+    expenseTotals
+        .where((t) => t.category?.id == DefaultCategories.untracked.id)
+        .map((t) => t.amount),
+  );
+
+  /// Lo que falta para cubrir los fijos hasta el próximo sueldo (`null` si
+  /// alcanza).
+  Money? get deficit => leftAfterFixed.isNegative ? leftAfterFixed.abs : null;
 
   /// Lo que quedaría al pagar los fijos pendientes (y recibir los
   /// ingresos fijos pendientes).
@@ -98,6 +130,8 @@ final class CycleSummaryBuilder {
     required List<Category> categories,
     required List<FixedMovement> fixedMovements,
     required FinanceSettings settings,
+    List<BudgetLine> budgetLines = const [],
+    PayCycle? previousCycle,
   }) {
     final savingIds = {
       for (final c in categories)
@@ -115,6 +149,21 @@ final class CycleSummaryBuilder {
     final byId = {for (final c in categories) c.id: c};
     final outflow = cashFlow.expenses + cashFlow.savingContributions;
     final usage = Percentage.ratio(outflow, cashFlow.income);
+    final upcoming = const FixedMovementScheduler().schedule(
+      movements: fixedMovements,
+      cycle: cycle,
+      today: today,
+      cycleTransactions: cycleTransactions,
+    );
+    final savingsTarget = cashFlow.income.applyPercentage(
+      settings.savingsTargetRate,
+    );
+    final leftAfterFixed =
+        cashFlow.adjustments +
+        cashFlow.income -
+        outflow -
+        upcoming.upcomingExpenses +
+        upcoming.upcomingIncome;
 
     return CycleSummary(
       cycle: cycle,
@@ -122,18 +171,100 @@ final class CycleSummaryBuilder {
       cashFlow: cashFlow,
       expenseTotals: _totals(cycleTransactions.where((t) => t.isExpense), byId),
       incomeTotals: _totals(cycleTransactions.where((t) => t.isIncome), byId),
-      upcomingFixed: const FixedMovementScheduler().schedule(
-        movements: fixedMovements,
-        cycle: cycle,
-        today: today,
+      upcomingFixed: upcoming,
+      previousCycle: previousCycle,
+      savingsTarget: savingsTarget,
+      monthlyFixedExpenses: Money.sum(
+        fixedMovements
+            .where((m) => m.isActive && m.isExpense)
+            .map((m) => m.amount),
+      ),
+      dailyCap: const DailySpendingCapCalculator().calculate(
+        available: leftAfterFixed,
+        daysLeft: cycle.daysLeft(today),
+        spentToday: _dayToDaySpentOn(today, cycleTransactions, savingIds),
+        monthlyReserve:
+            _monthlyReserve(
+              budgetLines,
+              cycleTransactions,
+              upcoming.upcomingExpensesByCategory,
+            ) +
+            _kidsReserve(settings, cycleTransactions),
+        savingsReserve: (savingsTarget - cashFlow.savingContributions).max(
+          Money.zero,
+        ),
+        thresholds: settings.thresholds,
       ),
       previousLeft: previousCycleTransactions.isEmpty
           ? null
-          : previous.income - previous.expenses - previous.savingContributions,
+          : previous.adjustments +
+                previous.income -
+                previous.expenses -
+                previous.savingContributions,
       usageLight: usage == null
           ? null
           : settings.thresholds.classifyUsage(usage),
     );
+  }
+
+  /// Lo que falta del apartado mensual para imprevistos de los niños
+  /// (descontando lo ya gastado en Hijos/Familia este ciclo).
+  Money _kidsReserve(FinanceSettings settings, List<Transaction> transactions) {
+    if (!settings.hasDependents) return Money.zero;
+    final spent = Money.sum(
+      transactions
+          .where((t) => t.isExpense && t.categoryId == familyCategoryId)
+          .map((t) => t.amount),
+    );
+    return (settings.kidsMonthlyBuffer - spent).max(Money.zero);
+  }
+
+  static const familyCategoryId = 'seed-expense-family';
+
+  /// Gasto del día a día: ni ahorro ni categorías que se planean por mes.
+  static bool isDayToDay(Transaction t, Set<String> savingIds) =>
+      t.isExpense &&
+      !savingIds.contains(t.categoryId) &&
+      !DefaultCategories.monthlyPlannedIds.contains(t.categoryId);
+
+  Money _dayToDaySpentOn(
+    DateTime today,
+    List<Transaction> transactions,
+    Set<String> savingIds,
+  ) => Money.sum(
+    transactions
+        .where(
+          (t) =>
+              isDayToDay(t, savingIds) &&
+              t.date.year == today.year &&
+              t.date.month == today.month &&
+              t.date.day == today.day,
+        )
+        .map((t) => t.amount),
+  );
+
+  /// Presupuesto que falta gastar en categorías del mes (mercado,
+  /// servicios…), sin contar lo que ya cubren los fijos pendientes.
+  Money _monthlyReserve(
+    List<BudgetLine> lines,
+    List<Transaction> transactions,
+    Map<String, Money> upcomingFixedByCategory,
+  ) {
+    var reserve = Money.zero;
+    for (final line in lines) {
+      if (!DefaultCategories.monthlyPlannedIds.contains(line.categoryId)) {
+        continue;
+      }
+      final spent = Money.sum(
+        transactions
+            .where((t) => t.isExpense && t.categoryId == line.categoryId)
+            .map((t) => t.amount),
+      );
+      final pendingFixed =
+          upcomingFixedByCategory[line.categoryId] ?? Money.zero;
+      reserve += (line.limit - spent - pendingFixed).max(Money.zero);
+    }
+    return reserve;
   }
 
   List<CategoryTotal> _totals(

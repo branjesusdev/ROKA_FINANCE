@@ -1,11 +1,16 @@
+import 'package:finance_app/application/advisor/cfo_brief.dart';
 import 'package:finance_app/application/dashboard/cycle_summary.dart';
+import 'package:finance_app/application/dashboard/daily_spending.dart';
 import 'package:finance_app/application/dashboard/home_summary.dart';
 import 'package:finance_app/application/insights/financial_health.dart';
+import 'package:finance_app/application/markets/load_watchlist.dart';
 import 'package:finance_app/bootstrap/providers.dart';
+import 'package:finance_app/bootstrap/use_cases.dart';
 import 'package:finance_app/domain/budgets/budget_evaluator.dart';
 import 'package:finance_app/domain/budgets/budget_line.dart';
 import 'package:finance_app/domain/categories/category.dart';
 import 'package:finance_app/domain/cycles/pay_cycle.dart';
+import 'package:finance_app/domain/cycles/pay_cycle_resolver.dart';
 import 'package:finance_app/domain/debts/debt.dart';
 import 'package:finance_app/domain/debts/extra_payment.dart';
 import 'package:finance_app/domain/fixed/fixed_movement.dart';
@@ -13,6 +18,7 @@ import 'package:finance_app/domain/insights/cash_flow_calculator.dart';
 import 'package:finance_app/domain/insights/spending_insights_analyzer.dart';
 import 'package:finance_app/domain/investments/investment.dart';
 import 'package:finance_app/domain/investments/portfolio_calculator.dart';
+import 'package:finance_app/domain/markets/watchlist.dart';
 import 'package:finance_app/domain/savings/essential_expense_estimator.dart';
 import 'package:finance_app/domain/savings/finance_settings.dart';
 import 'package:finance_app/domain/savings/goal_progress_calculator.dart';
@@ -143,33 +149,119 @@ final fixedMovementsProvider = StreamProvider<List<FixedMovement>>(
   (ref) => ref.watch(fixedMovementRepositoryProvider).watchAll(),
 );
 
-/// Ciclo de sueldo actual según el día de pago configurado.
-final currentCycleProvider = FutureProvider<PayCycle>((ref) async {
+/// Resuelve los ciclos con el día de pago y los sueldos registrados: el
+/// ciclo arranca el día que llega el sueldo.
+final payCycleResolverProvider = FutureProvider<PayCycleResolver>((ref) async {
+  final now = ref.watch(clockProvider).now();
+  final today = DateTime(now.year, now.month, now.day);
+  final window = DateRange(
+    DateTime(
+      today.year,
+      today.month,
+      today.day - PayCycleResolver.lookbackDays,
+    ),
+    DateTime(
+      today.year,
+      today.month,
+      today.day + PayCycleResolver.lookaheadDays,
+    ),
+  );
+  final transactions = ref.watch(transactionsInRangeProvider(window).future);
   final settings = await ref.watch(settingsProvider.future);
-  return PayCycle.containing(
-    ref.watch(clockProvider).now(),
+  return PayCycleResolver.fromTransactions(
     payday: settings.payday,
+    transactions: await transactions,
   );
 });
 
+/// Ciclo de sueldo actual.
+final currentCycleProvider = FutureProvider<PayCycle>((ref) async {
+  final resolver = await ref.watch(payCycleResolverProvider.future);
+  return resolver.containing(ref.watch(clockProvider).now());
+});
+
 final cycleSummaryProvider = FutureProvider<CycleSummary>((ref) async {
+  final month = ref.watch(currentMonthProvider);
   final categories = ref.watch(categoriesProvider.future);
   final fixed = ref.watch(fixedMovementsProvider.future);
   final settings = ref.watch(settingsProvider.future);
-  final cycle = await ref.watch(currentCycleProvider.future);
+  final budgetLines = ref.watch(budgetLinesProvider(month).future);
+  final resolver = await ref.watch(payCycleResolverProvider.future);
+  final now = ref.watch(clockProvider).now();
+  final cycle = resolver.containing(now);
+  final previousCycle = resolver.previousOf(cycle);
   final current = ref.watch(transactionsInRangeProvider(cycle.range).future);
   final previous = ref.watch(
-    transactionsInRangeProvider(cycle.previous.range).future,
+    transactionsInRangeProvider(previousCycle.range).future,
   );
 
   return const CycleSummaryBuilder().build(
     cycle: cycle,
-    today: ref.watch(clockProvider).now(),
+    previousCycle: previousCycle,
+    today: now,
     cycleTransactions: await current,
     previousCycleTransactions: await previous,
     categories: await categories,
     fixedMovements: await fixed,
     settings: await settings,
+    budgetLines: await budgetLines,
+  );
+});
+
+/// Cuántas veces se pidieron precios. En 0 no se consulta internet: solo
+/// cuando el usuario lo pide en "Tu CFO".
+final class WatchlistRequest extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void refresh() => state++;
+}
+
+final watchlistRequestProvider = NotifierProvider<WatchlistRequest, int>(
+  WatchlistRequest.new,
+);
+
+/// Precios de la lista de tecnología/IA/robótica. Sin internet, cada
+/// instrumento queda sin datos.
+final watchlistProvider = FutureProvider<List<WatchQuote>>((ref) {
+  if (ref.watch(watchlistRequestProvider) == 0) return const [];
+  return ref.watch(loadWatchlistProvider).call(TechWatchlist.items);
+});
+
+/// Informe de "Tu CFO": consejos y plan para el dinero que sobra.
+final cfoBriefProvider = FutureProvider<CfoBrief>((ref) async {
+  final summary = ref.watch(cycleSummaryProvider.future);
+  final cycle = await ref.watch(currentCycleProvider.future);
+  final transactions = ref.watch(
+    transactionsInRangeProvider(cycle.range).future,
+  );
+  final resolver = await ref.watch(payCycleResolverProvider.future);
+  final previousTransactions = ref.watch(
+    transactionsInRangeProvider(resolver.previousOf(cycle).range).future,
+  );
+  final categories = ref.watch(categoriesProvider.future);
+  final debts = ref.watch(debtsProvider.future);
+  final goals = ref.watch(goalProgressListProvider.future);
+  final contributions = ref.watch(contributionsProvider.future);
+  final essential = ref.watch(essentialExpensesSuggestionProvider.future);
+  final settings = ref.watch(settingsProvider.future);
+  // Los precios son opcionales: el informe no espera a internet.
+  final watchlist = ref.watch(watchlistProvider).value ?? const [];
+
+  return const CfoBriefBuilder().build(
+    cycle: await summary,
+    cycleTransactions: await transactions,
+    categories: await categories,
+    debts: await debts,
+    goals: await goals,
+    essentialMonthly: await essential,
+    settings: await settings,
+    today: ref.watch(clockProvider).now(),
+    watchlist: watchlist,
+    previousTransactions: await previousTransactions,
+    previousLeftAlreadySaved: (await contributions).any(
+      (c) => c.amount.isPositive && cycle.contains(c.date),
+    ),
   );
 });
 
@@ -283,3 +375,56 @@ final essentialExpensesSuggestionProvider = FutureProvider<Money>((ref) async {
 final extraPaymentsProvider = FutureProvider.family<List<ExtraPayment>, String>(
   (ref, debtId) => ref.watch(debtRepositoryProvider).getExtraPayments(debtId),
 );
+
+Set<String> _savingIds(List<Category> categories) => {
+  for (final c in categories)
+    if (c.countsAsSaving) c.id,
+};
+
+/// Gasto por día del ciclo actual (gráfica de barras).
+final dailySpendingProvider = FutureProvider<DailySpendingSeries>((ref) async {
+  final summary = ref.watch(cycleSummaryProvider.future);
+  final cycle = await ref.watch(currentCycleProvider.future);
+  final transactions = ref.watch(
+    transactionsInRangeProvider(cycle.range).future,
+  );
+  final categories = await ref.watch(categoriesProvider.future);
+  return const DailySpendingBuilder().build(
+    cycle: cycle,
+    today: ref.watch(clockProvider).now(),
+    transactions: await transactions,
+    savingCategoryIds: _savingIds(categories),
+    cap: (await summary).dailyCap?.cap,
+  );
+});
+
+/// Últimos ciclos con su resultado (sobrante o déficit).
+final cycleHistoryProvider = FutureProvider<List<CycleRecord>>((ref) async {
+  final now = ref.watch(clockProvider).now();
+  final today = DateTime(now.year, now.month, now.day);
+  final range = DateRange(
+    DateTime(
+      today.year,
+      today.month,
+      today.day - CycleHistoryBuilder.lookbackDays,
+    ),
+    DateTime(
+      today.year,
+      today.month,
+      today.day + PayCycleResolver.lookaheadDays,
+    ),
+  );
+  final transactions = ref.watch(transactionsInRangeProvider(range).future);
+  final categories = ref.watch(categoriesProvider.future);
+  final settings = await ref.watch(settingsProvider.future);
+  final all = await transactions;
+  return const CycleHistoryBuilder().build(
+    resolver: PayCycleResolver.fromTransactions(
+      payday: settings.payday,
+      transactions: all,
+    ),
+    today: now,
+    transactions: all,
+    savingCategoryIds: _savingIds(await categories),
+  );
+});

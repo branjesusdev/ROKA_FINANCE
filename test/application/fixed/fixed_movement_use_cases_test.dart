@@ -1,3 +1,4 @@
+import 'package:finance_app/application/cycles/load_current_cycle.dart';
 import 'package:finance_app/application/fixed/fixed_movement_use_cases.dart';
 import 'package:finance_app/application/settings/cycle_settings_use_cases.dart';
 import 'package:finance_app/core/failure.dart';
@@ -31,16 +32,20 @@ void main() {
     settings = DriftSettingsRepository(db);
     clock = FixedClock(DateTime(2026, 10, 3, 18));
     final ids = SequentialIds();
+    final currentCycle = LoadCurrentCycle(
+      settings: settings,
+      transactions: transactions,
+    );
     save = SaveFixedMovement(
       fixed: fixed,
-      settings: settings,
+      currentCycle: currentCycle,
       clock: clock,
       ids: ids,
     );
     postDue = PostDueFixedMovements(
       fixed: fixed,
       transactions: transactions,
-      settings: settings,
+      currentCycle: currentCycle,
       clock: clock,
       ids: ids,
     );
@@ -125,6 +130,34 @@ void main() {
     expect(posted(await postDue()), 0);
     clock.value = DateTime(2026, 11);
     expect(posted(await postDue()), 1);
+  });
+
+  test('sueldo adelantado anotado a mano: el fijo no lo duplica', () async {
+    await save(
+      name: 'Sueldo',
+      kind: TransactionKind.income,
+      amount: const Money.pesos(5000000),
+      categoryId: salary,
+      dayOfMonth: 20,
+      registerInCurrentCycle: false,
+    );
+    // Pagan el 15 en lugar del 20.
+    clock.value = DateTime(2026, 10, 15, 9);
+    await transactions.save(
+      Transaction(
+        id: 'early',
+        kind: TransactionKind.income,
+        amount: const Money.pesos(5000000),
+        categoryId: salary,
+        date: DateTime(2026, 10, 15),
+        createdAt: clock.value,
+      ),
+    );
+
+    clock.value = DateTime(2026, 10, 20, 9);
+    expect(posted(await postDue()), 0);
+    expect((await fixed.getAll()).single.lastPostedOn, DateTime(2026, 10, 20));
+    expect(await all(), hasLength(1));
   });
 
   test('respeta el día de pago configurado', () async {

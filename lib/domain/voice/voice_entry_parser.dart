@@ -36,9 +36,13 @@ final class VoiceEntryParser {
   /// ("cuota alimentaria" antes que "cuota").
   static const keywordsByIcon = <String, List<String>>{
     'food': [
-      'almuerzo', 'almuerzos', 'comida', 'mercado', 'restaurante', //
-      'desayuno', 'cena', 'cafe', 'domicilio', 'rappi', 'pan', 'fruta',
-      'frutas', 'supermercado', 'onces', 'tienda', 'hamburguesa', 'pizza',
+      'almuerzo', 'almuerzos', 'comida', 'restaurante', 'desayuno', //
+      'cena', 'cafe', 'domicilio', 'rappi', 'pan', 'onces', 'hamburguesa',
+      'pizza',
+    ],
+    'groceries': [
+      'mercado', 'supermercado', 'fruta', 'frutas', 'tienda', 'exito', //
+      'd1', 'ara', 'olimpica', 'jumbo', 'carulla', 'plaza',
     ],
     'housing': [
       'arriendo', 'alquiler', 'administracion', 'hipoteca', 'casa', //

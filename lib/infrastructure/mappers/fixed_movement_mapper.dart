@@ -12,6 +12,7 @@ extension FixedMovementRowMapper on FixedMovementRow {
     categoryId: categoryId,
     dayOfMonth: dayOfMonth,
     isActive: isActive,
+    isVariable: isVariable,
     lastPostedOn: lastPostedOn,
   );
 }
@@ -25,6 +26,7 @@ extension FixedMovementCompanionMapper on FixedMovement {
     categoryId: categoryId,
     dayOfMonth: dayOfMonth,
     isActive: isActive,
+    isVariable: Value(isVariable),
     lastPostedOn: Value(lastPostedOn),
   );
 }

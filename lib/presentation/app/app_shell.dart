@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:finance_app/application/dashboard/cycle_summary.dart';
 import 'package:finance_app/bootstrap/use_cases.dart';
+import 'package:finance_app/domain/savings/finance_settings.dart';
 import 'package:finance_app/presentation/app/app_theme.dart';
 import 'package:finance_app/presentation/budgets/budget_screen.dart';
 import 'package:finance_app/presentation/cfo/cfo_screen.dart';
@@ -91,11 +92,24 @@ class _AppShellState extends ConsumerState<AppShell>
       if (next.value case final summary?) unawaited(_syncReminders(summary));
     });
     final isHome = _index == _homeIndex;
+    // Atrás (gesto o botón) desde otra sección vuelve a Inicio; solo desde
+    // Inicio sale de la app.
+    return PopScope(
+      canPop: isHome,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _select(_homeIndex);
+      },
+      child: _buildScaffold(isHome: isHome),
+    );
+  }
+
+  Widget _buildScaffold({required bool isHome}) {
     return Scaffold(
       extendBody: true,
       appBar: AppBar(
         title: isHome ? null : Text(_sections[_index].label),
         actions: [
+          const _AppearanceButton(),
           IconButton(
             tooltip: 'Análisis',
             icon: const Icon(Icons.insights),
@@ -147,6 +161,23 @@ class _AppShellState extends ConsumerState<AppShell>
         selected: _index,
         onSelected: _select,
       ),
+    );
+  }
+}
+
+/// Cambia entre claro y oscuro (la primera vez parte del tema del teléfono).
+class _AppearanceButton extends ConsumerWidget {
+  const new();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return IconButton(
+      tooltip: isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro',
+      icon: Icon(isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined),
+      onPressed: () => ref
+          .read(updateAppearanceProvider)
+          .call(isDark ? Appearance.light : Appearance.dark),
     );
   }
 }

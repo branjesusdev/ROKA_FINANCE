@@ -88,6 +88,36 @@ void main() {
     await tearDownApp(tester);
   });
 
+  testWidgets('el botón del encabezado cambia a oscuro y a claro', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+
+    await tester.tap(find.byTooltip('Cambiar a modo oscuro'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Cambiar a modo claro'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Cambiar a modo claro'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Cambiar a modo oscuro'), findsOneWidget);
+
+    await tearDownApp(tester);
+  });
+
+  testWidgets('atrás desde otra sección vuelve a Inicio', (tester) async {
+    await pumpApp(tester);
+
+    await tester.tap(find.byTooltip('Presupuesto'));
+    await tester.pumpAndSettle();
+    expect(find.text('Presupuesto'), findsOneWidget, reason: 'título');
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('Presupuesto'), findsNothing);
+
+    await tearDownApp(tester);
+  });
+
   testWidgets('registro rápido: + → valor → Guardar', (tester) async {
     await pumpApp(tester);
 
@@ -98,6 +128,8 @@ void main() {
 
     expect(find.text('5.000'), findsOneWidget, reason: 'separador de miles');
 
+    await tester.ensureVisible(find.text('Guardar gasto'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Guardar gasto'));
     await tester.pumpAndSettle();
 

@@ -37,6 +37,7 @@ class _VoiceEntrySheetState extends ConsumerState<VoiceEntrySheet> {
   String? _error;
   String? _errorCode;
   String _diagnostics = '';
+  SpeechUnavailableReason? _reason;
 
   static const _examples = [
     'Gasté 25 mil en almuerzo',
@@ -58,42 +59,48 @@ class _VoiceEntrySheetState extends ConsumerState<VoiceEntrySheet> {
     super.dispose();
   }
 
-  void _listen() {
+  void _listen({bool? online}) {
     setState(() {
       _phase = _Phase.listening;
       _text = '';
       _error = null;
       _errorCode = null;
+      _reason = null;
     });
     unawaited(_subscription?.cancel());
-    _subscription = _speech.listen().listen(
-      (chunk) {
-        setState(() => _text = chunk.text);
-        if (chunk.isFinal) _finish();
-      },
-      onError: (Object error) => _fail(
-        error is SpeechUnavailable
-            ? error.reason
-            : SpeechUnavailableReason.notAvailable,
-        code: error is SpeechUnavailable ? error.code : null,
-      ),
-      onDone: () {
-        if (mounted && _phase == _Phase.listening) _finish();
-      },
-    );
+    _subscription = _speech
+        .listen(online: online)
+        .listen(
+          (chunk) {
+            setState(() => _text = chunk.text);
+            if (chunk.isFinal) _finish();
+          },
+          onError: (Object error) => _fail(
+            error is SpeechUnavailable
+                ? error.reason
+                : SpeechUnavailableReason.notAvailable,
+            code: error is SpeechUnavailable ? error.code : null,
+          ),
+          onDone: () {
+            if (mounted && _phase == _Phase.listening) _finish();
+          },
+        );
   }
 
   void _fail(SpeechUnavailableReason reason, {String? code}) {
     if (!mounted) return;
     setState(() {
       _phase = _Phase.failed;
+      _reason = reason;
       _errorCode = code;
       _diagnostics = '';
       _error = switch (reason) {
         SpeechUnavailableReason.offlineLanguageMissing =>
-          'El reconocedor de voz de tu teléfono no tiene español sin '
-              'conexión. Si ya lo descargaste en Google, toca "Dictar con '
-              'Google".',
+          'Tu teléfono no tiene español para dictar sin conexión. Toca '
+              '"Dictar usando internet", o descarga Español en Ajustes del '
+              'teléfono › Sistema › Idiomas › Voz › Reconocimiento en el '
+              'dispositivo (o en la app Google › Ajustes › Voz › '
+              'Reconocimiento sin conexión).',
         SpeechUnavailableReason.noMatch =>
           'No te entendí. Intenta de nuevo hablando cerca del teléfono.',
         SpeechUnavailableReason.notAvailable =>
@@ -233,7 +240,23 @@ class _VoiceEntrySheetState extends ConsumerState<VoiceEntrySheet> {
               ),
             ],
             const SizedBox(height: 16),
-            FilledButton.icon(
+            if (_reason == SpeechUnavailableReason.offlineLanguageMissing &&
+                !_speech.usesInternet) ...[
+              FilledButton.icon(
+                icon: const Icon(Icons.wifi),
+                label: const Text('Dictar usando internet'),
+                onPressed: () => _listen(online: true),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Tu voz la procesa Google. Montos y descripciones no salen '
+                'de la app; solo el audio de lo que digas.',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodySmall,
+              ),
+              const SizedBox(height: 8),
+            ],
+            OutlinedButton.icon(
               icon: const Icon(Icons.keyboard_voice_outlined),
               label: const Text('Dictar con Google'),
               onPressed: _dictateWithGoogle,

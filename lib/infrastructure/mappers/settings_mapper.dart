@@ -22,6 +22,7 @@ extension SettingsRowMapper on SettingsRow {
     dependents: dependents,
     soloProvider: soloProvider,
     kidsMonthlyBuffer: Money(kidsMonthlyBufferCents),
+    appearance: appearance,
   );
 }
 
@@ -41,5 +42,6 @@ extension SettingsCompanionMapper on FinanceSettings {
         dependents: Value(dependents),
         soloProvider: Value(soloProvider),
         kidsMonthlyBufferCents: Value(kidsMonthlyBuffer.cents),
+        appearance: Value(appearance),
       );
 }

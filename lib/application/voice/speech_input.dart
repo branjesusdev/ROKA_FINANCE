@@ -32,7 +32,15 @@ final class SpeechUnavailable implements Exception {
 abstract interface class SpeechInput {
   /// Escucha una frase. El stream termina tras el resultado final o con un
   /// error [SpeechUnavailable].
-  Stream<SpeechChunk> listen();
+  ///
+  /// Por defecto solo en el teléfono. [online] = `true` deja que el
+  /// reconocedor use internet (solo si el usuario lo eligió: el teléfono no
+  /// tiene español sin conexión); la elección se recuerda mientras la app
+  /// siga abierta. `null` = la última elección.
+  Stream<SpeechChunk> listen({bool? online});
+
+  /// El usuario eligió dictar usando internet.
+  bool get usesInternet;
 
   Future<void> stop();
 

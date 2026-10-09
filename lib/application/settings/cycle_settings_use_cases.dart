@@ -91,3 +91,18 @@ final class UpdateHousehold {
     });
   }
 }
+
+/// Cambia entre apariencia clara, oscura o la del teléfono.
+final class UpdateAppearance {
+  const new(this._settings);
+
+  final SettingsRepository _settings;
+
+  Future<Result<FinanceSettings>> call(Appearance appearance) => guardUseCase(
+    () async {
+      final updated = (await _settings.get()).copyWith(appearance: appearance);
+      await _settings.save(updated);
+      return updated;
+    },
+  );
+}

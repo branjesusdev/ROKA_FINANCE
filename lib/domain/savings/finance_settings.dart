@@ -3,6 +3,9 @@ import 'package:finance_app/domain/shared/percentage.dart';
 import 'package:finance_app/domain/shared/traffic_light.dart';
 import 'package:meta/meta.dart';
 
+/// Apariencia de la app: la del teléfono, clara u oscura.
+enum Appearance { system, light, dark }
+
 /// Preferencias configurables por el usuario.
 @immutable
 final class FinanceSettings {
@@ -18,6 +21,7 @@ final class FinanceSettings {
     this.dependents = 0,
     this.soloProvider = false,
     this.kidsMonthlyBuffer = Money.zero,
+    this.appearance = Appearance.system,
   });
 
   /// Referencia (no obligación): 10% del ingreso.
@@ -103,6 +107,8 @@ final class FinanceSettings {
   /// protege del tope diario.
   final Money kidsMonthlyBuffer;
 
+  final Appearance appearance;
+
   bool get hasDependents => dependents > 0;
 
   /// Meses de gastos esenciales que debería cubrir el fondo de emergencia.
@@ -130,6 +136,7 @@ final class FinanceSettings {
     int? dependents,
     bool? soloProvider,
     Money? kidsMonthlyBuffer,
+    Appearance? appearance,
   }) => FinanceSettings(
     savingsTargetRate: savingsTargetRate ?? this.savingsTargetRate,
     thresholds: thresholds ?? this.thresholds,
@@ -142,6 +149,7 @@ final class FinanceSettings {
     dependents: dependents ?? this.dependents,
     soloProvider: soloProvider ?? this.soloProvider,
     kidsMonthlyBuffer: kidsMonthlyBuffer ?? this.kidsMonthlyBuffer,
+    appearance: appearance ?? this.appearance,
   );
 
   @override
@@ -157,7 +165,8 @@ final class FinanceSettings {
       other.smartNotifications == smartNotifications &&
       other.dependents == dependents &&
       other.soloProvider == soloProvider &&
-      other.kidsMonthlyBuffer == kidsMonthlyBuffer;
+      other.kidsMonthlyBuffer == kidsMonthlyBuffer &&
+      other.appearance == appearance;
 
   @override
   int get hashCode => Object.hash(
@@ -172,5 +181,6 @@ final class FinanceSettings {
     dependents,
     soloProvider,
     kidsMonthlyBuffer,
+    appearance,
   );
 }

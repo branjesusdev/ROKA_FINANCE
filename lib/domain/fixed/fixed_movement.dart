@@ -16,6 +16,7 @@ final class FixedMovement {
     required this.categoryId,
     required this.dayOfMonth,
     this.isActive = true,
+    this.isVariable = false,
     this.lastPostedOn,
   });
 
@@ -34,6 +35,10 @@ final class FixedMovement {
   /// Pausado = no se registra hasta reactivarlo.
   final bool isActive;
 
+  /// Valor que cambia cada mes (agua, luz, internet…): no se registra solo;
+  /// su día pide el valor real. [amount] es el estimado.
+  final bool isVariable;
+
   /// Fecha de la última vez que se registró. Evita duplicados aunque el
   /// usuario borre el movimiento generado.
   final DateTime? lastPostedOn;
@@ -46,6 +51,7 @@ final class FixedMovement {
     String? categoryId,
     int? dayOfMonth,
     bool? isActive,
+    bool? isVariable,
     DateTime? lastPostedOn,
   }) => FixedMovement(
     id: id,
@@ -55,6 +61,7 @@ final class FixedMovement {
     categoryId: categoryId ?? this.categoryId,
     dayOfMonth: dayOfMonth ?? this.dayOfMonth,
     isActive: isActive ?? this.isActive,
+    isVariable: isVariable ?? this.isVariable,
     lastPostedOn: lastPostedOn ?? this.lastPostedOn,
   );
 
@@ -68,6 +75,7 @@ final class FixedMovement {
       other.categoryId == categoryId &&
       other.dayOfMonth == dayOfMonth &&
       other.isActive == isActive &&
+      other.isVariable == isVariable &&
       other.lastPostedOn == lastPostedOn;
 
   @override
@@ -79,6 +87,7 @@ final class FixedMovement {
     categoryId,
     dayOfMonth,
     isActive,
+    isVariable,
     lastPostedOn,
   );
 }

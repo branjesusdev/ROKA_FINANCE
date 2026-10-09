@@ -127,9 +127,15 @@ final class ReminderPlanner {
           title: movement.isExpense
               ? 'Mañana: ${movement.name}'
               : 'Mañana llega: ${movement.name}',
-          body: movement.isExpense
-              ? 'Ten listos $amount. Ya están descontados de lo que te queda.'
-              : 'Se registrará solo: $amount.',
+          body: switch ((movement.isVariable, movement.isExpense)) {
+            (true, true) =>
+              'Calcula unos $amount (estimado). Cuando tengas la factura, '
+                  'registra el valor real.',
+            (true, false) => 'Estimado: $amount. Registra cuánto llegó.',
+            (false, true) =>
+              'Ten listos $amount. Ya están descontados de lo que te queda.',
+            (false, false) => 'Se registrará solo: $amount.',
+          },
         );
       }
       if (dueDay.isAfter(now) &&
@@ -138,10 +144,14 @@ final class ReminderPlanner {
         yield Reminder(
           id: id++,
           at: dueDay,
-          title: 'Hoy toca pagar: ${movement.name}',
-          body:
-              '$amount. Hazlo hoy para evitar recargos; ya quedó registrado '
-              'en tus movimientos.',
+          title: movement.isVariable
+              ? '¿Cuánto llegó la factura de ${movement.name}?'
+              : 'Hoy toca pagar: ${movement.name}',
+          body: movement.isVariable
+              ? 'Abre la app y escribe el valor real en "Facturas por '
+                    'confirmar" (estimado $amount).'
+              : '$amount. Hazlo hoy para evitar recargos; ya quedó '
+                    'registrado en tus movimientos.',
         );
       }
     }

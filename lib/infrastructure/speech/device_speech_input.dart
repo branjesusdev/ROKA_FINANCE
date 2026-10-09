@@ -18,6 +18,11 @@ import 'package:speech_to_text/speech_to_text.dart';
 /// Xiaomi…) la lista de idiomas llega vacía aunque el español sin conexión
 /// esté descargado: no se toma como error, se pide español directamente.
 /// Si aun así falla, la UI ofrece [listenWithSystemDialog].
+///
+/// El reconocedor sin conexión de Google no trae paquete de español de
+/// Colombia (`error_language_not_supported`): se prueban en orden otras
+/// variantes latinas que sí suele tener (EE. UU., Latinoamérica, México,
+/// España) y se recuerda la que funcionó.
 final class DeviceSpeechInput implements SpeechInput {
   new();
 
@@ -25,6 +30,11 @@ final class DeviceSpeechInput implements SpeechInput {
 
   static const _preferredLocale = 'es_CO';
   static const _spanishPrefix = 'es';
+
+  /// Variantes a probar si el teléfono no tiene [_preferredLocale] sin
+  /// conexión, de más a menos parecida al español de Colombia.
+  static const _fallbackLocales = ['es_US', 'es_419', 'es_MX', 'es_ES'];
+  static const _dialogFallback = 'es_US';
   static const _listenFor = Duration(seconds: 30);
   static const _pauseFor = Duration(seconds: 3);
   static const _waitForSpeech = Duration(seconds: 12);
@@ -47,14 +57,27 @@ final class DeviceSpeechInput implements SpeechInput {
   final _speech = SpeechToText();
   bool _initialized = false;
   StreamController<SpeechChunk>? _controller;
-  String? _localeId;
+  List<String> _locales = const [_preferredLocale, ..._fallbackLocales];
+
+  /// Variante en uso. Se conserva entre dictados: la que funcionó.
+  int _localeIndex = 0;
+  String get _localeId => _locales[_localeIndex];
+
+  /// Ninguna variante de español funcionó sin conexión.
+  bool _noOfflineSpanish = false;
   String _heard = '';
   DateTime _startedAt = DateTime.now();
   bool _restarting = false;
   bool _stoppedByUser = false;
 
+  bool _online = false;
+
   @override
-  Stream<SpeechChunk> listen() {
+  bool get usesInternet => _online;
+
+  @override
+  Stream<SpeechChunk> listen({bool? online}) {
+    if (online != null) _online = online;
     final controller = StreamController<SpeechChunk>();
     _controller = controller;
     _heard = '';
@@ -77,13 +100,13 @@ final class DeviceSpeechInput implements SpeechInput {
       return;
     }
 
-    final spanish = (await _speech.locales())
-        .map((l) => l.localeId)
-        .where((id) => id.startsWith(_spanishPrefix))
-        .toList();
-    _localeId = spanish.isEmpty || spanish.contains(_preferredLocale)
-        ? _preferredLocale
-        : spanish.first;
+    if (_localeIndex == 0) {
+      final reported = (await _speech.locales())
+          .map((l) => l.localeId)
+          .where((id) => id.startsWith(_spanishPrefix))
+          .toList();
+      _locales = orderLocales(reported);
+    }
     await _listenOnce(controller);
   }
 
@@ -92,15 +115,19 @@ final class DeviceSpeechInput implements SpeechInput {
         onResult: (result) {
           if (controller.isClosed) return;
           final words = result.recognizedWords;
-          if (words.trim().isNotEmpty) _heard = words;
+          if (words.trim().isNotEmpty) {
+            _heard = words;
+            _noOfflineSpanish = false;
+          }
           controller.add(SpeechChunk(text: words, isFinal: result.finalResult));
           if (result.finalResult && words.trim().isNotEmpty) {
             unawaited(controller.close());
           }
         },
         listenOptions: SpeechListenOptions(
-          localeId: _localeId,
-          onDevice: true,
+          localeId: _online ? _preferredLocale : _localeId,
+          // Con internet, el reconocedor de Google sí entiende es-CO.
+          onDevice: !_online,
           listenMode: ListenMode.dictation,
           cancelOnError: true,
           listenFor: _listenFor,
@@ -108,13 +135,47 @@ final class DeviceSpeechInput implements SpeechInput {
         ),
       );
 
+  /// Orden de prueba: Colombia, luego las variantes conocidas, luego otras
+  /// que reporte el teléfono. Sin lista (reconocedor que no la expone) se
+  /// usan las conocidas.
+  static List<String> orderLocales(List<String> reported) {
+    final known = [_preferredLocale, ..._fallbackLocales];
+    return {
+      ...known.where((id) => reported.isEmpty || reported.contains(id)),
+      ...reported,
+      // Aunque no se reporten, se prueban: varios reconocedores mienten.
+      ...known,
+    }.toList();
+  }
+
+  /// `true` si pasa a la siguiente variante de español (aún nadie habló).
+  bool _tryNextLocale() {
+    final controller = _controller;
+    if (controller == null || controller.isClosed) return false;
+    if (_stoppedByUser || _heard.trim().isNotEmpty) return false;
+    if (_localeIndex + 1 >= _locales.length) {
+      _localeIndex = 0;
+      _noOfflineSpanish = true;
+      return false;
+    }
+    _localeIndex++;
+    _startedAt = DateTime.now();
+    _restart(controller);
+    return true;
+  }
+
   /// `true` si se volvió a escuchar (aún nadie ha hablado).
   bool _retryIfSilent() {
     final controller = _controller;
     if (controller == null || controller.isClosed) return false;
     if (_stoppedByUser || _heard.trim().isNotEmpty) return false;
     if (DateTime.now().difference(_startedAt) > _waitForSpeech) return false;
-    if (_restarting) return true;
+    _restart(controller);
+    return true;
+  }
+
+  void _restart(StreamController<SpeechChunk> controller) {
+    if (_restarting) return;
     _restarting = true;
     unawaited(
       Future<void>.delayed(_restartDelay, () async {
@@ -123,12 +184,12 @@ final class DeviceSpeechInput implements SpeechInput {
         await _listenOnce(controller);
       }),
     );
-    return true;
   }
 
   void _onError(SpeechRecognitionError error) {
     _lastCode = error.errorMsg;
     if (_languageErrors.contains(error.errorMsg)) {
+      if (!_online && _tryNextLocale()) return;
       unawaited(_fail(SpeechUnavailableReason.offlineLanguageMissing));
       return;
     }
@@ -182,7 +243,12 @@ final class DeviceSpeechInput implements SpeechInput {
     await _speech.cancel();
     try {
       return await _dictation.invokeMethod<String>('recognize', {
-        'language': _preferredLocale.replaceAll('_', '-'),
+        // La variante que funcionó sin conexión. Si ninguna lo hizo, pedir
+        // "solo sin conexión" hace que Google responda "la búsqueda por voz
+        // no está disponible": se deja que Google decida.
+        'language': (_noOfflineSpanish ? _dialogFallback : _localeId)
+            .replaceAll('_', '-'),
+        'preferOffline': !_noOfflineSpanish,
         'prompt': 'Di tu gasto o ingreso',
       });
     } on PlatformException catch (e) {

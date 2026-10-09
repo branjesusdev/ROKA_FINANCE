@@ -24,6 +24,7 @@ void main() {
   late FixedClock clock;
   late SaveFixedMovement save;
   late PostDueFixedMovements postDue;
+  late ConfirmVariableFixed confirm;
 
   setUp(() {
     final db = createTestDatabase();
@@ -39,6 +40,12 @@ void main() {
     save = SaveFixedMovement(
       fixed: fixed,
       currentCycle: currentCycle,
+      clock: clock,
+      ids: ids,
+    );
+    confirm = ConfirmVariableFixed(
+      fixed: fixed,
+      transactions: transactions,
       clock: clock,
       ids: ids,
     );
@@ -196,5 +203,58 @@ void main() {
     expect(await code(pesos: 0), 'amount_must_be_positive');
     expect(await code(day: 32), 'day_out_of_range');
     expect(await code(), isNull);
+  });
+
+  test('día ya pasado y "ya lo pagué": no se descuenta otra vez', () async {
+    await save(
+      name: 'Arriendo',
+      kind: TransactionKind.expense,
+      amount: const Money.pesos(1200000),
+      categoryId: housing,
+      dayOfMonth: 1,
+      registerInCurrentCycle: false,
+    );
+
+    expect(posted(await postDue()), 0);
+    expect(await all(), isEmpty);
+  });
+
+  test('valor variable: espera la factura real y ajusta el estimado al '
+      'promedio de las últimas', () async {
+    await save(
+      name: 'Luz',
+      kind: TransactionKind.expense,
+      amount: const Money.pesos(80000),
+      categoryId: 'seed-expense-services',
+      dayOfMonth: 1,
+      isVariable: true,
+    );
+    expect(posted(await postDue()), 0, reason: 'no se registra solo');
+
+    final light = (await fixed.getAll()).single;
+    final result = await confirm(
+      movement: light,
+      scheduledDate: DateTime(2026, 10),
+      amount: const Money.pesos(95000),
+    );
+
+    expect(result, isA<Ok<Transaction>>());
+    final bill = (await all()).single;
+    expect(bill.amount, const Money.pesos(95000));
+    expect(bill.fixedMovementId, light.id);
+    expect(bill.date, DateTime(2026, 10, 3), reason: 'pagada hoy');
+    final updated = (await fixed.getAll()).single;
+    expect(updated.amount, const Money.pesos(95000));
+    expect(updated.lastPostedOn, DateTime(2026, 10));
+    expect(posted(await postDue()), 0, reason: 'ya confirmada');
+
+    // Mes siguiente: el estimado es el promedio de las facturas.
+    clock.value = DateTime(2026, 11, 2, 8);
+    await confirm(
+      movement: updated,
+      scheduledDate: DateTime(2026, 11),
+      amount: const Money.pesos(70000),
+    );
+    expect((await fixed.getAll()).single.amount, const Money.pesos(82500));
   });
 }

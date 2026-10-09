@@ -10,6 +10,8 @@ import 'package:finance_app/application/savings/savings_use_cases.dart';
 import 'package:finance_app/application/settings/cycle_settings_use_cases.dart';
 import 'package:finance_app/application/transactions/delete_transaction.dart';
 import 'package:finance_app/application/transactions/register_transaction.dart';
+import 'package:finance_app/application/transactions/reset_cycle_movements.dart';
+import 'package:finance_app/application/transactions/update_transaction.dart';
 import 'package:finance_app/application/wealth/wealth_use_cases.dart';
 import 'package:finance_app/bootstrap/providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,6 +29,18 @@ final registerTransactionProvider = Provider(
 
 final deleteTransactionProvider = Provider(
   (ref) => DeleteTransaction(ref.watch(transactionRepositoryProvider)),
+);
+
+final updateTransactionProvider = Provider(
+  (ref) => UpdateTransaction(ref.watch(transactionRepositoryProvider)),
+);
+
+final resetCycleMovementsProvider = Provider(
+  (ref) => ResetCycleMovements(
+    currentCycle: ref.watch(loadCurrentCycleProvider),
+    transactions: ref.watch(transactionRepositoryProvider),
+    clock: ref.watch(clockProvider),
+  ),
 );
 
 final setBudgetLimitProvider = Provider(
@@ -139,6 +153,15 @@ final saveFixedMovementProvider = Provider(
   ),
 );
 
+final confirmVariableFixedProvider = Provider(
+  (ref) => ConfirmVariableFixed(
+    fixed: ref.watch(fixedMovementRepositoryProvider),
+    transactions: ref.watch(transactionRepositoryProvider),
+    clock: ref.watch(clockProvider),
+    ids: ref.watch(idGeneratorProvider),
+  ),
+);
+
 final deleteFixedMovementProvider = Provider(
   (ref) => DeleteFixedMovement(ref.watch(fixedMovementRepositoryProvider)),
 );
@@ -188,6 +211,10 @@ final reconcileBalanceProvider = Provider(
     clock: ref.watch(clockProvider),
     ids: ref.watch(idGeneratorProvider),
   ),
+);
+
+final updateAppearanceProvider = Provider(
+  (ref) => UpdateAppearance(ref.watch(settingsRepositoryProvider)),
 );
 
 final updateHouseholdProvider = Provider(

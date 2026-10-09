@@ -31,8 +31,35 @@ void main() {
 
   AppDatabase open(File file) => AppDatabase(NativeDatabase(file));
 
-  /// Quita lo que agregó v5 a una base recién creada.
+  /// Quita lo que agregó v8 a una base recién creada.
+  Future<void> downgradeToV7(AppDatabase db) async {
+    await db.customStatement(
+      'ALTER TABLE finance_settings DROP COLUMN appearance',
+    );
+    await db.customStatement('PRAGMA user_version = 7');
+  }
+
+  /// Quita lo que agregaron v7 y v8.
+  Future<void> downgradeToV6(AppDatabase db) async {
+    await downgradeToV7(db);
+    await db.customStatement(
+      'ALTER TABLE fixed_movements DROP COLUMN is_variable',
+    );
+    await db.customStatement('PRAGMA user_version = 6');
+  }
+
+  /// Quita lo que agregaron v6 y v7.
+  Future<void> downgradeToV5(AppDatabase db) async {
+    await downgradeToV6(db);
+    await db.customStatement(
+      'ALTER TABLE transactions DROP COLUMN fixed_movement_id',
+    );
+    await db.customStatement('PRAGMA user_version = 5');
+  }
+
+  /// Quita lo que agregaron v5 y v6.
   Future<void> downgradeToV4(AppDatabase db) async {
+    await downgradeToV5(db);
     await db.customStatement('DROP TABLE provisions');
     await db.customStatement(
       'ALTER TABLE transactions DROP COLUMN provision_id',
@@ -79,6 +106,85 @@ void main() {
     );
     await db.customStatement('PRAGMA user_version = 2');
   }
+
+  test('v7 → v8 conserva ajustes y agrega apariencia', () async {
+    final file = File('${dir.path}/db.sqlite');
+    final v7 = open(file);
+    await DriftSettingsRepository(v7).save(const FinanceSettings(payday: 15));
+    await downgradeToV7(v7);
+    await v7.close();
+
+    final v8 = open(file);
+    addTearDown(v8.close);
+    final settings = DriftSettingsRepository(v8);
+    expect((await settings.get()).payday, 15);
+    expect((await settings.get()).appearance, Appearance.system);
+    await settings.save(
+      const FinanceSettings(payday: 15, appearance: Appearance.dark),
+    );
+    expect((await settings.get()).appearance, Appearance.dark);
+  });
+
+  test('v6 → v7 conserva los fijos como de valor fijo', () async {
+    final file = File('${dir.path}/db.sqlite');
+    final v6 = open(file);
+    const rent = FixedMovement(
+      id: 'rent',
+      name: 'Arriendo',
+      kind: TransactionKind.expense,
+      amount: Money.pesos(1200000),
+      categoryId: 'seed-expense-housing',
+      dayOfMonth: 1,
+    );
+    await DriftFixedMovementRepository(v6).save(rent);
+    await downgradeToV6(v6);
+    await v6.close();
+
+    final v7 = open(file);
+    addTearDown(v7.close);
+    final repository = DriftFixedMovementRepository(v7);
+    expect(await repository.getAll(), [rent]);
+    final light = rent.copyWith(name: 'Luz', isVariable: true);
+    await repository.save(light);
+    expect((await repository.getAll()).single.isVariable, isTrue);
+  });
+
+  test('v5 → v6 vincula los movimientos ya generados por fijos', () async {
+    final file = File('${dir.path}/db.sqlite');
+    final v5 = open(file);
+    const rent = FixedMovement(
+      id: 'rent',
+      name: 'Arriendo',
+      kind: TransactionKind.expense,
+      amount: Money.pesos(1200000),
+      categoryId: 'seed-expense-housing',
+      dayOfMonth: 1,
+    );
+    await DriftFixedMovementRepository(v5).save(rent);
+    final repository = DriftTransactionRepository(v5);
+    final posted = Transaction(
+      id: 'posted',
+      kind: TransactionKind.expense,
+      amount: rent.amount,
+      categoryId: rent.categoryId,
+      date: DateTime(2026, 10),
+      createdAt: DateTime(2026, 10),
+      description: rent.name,
+    );
+    await repository.save(posted);
+    await repository.save(expense(5000, category: 'seed-expense-food'));
+    await downgradeToV5(v5);
+    await v5.close();
+
+    final v6 = open(file);
+    addTearDown(v6.close);
+    final transactions = await DriftTransactionRepository(v6)
+        .getRecent(limit: 5);
+    expect({
+      for (final t in transactions) t.id: t.fixedMovementId,
+    }, containsPair('posted', 'rent'));
+    expect(transactions.where((t) => t.fixedMovementId == null), hasLength(1));
+  });
 
   test('v4 → v5 conserva los movimientos y agrega apartados', () async {
     final file = File('${dir.path}/db.sqlite');

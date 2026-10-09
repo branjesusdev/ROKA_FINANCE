@@ -2,11 +2,12 @@ import 'package:finance_app/domain/transactions/transaction.dart';
 import 'package:finance_app/presentation/days/daily_bars_card.dart';
 import 'package:finance_app/presentation/home/widgets/category_breakdown_card.dart';
 import 'package:finance_app/presentation/home/widgets/cycle_header.dart';
+import 'package:finance_app/presentation/home/widgets/cycle_pulse_card.dart';
 import 'package:finance_app/presentation/home/widgets/cycle_savings_card.dart';
 import 'package:finance_app/presentation/home/widgets/daily_cap_card.dart';
 import 'package:finance_app/presentation/home/widgets/kind_toggle.dart';
+import 'package:finance_app/presentation/home/widgets/pending_bills_card.dart';
 import 'package:finance_app/presentation/home/widgets/provisions_card.dart';
-import 'package:finance_app/presentation/home/widgets/recent_movements_card.dart';
 import 'package:finance_app/presentation/home/widgets/upcoming_fixed_card.dart';
 import 'package:finance_app/presentation/shared/async_view.dart';
 import 'package:finance_app/presentation/shared/data_providers.dart';
@@ -43,6 +44,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         children: [
           CycleHeader(summary: summary),
           _spacing,
+          if (summary.upcomingFixed.awaitingAmount.isNotEmpty) ...[
+            PendingBillsCard(bills: summary.upcomingFixed.awaitingAmount),
+            _spacing,
+          ],
           if (summary.dailyCap case final cap?
               when summary.income.isPositive) ...[
             DailyCapCard(cap: cap),
@@ -65,13 +70,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             totals: _kind == TransactionKind.expense
                 ? summary.expenseTotals
                 : summary.incomeTotals,
+            cycle: summary.cycle,
             kind: _kind,
             onOpenAnalysis: widget.onOpenAnalysis,
           ),
           _spacing,
           UpcomingFixedCard(summary: summary),
           _spacing,
-          RecentMovementsCard(onSeeAll: widget.onSeeAllTransactions),
+          CyclePulseCard(onSeeAll: widget.onSeeAllTransactions),
         ],
       ),
     );

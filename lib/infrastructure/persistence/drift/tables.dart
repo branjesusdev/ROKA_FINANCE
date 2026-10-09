@@ -13,6 +13,9 @@ import 'package:finance_app/domain/wealth/asset.dart';
 // porcentajes en puntos básicos. Cambios de esquema = nueva migración.
 // v2: movimientos fijos, día de pago y recordatorio diario.
 // v5: apartados (pagos que no son mensuales) y vínculo en movimientos.
+// v6: vínculo del movimiento con el fijo que lo generó.
+// v7: fijos de valor variable (facturas de servicios).
+// v8: apariencia clara/oscura.
 
 @DataClassName('CategoryRow')
 class Categories extends Table {
@@ -60,6 +63,8 @@ class Transactions extends Table {
   // Sin FK: SQLite no deja agregar columnas con referencias en una
   // migración. Al borrar un apartado, el repositorio limpia el vínculo.
   TextColumn get provisionId => text().nullable()();
+  // Fijo que lo generó. Sin FK por la misma razón.
+  TextColumn get fixedMovementId => text().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -196,6 +201,8 @@ class FinanceSettingsTable extends Table {
   BoolColumn get soloProvider => boolean().withDefault(const Constant(false))();
   IntColumn get kidsMonthlyBufferCents =>
       integer().withDefault(const Constant(0))();
+  TextColumn get appearance =>
+      textEnum<Appearance>().withDefault(Constant(Appearance.system.name))();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -210,6 +217,7 @@ class FixedMovements extends Table {
   TextColumn get categoryId => text().references(Categories, #id)();
   IntColumn get dayOfMonth => integer()();
   BoolColumn get isActive => boolean()();
+  BoolColumn get isVariable => boolean().withDefault(const Constant(false))();
   DateTimeColumn get lastPostedOn => dateTime().nullable()();
 
   @override

@@ -40,6 +40,12 @@ final class FakeTransactionRepository implements TransactionRepository {
   Future<void> delete(String id) async => saved.remove(id);
 
   @override
+  Future<void> deleteAll(Iterable<String> ids) async {
+    if (failing) throw const StorageException('fake.deleteAll');
+    ids.forEach(saved.remove);
+  }
+
+  @override
   Future<Transaction?> getById(String id) async => saved[id];
 
   @override
@@ -61,6 +67,16 @@ final class FakeTransactionRepository implements TransactionRepository {
   @override
   Future<List<Transaction>> getLinkedToProvision(String provisionId) async =>
       saved.values.where((t) => t.provisionId == provisionId).toList();
+
+  @override
+  Future<List<Transaction>> getLinkedToFixed(
+    String fixedMovementId, {
+    required int limit,
+  }) async =>
+      (saved.values.where((t) => t.fixedMovementId == fixedMovementId).toList()
+            ..sort((a, b) => b.date.compareTo(a.date)))
+          .take(limit)
+          .toList();
 
   @override
   Stream<List<Transaction>> watchLinkedToProvisions() =>
@@ -105,8 +121,13 @@ final class FakeSpeechInput implements SpeechInput {
   String phrase;
 
   @override
-  Stream<SpeechChunk> listen() =>
-      Stream.value(SpeechChunk(text: phrase, isFinal: true));
+  bool usesInternet = false;
+
+  @override
+  Stream<SpeechChunk> listen({bool? online}) {
+    if (online != null) usesInternet = online;
+    return Stream.value(SpeechChunk(text: phrase, isFinal: true));
+  }
 
   @override
   Future<void> stop() async {}

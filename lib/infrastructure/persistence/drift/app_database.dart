@@ -45,7 +45,7 @@ class AppDatabase extends _$AppDatabase {
   static const fileName = 'finance_app';
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -109,6 +109,32 @@ class AppDatabase extends _$AppDatabase {
         await into(categories).insert(
           DefaultCategories.provisions.toCompanion(),
           mode: InsertMode.insertOrIgnore,
+        );
+      }
+      if (from < 6) {
+        await migrator.addColumn(transactions, transactions.fixedMovementId);
+        // Los fijos ya registrados se reconocen por nombre, tipo, categoría
+        // y monto (así los creaba PostDueFixedMovements).
+        await customStatement('''
+          UPDATE transactions SET fixed_movement_id = (
+            SELECT f.id FROM fixed_movements f
+            WHERE f.name = transactions.description
+              AND f.kind = transactions.kind
+              AND f.category_id = transactions.category_id
+              AND f.amount_cents = transactions.amount_cents
+            LIMIT 1
+          )
+          WHERE fixed_movement_id IS NULL
+        ''');
+      }
+      // Antes de v2 la tabla se acaba de crear completa, con la columna.
+      if (from >= 2 && from < 7) {
+        await migrator.addColumn(fixedMovements, fixedMovements.isVariable);
+      }
+      if (from < 8) {
+        await migrator.addColumn(
+          financeSettingsTable,
+          financeSettingsTable.appearance,
         );
       }
     },

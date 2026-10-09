@@ -16,6 +16,7 @@ void main() {
     int day, {
     TransactionKind kind = TransactionKind.expense,
     bool isActive = true,
+    bool isVariable = false,
     DateTime? lastPostedOn,
   }) => FixedMovement(
     id: name,
@@ -25,6 +26,7 @@ void main() {
     categoryId: 'cat',
     dayOfMonth: day,
     isActive: isActive,
+    isVariable: isVariable,
     lastPostedOn: lastPostedOn,
   );
 
@@ -124,5 +126,19 @@ void main() {
       expect(result.upcomingIncome, Money.zero);
       expect(result.covered, isEmpty, reason: 'aún no llega su día');
     });
+  });
+
+  test('valor variable: su día no lo registra solo, espera la factura y '
+      'su estimado sigue descontándose', () {
+    final result = schedule([
+      fixed('Luz', 1, isVariable: true),
+      fixed('Internet', 10, isVariable: true),
+      fixed('Arriendo', 1),
+    ]);
+
+    expect(result.due.map((s) => s.movement.name), ['Arriendo']);
+    expect(result.awaitingAmount.map((s) => s.movement.name), ['Luz']);
+    expect(result.upcoming.map((s) => s.movement.name), ['Internet']);
+    expect(result.upcomingExpenses, const Money.pesos(200000));
   });
 }

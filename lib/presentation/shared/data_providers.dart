@@ -1,4 +1,5 @@
 import 'package:finance_app/application/advisor/cfo_brief.dart';
+import 'package:finance_app/application/dashboard/cycle_pulse.dart';
 import 'package:finance_app/application/dashboard/cycle_summary.dart';
 import 'package:finance_app/application/dashboard/daily_spending.dart';
 import 'package:finance_app/application/dashboard/home_summary.dart';
@@ -394,6 +395,27 @@ Set<String> _savingIds(List<Category> categories) => {
   for (final c in categories)
     if (c.countsAsSaving) c.id,
 };
+
+/// "Así vas este ciclo" (Inicio).
+final cyclePulseProvider = FutureProvider<CyclePulse>((ref) async {
+  final resolver = await ref.watch(payCycleResolverProvider.future);
+  final now = ref.watch(clockProvider).now();
+  final cycle = resolver.containing(now);
+  final previousCycle = resolver.previousOf(cycle);
+  final current = ref.watch(transactionsInRangeProvider(cycle.range).future);
+  final previous = ref.watch(
+    transactionsInRangeProvider(previousCycle.range).future,
+  );
+  final categories = await ref.watch(categoriesProvider.future);
+  return const CyclePulseBuilder().build(
+    cycle: cycle,
+    today: now,
+    cycleTransactions: await current,
+    previousCycle: previousCycle,
+    previousCycleTransactions: await previous,
+    savingCategoryIds: _savingIds(categories),
+  );
+});
 
 /// Gasto por día del ciclo actual (gráfica de barras).
 final dailySpendingProvider = FutureProvider<DailySpendingSeries>((ref) async {

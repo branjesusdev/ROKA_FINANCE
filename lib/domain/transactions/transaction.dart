@@ -22,6 +22,7 @@ final class Transaction {
     this.notes,
     this.debtId,
     this.provisionId,
+    this.fixedMovementId,
   });
 
   final String id;
@@ -41,6 +42,14 @@ final class Transaction {
   /// Si es un aporte a un apartado o su uso al pagar, su id.
   final String? provisionId;
 
+  /// Si lo generó un movimiento fijo (arriendo, sueldo…), su id.
+  final String? fixedMovementId;
+
+  /// Vinculado a otro módulo (fijo, deuda o apartado): borrarlo cambia
+  /// saldos o el ciclo que dependen de él.
+  bool get isLinked =>
+      fixedMovementId != null || debtId != null || provisionId != null;
+
   bool get isIncome => kind == TransactionKind.income;
   bool get isExpense => kind == TransactionKind.expense;
 
@@ -58,7 +67,8 @@ final class Transaction {
       other.nature == nature &&
       other.notes == notes &&
       other.debtId == debtId &&
-      other.provisionId == provisionId;
+      other.provisionId == provisionId &&
+      other.fixedMovementId == fixedMovementId;
 
   @override
   int get hashCode => Object.hash(
@@ -74,5 +84,6 @@ final class Transaction {
     notes,
     debtId,
     provisionId,
+    fixedMovementId,
   );
 }

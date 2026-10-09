@@ -38,6 +38,8 @@ Dominio y casos de uso no cambian. No añadir dependencias cloud/analytics/ads.
 Nunca loguear montos, descripciones ni registros completos. Nada sale del dispositivo.
 Única excepción: precios públicos de acciones ("Tu CFO") vía port `MarketDataSource`
 (Yahoo, gratis, sin clave): solo envía el símbolo y solo cuando el usuario lo pide.
+Dictado por voz: en el dispositivo por defecto; con internet (reconocedor de Google) solo si
+el usuario lo elige explícitamente porque el teléfono no tiene español sin conexión.
 Notificaciones con montos: `NotificationVisibility.private` (ocultas en pantalla bloqueada).
 
 ## Testing

@@ -1693,6 +1693,17 @@ class $TransactionsTable extends Transactions
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _fixedMovementIdMeta = const VerificationMeta(
+    'fixedMovementId',
+  );
+  @override
+  late final GeneratedColumn<String> fixedMovementId = GeneratedColumn<String>(
+    'fixed_movement_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1707,6 +1718,7 @@ class $TransactionsTable extends Transactions
     notes,
     debtId,
     provisionId,
+    fixedMovementId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1796,6 +1808,15 @@ class $TransactionsTable extends Transactions
         ),
       );
     }
+    if (data.containsKey('fixed_movement_id')) {
+      context.handle(
+        _fixedMovementIdMeta,
+        fixedMovementId.isAcceptableOrUnknown(
+          data['fixed_movement_id']!,
+          _fixedMovementIdMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1857,6 +1878,10 @@ class $TransactionsTable extends Transactions
         DriftSqlType.string,
         data['${effectivePrefix}provision_id'],
       ),
+      fixedMovementId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}fixed_movement_id'],
+      ),
     );
   }
 
@@ -1886,6 +1911,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   final String? notes;
   final String? debtId;
   final String? provisionId;
+  final String? fixedMovementId;
   const TransactionRow({
     required this.id,
     required this.kind,
@@ -1899,6 +1925,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     this.notes,
     this.debtId,
     this.provisionId,
+    this.fixedMovementId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1933,6 +1960,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     if (!nullToAbsent || provisionId != null) {
       map['provision_id'] = Variable<String>(provisionId);
     }
+    if (!nullToAbsent || fixedMovementId != null) {
+      map['fixed_movement_id'] = Variable<String>(fixedMovementId);
+    }
     return map;
   }
 
@@ -1962,6 +1992,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       provisionId: provisionId == null && nullToAbsent
           ? const Value.absent()
           : Value(provisionId),
+      fixedMovementId: fixedMovementId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fixedMovementId),
     );
   }
 
@@ -1987,6 +2020,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       notes: serializer.fromJson<String?>(json['notes']),
       debtId: serializer.fromJson<String?>(json['debtId']),
       provisionId: serializer.fromJson<String?>(json['provisionId']),
+      fixedMovementId: serializer.fromJson<String?>(json['fixedMovementId']),
     );
   }
   @override
@@ -2009,6 +2043,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       'notes': serializer.toJson<String?>(notes),
       'debtId': serializer.toJson<String?>(debtId),
       'provisionId': serializer.toJson<String?>(provisionId),
+      'fixedMovementId': serializer.toJson<String?>(fixedMovementId),
     };
   }
 
@@ -2025,6 +2060,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     Value<String?> notes = const Value.absent(),
     Value<String?> debtId = const Value.absent(),
     Value<String?> provisionId = const Value.absent(),
+    Value<String?> fixedMovementId = const Value.absent(),
   }) => TransactionRow(
     id: id ?? this.id,
     kind: kind ?? this.kind,
@@ -2038,6 +2074,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     notes: notes.present ? notes.value : this.notes,
     debtId: debtId.present ? debtId.value : this.debtId,
     provisionId: provisionId.present ? provisionId.value : this.provisionId,
+    fixedMovementId: fixedMovementId.present
+        ? fixedMovementId.value
+        : this.fixedMovementId,
   );
   TransactionRow copyWithCompanion(TransactionsCompanion data) {
     return TransactionRow(
@@ -2061,6 +2100,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       provisionId: data.provisionId.present
           ? data.provisionId.value
           : this.provisionId,
+      fixedMovementId: data.fixedMovementId.present
+          ? data.fixedMovementId.value
+          : this.fixedMovementId,
     );
   }
 
@@ -2078,7 +2120,8 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           ..write('nature: $nature, ')
           ..write('notes: $notes, ')
           ..write('debtId: $debtId, ')
-          ..write('provisionId: $provisionId')
+          ..write('provisionId: $provisionId, ')
+          ..write('fixedMovementId: $fixedMovementId')
           ..write(')'))
         .toString();
   }
@@ -2097,6 +2140,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     notes,
     debtId,
     provisionId,
+    fixedMovementId,
   );
   @override
   bool operator ==(Object other) =>
@@ -2113,7 +2157,8 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           other.nature == this.nature &&
           other.notes == this.notes &&
           other.debtId == this.debtId &&
-          other.provisionId == this.provisionId);
+          other.provisionId == this.provisionId &&
+          other.fixedMovementId == this.fixedMovementId);
 }
 
 class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
@@ -2129,6 +2174,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   final Value<String?> notes;
   final Value<String?> debtId;
   final Value<String?> provisionId;
+  final Value<String?> fixedMovementId;
   final Value<int> rowid;
   const TransactionsCompanion({
     this.id = const Value.absent(),
@@ -2143,6 +2189,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.notes = const Value.absent(),
     this.debtId = const Value.absent(),
     this.provisionId = const Value.absent(),
+    this.fixedMovementId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   TransactionsCompanion.insert({
@@ -2158,6 +2205,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.notes = const Value.absent(),
     this.debtId = const Value.absent(),
     this.provisionId = const Value.absent(),
+    this.fixedMovementId = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        kind = Value(kind),
@@ -2178,6 +2226,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Expression<String>? notes,
     Expression<String>? debtId,
     Expression<String>? provisionId,
+    Expression<String>? fixedMovementId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2193,6 +2242,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       if (notes != null) 'notes': notes,
       if (debtId != null) 'debt_id': debtId,
       if (provisionId != null) 'provision_id': provisionId,
+      if (fixedMovementId != null) 'fixed_movement_id': fixedMovementId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2210,6 +2260,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Value<String?>? notes,
     Value<String?>? debtId,
     Value<String?>? provisionId,
+    Value<String?>? fixedMovementId,
     Value<int>? rowid,
   }) {
     return TransactionsCompanion(
@@ -2225,6 +2276,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       notes: notes ?? this.notes,
       debtId: debtId ?? this.debtId,
       provisionId: provisionId ?? this.provisionId,
+      fixedMovementId: fixedMovementId ?? this.fixedMovementId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2272,6 +2324,9 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     if (provisionId.present) {
       map['provision_id'] = Variable<String>(provisionId.value);
     }
+    if (fixedMovementId.present) {
+      map['fixed_movement_id'] = Variable<String>(fixedMovementId.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2293,6 +2348,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
           ..write('notes: $notes, ')
           ..write('debtId: $debtId, ')
           ..write('provisionId: $provisionId, ')
+          ..write('fixedMovementId: $fixedMovementId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -4904,6 +4960,18 @@ class $FinanceSettingsTableTable extends FinanceSettingsTable
     defaultValue: const Constant(0),
   );
   @override
+  late final GeneratedColumnWithTypeConverter<Appearance, String> appearance =
+      GeneratedColumn<String>(
+        'appearance',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: Constant(Appearance.system.name),
+      ).withConverter<Appearance>(
+        $FinanceSettingsTableTable.$converterappearance,
+      );
+  @override
   List<GeneratedColumn> get $columns => [
     id,
     savingsTargetBasisPoints,
@@ -4918,6 +4986,7 @@ class $FinanceSettingsTableTable extends FinanceSettingsTable
     dependents,
     soloProvider,
     kidsMonthlyBufferCents,
+    appearance,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -5105,6 +5174,12 @@ class $FinanceSettingsTableTable extends FinanceSettingsTable
         DriftSqlType.int,
         data['${effectivePrefix}kids_monthly_buffer_cents'],
       )!,
+      appearance: $FinanceSettingsTableTable.$converterappearance.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}appearance'],
+        )!,
+      ),
     );
   }
 
@@ -5112,6 +5187,9 @@ class $FinanceSettingsTableTable extends FinanceSettingsTable
   $FinanceSettingsTableTable createAlias(String alias) {
     return $FinanceSettingsTableTable(attachedDatabase, alias);
   }
+
+  static JsonTypeConverter2<Appearance, String, String> $converterappearance =
+      const EnumNameConverter<Appearance>(Appearance.values);
 }
 
 class SettingsRow extends DataClass implements Insertable<SettingsRow> {
@@ -5128,6 +5206,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
   final int dependents;
   final bool soloProvider;
   final int kidsMonthlyBufferCents;
+  final Appearance appearance;
   const SettingsRow({
     required this.id,
     required this.savingsTargetBasisPoints,
@@ -5142,6 +5221,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     required this.dependents,
     required this.soloProvider,
     required this.kidsMonthlyBufferCents,
+    required this.appearance,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -5165,6 +5245,11 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     map['dependents'] = Variable<int>(dependents);
     map['solo_provider'] = Variable<bool>(soloProvider);
     map['kids_monthly_buffer_cents'] = Variable<int>(kidsMonthlyBufferCents);
+    {
+      map['appearance'] = Variable<String>(
+        $FinanceSettingsTableTable.$converterappearance.toSql(appearance),
+      );
+    }
     return map;
   }
 
@@ -5183,6 +5268,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       dependents: Value(dependents),
       soloProvider: Value(soloProvider),
       kidsMonthlyBufferCents: Value(kidsMonthlyBufferCents),
+      appearance: Value(appearance),
     );
   }
 
@@ -5215,6 +5301,9 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       kidsMonthlyBufferCents: serializer.fromJson<int>(
         json['kidsMonthlyBufferCents'],
       ),
+      appearance: $FinanceSettingsTableTable.$converterappearance.fromJson(
+        serializer.fromJson<String>(json['appearance']),
+      ),
     );
   }
   @override
@@ -5240,6 +5329,9 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       'dependents': serializer.toJson<int>(dependents),
       'soloProvider': serializer.toJson<bool>(soloProvider),
       'kidsMonthlyBufferCents': serializer.toJson<int>(kidsMonthlyBufferCents),
+      'appearance': serializer.toJson<String>(
+        $FinanceSettingsTableTable.$converterappearance.toJson(appearance),
+      ),
     };
   }
 
@@ -5257,6 +5349,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     int? dependents,
     bool? soloProvider,
     int? kidsMonthlyBufferCents,
+    Appearance? appearance,
   }) => SettingsRow(
     id: id ?? this.id,
     savingsTargetBasisPoints:
@@ -5276,6 +5369,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     soloProvider: soloProvider ?? this.soloProvider,
     kidsMonthlyBufferCents:
         kidsMonthlyBufferCents ?? this.kidsMonthlyBufferCents,
+    appearance: appearance ?? this.appearance,
   );
   SettingsRow copyWithCompanion(FinanceSettingsTableCompanion data) {
     return SettingsRow(
@@ -5314,6 +5408,9 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       kidsMonthlyBufferCents: data.kidsMonthlyBufferCents.present
           ? data.kidsMonthlyBufferCents.value
           : this.kidsMonthlyBufferCents,
+      appearance: data.appearance.present
+          ? data.appearance.value
+          : this.appearance,
     );
   }
 
@@ -5332,7 +5429,8 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           ..write('smartNotifications: $smartNotifications, ')
           ..write('dependents: $dependents, ')
           ..write('soloProvider: $soloProvider, ')
-          ..write('kidsMonthlyBufferCents: $kidsMonthlyBufferCents')
+          ..write('kidsMonthlyBufferCents: $kidsMonthlyBufferCents, ')
+          ..write('appearance: $appearance')
           ..write(')'))
         .toString();
   }
@@ -5352,6 +5450,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     dependents,
     soloProvider,
     kidsMonthlyBufferCents,
+    appearance,
   );
   @override
   bool operator ==(Object other) =>
@@ -5369,7 +5468,8 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           other.smartNotifications == this.smartNotifications &&
           other.dependents == this.dependents &&
           other.soloProvider == this.soloProvider &&
-          other.kidsMonthlyBufferCents == this.kidsMonthlyBufferCents);
+          other.kidsMonthlyBufferCents == this.kidsMonthlyBufferCents &&
+          other.appearance == this.appearance);
 }
 
 class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
@@ -5386,6 +5486,7 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
   final Value<int> dependents;
   final Value<bool> soloProvider;
   final Value<int> kidsMonthlyBufferCents;
+  final Value<Appearance> appearance;
   const FinanceSettingsTableCompanion({
     this.id = const Value.absent(),
     this.savingsTargetBasisPoints = const Value.absent(),
@@ -5400,6 +5501,7 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     this.dependents = const Value.absent(),
     this.soloProvider = const Value.absent(),
     this.kidsMonthlyBufferCents = const Value.absent(),
+    this.appearance = const Value.absent(),
   });
   FinanceSettingsTableCompanion.insert({
     this.id = const Value.absent(),
@@ -5415,6 +5517,7 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     this.dependents = const Value.absent(),
     this.soloProvider = const Value.absent(),
     this.kidsMonthlyBufferCents = const Value.absent(),
+    this.appearance = const Value.absent(),
   }) : savingsTargetBasisPoints = Value(savingsTargetBasisPoints),
        warningFromBasisPoints = Value(warningFromBasisPoints),
        criticalAboveBasisPoints = Value(criticalAboveBasisPoints),
@@ -5433,6 +5536,7 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     Expression<int>? dependents,
     Expression<bool>? soloProvider,
     Expression<int>? kidsMonthlyBufferCents,
+    Expression<String>? appearance,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -5453,6 +5557,7 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
       if (soloProvider != null) 'solo_provider': soloProvider,
       if (kidsMonthlyBufferCents != null)
         'kids_monthly_buffer_cents': kidsMonthlyBufferCents,
+      if (appearance != null) 'appearance': appearance,
     });
   }
 
@@ -5470,6 +5575,7 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     Value<int>? dependents,
     Value<bool>? soloProvider,
     Value<int>? kidsMonthlyBufferCents,
+    Value<Appearance>? appearance,
   }) {
     return FinanceSettingsTableCompanion(
       id: id ?? this.id,
@@ -5490,6 +5596,7 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
       soloProvider: soloProvider ?? this.soloProvider,
       kidsMonthlyBufferCents:
           kidsMonthlyBufferCents ?? this.kidsMonthlyBufferCents,
+      appearance: appearance ?? this.appearance,
     );
   }
 
@@ -5545,6 +5652,11 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
         kidsMonthlyBufferCents.value,
       );
     }
+    if (appearance.present) {
+      map['appearance'] = Variable<String>(
+        $FinanceSettingsTableTable.$converterappearance.toSql(appearance.value),
+      );
+    }
     return map;
   }
 
@@ -5563,7 +5675,8 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
           ..write('smartNotifications: $smartNotifications, ')
           ..write('dependents: $dependents, ')
           ..write('soloProvider: $soloProvider, ')
-          ..write('kidsMonthlyBufferCents: $kidsMonthlyBufferCents')
+          ..write('kidsMonthlyBufferCents: $kidsMonthlyBufferCents, ')
+          ..write('appearance: $appearance')
           ..write(')'))
         .toString();
   }
@@ -5652,6 +5765,21 @@ class $FixedMovementsTable extends FixedMovements
       'CHECK ("is_active" IN (0, 1))',
     ),
   );
+  static const VerificationMeta _isVariableMeta = const VerificationMeta(
+    'isVariable',
+  );
+  @override
+  late final GeneratedColumn<bool> isVariable = GeneratedColumn<bool>(
+    'is_variable',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_variable" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _lastPostedOnMeta = const VerificationMeta(
     'lastPostedOn',
   );
@@ -5672,6 +5800,7 @@ class $FixedMovementsTable extends FixedMovements
     categoryId,
     dayOfMonth,
     isActive,
+    isVariable,
     lastPostedOn,
   ];
   @override
@@ -5737,6 +5866,12 @@ class $FixedMovementsTable extends FixedMovements
     } else if (isInserting) {
       context.missing(_isActiveMeta);
     }
+    if (data.containsKey('is_variable')) {
+      context.handle(
+        _isVariableMeta,
+        isVariable.isAcceptableOrUnknown(data['is_variable']!, _isVariableMeta),
+      );
+    }
     if (data.containsKey('last_posted_on')) {
       context.handle(
         _lastPostedOnMeta,
@@ -5785,6 +5920,10 @@ class $FixedMovementsTable extends FixedMovements
         DriftSqlType.bool,
         data['${effectivePrefix}is_active'],
       )!,
+      isVariable: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_variable'],
+      )!,
       lastPostedOn: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}last_posted_on'],
@@ -5810,6 +5949,7 @@ class FixedMovementRow extends DataClass
   final String categoryId;
   final int dayOfMonth;
   final bool isActive;
+  final bool isVariable;
   final DateTime? lastPostedOn;
   const FixedMovementRow({
     required this.id,
@@ -5819,6 +5959,7 @@ class FixedMovementRow extends DataClass
     required this.categoryId,
     required this.dayOfMonth,
     required this.isActive,
+    required this.isVariable,
     this.lastPostedOn,
   });
   @override
@@ -5835,6 +5976,7 @@ class FixedMovementRow extends DataClass
     map['category_id'] = Variable<String>(categoryId);
     map['day_of_month'] = Variable<int>(dayOfMonth);
     map['is_active'] = Variable<bool>(isActive);
+    map['is_variable'] = Variable<bool>(isVariable);
     if (!nullToAbsent || lastPostedOn != null) {
       map['last_posted_on'] = Variable<DateTime>(lastPostedOn);
     }
@@ -5850,6 +5992,7 @@ class FixedMovementRow extends DataClass
       categoryId: Value(categoryId),
       dayOfMonth: Value(dayOfMonth),
       isActive: Value(isActive),
+      isVariable: Value(isVariable),
       lastPostedOn: lastPostedOn == null && nullToAbsent
           ? const Value.absent()
           : Value(lastPostedOn),
@@ -5871,6 +6014,7 @@ class FixedMovementRow extends DataClass
       categoryId: serializer.fromJson<String>(json['categoryId']),
       dayOfMonth: serializer.fromJson<int>(json['dayOfMonth']),
       isActive: serializer.fromJson<bool>(json['isActive']),
+      isVariable: serializer.fromJson<bool>(json['isVariable']),
       lastPostedOn: serializer.fromJson<DateTime?>(json['lastPostedOn']),
     );
   }
@@ -5887,6 +6031,7 @@ class FixedMovementRow extends DataClass
       'categoryId': serializer.toJson<String>(categoryId),
       'dayOfMonth': serializer.toJson<int>(dayOfMonth),
       'isActive': serializer.toJson<bool>(isActive),
+      'isVariable': serializer.toJson<bool>(isVariable),
       'lastPostedOn': serializer.toJson<DateTime?>(lastPostedOn),
     };
   }
@@ -5899,6 +6044,7 @@ class FixedMovementRow extends DataClass
     String? categoryId,
     int? dayOfMonth,
     bool? isActive,
+    bool? isVariable,
     Value<DateTime?> lastPostedOn = const Value.absent(),
   }) => FixedMovementRow(
     id: id ?? this.id,
@@ -5908,6 +6054,7 @@ class FixedMovementRow extends DataClass
     categoryId: categoryId ?? this.categoryId,
     dayOfMonth: dayOfMonth ?? this.dayOfMonth,
     isActive: isActive ?? this.isActive,
+    isVariable: isVariable ?? this.isVariable,
     lastPostedOn: lastPostedOn.present ? lastPostedOn.value : this.lastPostedOn,
   );
   FixedMovementRow copyWithCompanion(FixedMovementsCompanion data) {
@@ -5925,6 +6072,9 @@ class FixedMovementRow extends DataClass
           ? data.dayOfMonth.value
           : this.dayOfMonth,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      isVariable: data.isVariable.present
+          ? data.isVariable.value
+          : this.isVariable,
       lastPostedOn: data.lastPostedOn.present
           ? data.lastPostedOn.value
           : this.lastPostedOn,
@@ -5941,6 +6091,7 @@ class FixedMovementRow extends DataClass
           ..write('categoryId: $categoryId, ')
           ..write('dayOfMonth: $dayOfMonth, ')
           ..write('isActive: $isActive, ')
+          ..write('isVariable: $isVariable, ')
           ..write('lastPostedOn: $lastPostedOn')
           ..write(')'))
         .toString();
@@ -5955,6 +6106,7 @@ class FixedMovementRow extends DataClass
     categoryId,
     dayOfMonth,
     isActive,
+    isVariable,
     lastPostedOn,
   );
   @override
@@ -5968,6 +6120,7 @@ class FixedMovementRow extends DataClass
           other.categoryId == this.categoryId &&
           other.dayOfMonth == this.dayOfMonth &&
           other.isActive == this.isActive &&
+          other.isVariable == this.isVariable &&
           other.lastPostedOn == this.lastPostedOn);
 }
 
@@ -5979,6 +6132,7 @@ class FixedMovementsCompanion extends UpdateCompanion<FixedMovementRow> {
   final Value<String> categoryId;
   final Value<int> dayOfMonth;
   final Value<bool> isActive;
+  final Value<bool> isVariable;
   final Value<DateTime?> lastPostedOn;
   final Value<int> rowid;
   const FixedMovementsCompanion({
@@ -5989,6 +6143,7 @@ class FixedMovementsCompanion extends UpdateCompanion<FixedMovementRow> {
     this.categoryId = const Value.absent(),
     this.dayOfMonth = const Value.absent(),
     this.isActive = const Value.absent(),
+    this.isVariable = const Value.absent(),
     this.lastPostedOn = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -6000,6 +6155,7 @@ class FixedMovementsCompanion extends UpdateCompanion<FixedMovementRow> {
     required String categoryId,
     required int dayOfMonth,
     required bool isActive,
+    this.isVariable = const Value.absent(),
     this.lastPostedOn = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -6017,6 +6173,7 @@ class FixedMovementsCompanion extends UpdateCompanion<FixedMovementRow> {
     Expression<String>? categoryId,
     Expression<int>? dayOfMonth,
     Expression<bool>? isActive,
+    Expression<bool>? isVariable,
     Expression<DateTime>? lastPostedOn,
     Expression<int>? rowid,
   }) {
@@ -6028,6 +6185,7 @@ class FixedMovementsCompanion extends UpdateCompanion<FixedMovementRow> {
       if (categoryId != null) 'category_id': categoryId,
       if (dayOfMonth != null) 'day_of_month': dayOfMonth,
       if (isActive != null) 'is_active': isActive,
+      if (isVariable != null) 'is_variable': isVariable,
       if (lastPostedOn != null) 'last_posted_on': lastPostedOn,
       if (rowid != null) 'rowid': rowid,
     });
@@ -6041,6 +6199,7 @@ class FixedMovementsCompanion extends UpdateCompanion<FixedMovementRow> {
     Value<String>? categoryId,
     Value<int>? dayOfMonth,
     Value<bool>? isActive,
+    Value<bool>? isVariable,
     Value<DateTime?>? lastPostedOn,
     Value<int>? rowid,
   }) {
@@ -6052,6 +6211,7 @@ class FixedMovementsCompanion extends UpdateCompanion<FixedMovementRow> {
       categoryId: categoryId ?? this.categoryId,
       dayOfMonth: dayOfMonth ?? this.dayOfMonth,
       isActive: isActive ?? this.isActive,
+      isVariable: isVariable ?? this.isVariable,
       lastPostedOn: lastPostedOn ?? this.lastPostedOn,
       rowid: rowid ?? this.rowid,
     );
@@ -6083,6 +6243,9 @@ class FixedMovementsCompanion extends UpdateCompanion<FixedMovementRow> {
     if (isActive.present) {
       map['is_active'] = Variable<bool>(isActive.value);
     }
+    if (isVariable.present) {
+      map['is_variable'] = Variable<bool>(isVariable.value);
+    }
     if (lastPostedOn.present) {
       map['last_posted_on'] = Variable<DateTime>(lastPostedOn.value);
     }
@@ -6102,6 +6265,7 @@ class FixedMovementsCompanion extends UpdateCompanion<FixedMovementRow> {
           ..write('categoryId: $categoryId, ')
           ..write('dayOfMonth: $dayOfMonth, ')
           ..write('isActive: $isActive, ')
+          ..write('isVariable: $isVariable, ')
           ..write('lastPostedOn: $lastPostedOn, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -8129,6 +8293,7 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       Value<String?> notes,
       Value<String?> debtId,
       Value<String?> provisionId,
+      Value<String?> fixedMovementId,
       Value<int> rowid,
     });
 typedef $$TransactionsTableUpdateCompanionBuilder =
@@ -8145,6 +8310,7 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<String?> notes,
       Value<String?> debtId,
       Value<String?> provisionId,
+      Value<String?> fixedMovementId,
       Value<int> rowid,
     });
 
@@ -8257,6 +8423,11 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<String> get provisionId => $composableBuilder(
     column: $table.provisionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fixedMovementId => $composableBuilder(
+    column: $table.fixedMovementId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8384,6 +8555,11 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get fixedMovementId => $composableBuilder(
+    column: $table.fixedMovementId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$CategoriesTableOrderingComposer get categoryId {
     final $$CategoriesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -8493,6 +8669,11 @@ class $$TransactionsTableAnnotationComposer
 
   GeneratedColumn<String> get provisionId => $composableBuilder(
     column: $table.provisionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get fixedMovementId => $composableBuilder(
+    column: $table.fixedMovementId,
     builder: (column) => column,
   );
 
@@ -8606,6 +8787,7 @@ class $$TransactionsTableTableManager
                 Value<String?> notes = const Value.absent(),
                 Value<String?> debtId = const Value.absent(),
                 Value<String?> provisionId = const Value.absent(),
+                Value<String?> fixedMovementId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TransactionsCompanion(
                 id: id,
@@ -8620,6 +8802,7 @@ class $$TransactionsTableTableManager
                 notes: notes,
                 debtId: debtId,
                 provisionId: provisionId,
+                fixedMovementId: fixedMovementId,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -8636,6 +8819,7 @@ class $$TransactionsTableTableManager
                 Value<String?> notes = const Value.absent(),
                 Value<String?> debtId = const Value.absent(),
                 Value<String?> provisionId = const Value.absent(),
+                Value<String?> fixedMovementId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TransactionsCompanion.insert(
                 id: id,
@@ -8650,6 +8834,7 @@ class $$TransactionsTableTableManager
                 notes: notes,
                 debtId: debtId,
                 provisionId: provisionId,
+                fixedMovementId: fixedMovementId,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -10539,6 +10724,7 @@ typedef $$FinanceSettingsTableTableCreateCompanionBuilder =
       Value<int> dependents,
       Value<bool> soloProvider,
       Value<int> kidsMonthlyBufferCents,
+      Value<Appearance> appearance,
     });
 typedef $$FinanceSettingsTableTableUpdateCompanionBuilder =
     FinanceSettingsTableCompanion Function({
@@ -10555,6 +10741,7 @@ typedef $$FinanceSettingsTableTableUpdateCompanionBuilder =
       Value<int> dependents,
       Value<bool> soloProvider,
       Value<int> kidsMonthlyBufferCents,
+      Value<Appearance> appearance,
     });
 
 class $$FinanceSettingsTableTableFilterComposer
@@ -10629,6 +10816,12 @@ class $$FinanceSettingsTableTableFilterComposer
   ColumnFilters<int> get kidsMonthlyBufferCents => $composableBuilder(
     column: $table.kidsMonthlyBufferCents,
     builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<Appearance, Appearance, String>
+  get appearance => $composableBuilder(
+    column: $table.appearance,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 }
 
@@ -10705,6 +10898,11 @@ class $$FinanceSettingsTableTableOrderingComposer
     column: $table.kidsMonthlyBufferCents,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get appearance => $composableBuilder(
+    column: $table.appearance,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$FinanceSettingsTableTableAnnotationComposer
@@ -10776,6 +10974,12 @@ class $$FinanceSettingsTableTableAnnotationComposer
     column: $table.kidsMonthlyBufferCents,
     builder: (column) => column,
   );
+
+  GeneratedColumnWithTypeConverter<Appearance, String> get appearance =>
+      $composableBuilder(
+        column: $table.appearance,
+        builder: (column) => column,
+      );
 }
 
 class $$FinanceSettingsTableTableTableManager
@@ -10834,6 +11038,7 @@ class $$FinanceSettingsTableTableTableManager
                 Value<int> dependents = const Value.absent(),
                 Value<bool> soloProvider = const Value.absent(),
                 Value<int> kidsMonthlyBufferCents = const Value.absent(),
+                Value<Appearance> appearance = const Value.absent(),
               }) => FinanceSettingsTableCompanion(
                 id: id,
                 savingsTargetBasisPoints: savingsTargetBasisPoints,
@@ -10848,6 +11053,7 @@ class $$FinanceSettingsTableTableTableManager
                 dependents: dependents,
                 soloProvider: soloProvider,
                 kidsMonthlyBufferCents: kidsMonthlyBufferCents,
+                appearance: appearance,
               ),
           createCompanionCallback:
               ({
@@ -10864,6 +11070,7 @@ class $$FinanceSettingsTableTableTableManager
                 Value<int> dependents = const Value.absent(),
                 Value<bool> soloProvider = const Value.absent(),
                 Value<int> kidsMonthlyBufferCents = const Value.absent(),
+                Value<Appearance> appearance = const Value.absent(),
               }) => FinanceSettingsTableCompanion.insert(
                 id: id,
                 savingsTargetBasisPoints: savingsTargetBasisPoints,
@@ -10878,6 +11085,7 @@ class $$FinanceSettingsTableTableTableManager
                 dependents: dependents,
                 soloProvider: soloProvider,
                 kidsMonthlyBufferCents: kidsMonthlyBufferCents,
+                appearance: appearance,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -10922,6 +11130,7 @@ typedef $$FixedMovementsTableCreateCompanionBuilder =
       required String categoryId,
       required int dayOfMonth,
       required bool isActive,
+      Value<bool> isVariable,
       Value<DateTime?> lastPostedOn,
       Value<int> rowid,
     });
@@ -10934,6 +11143,7 @@ typedef $$FixedMovementsTableUpdateCompanionBuilder =
       Value<String> categoryId,
       Value<int> dayOfMonth,
       Value<bool> isActive,
+      Value<bool> isVariable,
       Value<DateTime?> lastPostedOn,
       Value<int> rowid,
     });
@@ -11005,6 +11215,11 @@ class $$FixedMovementsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get isVariable => $composableBuilder(
+    column: $table.isVariable,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<DateTime> get lastPostedOn => $composableBuilder(
     column: $table.lastPostedOn,
     builder: (column) => ColumnFilters(column),
@@ -11073,6 +11288,11 @@ class $$FixedMovementsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isVariable => $composableBuilder(
+    column: $table.isVariable,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get lastPostedOn => $composableBuilder(
     column: $table.lastPostedOn,
     builder: (column) => ColumnOrderings(column),
@@ -11132,6 +11352,11 @@ class $$FixedMovementsTableAnnotationComposer
 
   GeneratedColumn<bool> get isActive =>
       $composableBuilder(column: $table.isActive, builder: (column) => column);
+
+  GeneratedColumn<bool> get isVariable => $composableBuilder(
+    column: $table.isVariable,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get lastPostedOn => $composableBuilder(
     column: $table.lastPostedOn,
@@ -11199,6 +11424,7 @@ class $$FixedMovementsTableTableManager
                 Value<String> categoryId = const Value.absent(),
                 Value<int> dayOfMonth = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
+                Value<bool> isVariable = const Value.absent(),
                 Value<DateTime?> lastPostedOn = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => FixedMovementsCompanion(
@@ -11209,6 +11435,7 @@ class $$FixedMovementsTableTableManager
                 categoryId: categoryId,
                 dayOfMonth: dayOfMonth,
                 isActive: isActive,
+                isVariable: isVariable,
                 lastPostedOn: lastPostedOn,
                 rowid: rowid,
               ),
@@ -11221,6 +11448,7 @@ class $$FixedMovementsTableTableManager
                 required String categoryId,
                 required int dayOfMonth,
                 required bool isActive,
+                Value<bool> isVariable = const Value.absent(),
                 Value<DateTime?> lastPostedOn = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => FixedMovementsCompanion.insert(
@@ -11231,6 +11459,7 @@ class $$FixedMovementsTableTableManager
                 categoryId: categoryId,
                 dayOfMonth: dayOfMonth,
                 isActive: isActive,
+                isVariable: isVariable,
                 lastPostedOn: lastPostedOn,
                 rowid: rowid,
               ),

@@ -16,6 +16,7 @@ final class FixedSchedule {
     required this.due,
     required this.upcoming,
     this.covered = const [],
+    this.awaitingAmount = const [],
   });
 
   /// Ya llegó su día y aún no se registró: registrar ahora.
@@ -28,18 +29,26 @@ final class FixedSchedule {
   /// (p. ej. sueldo adelantado): marcar como registrados sin duplicarlos.
   final List<ScheduledFixed> covered;
 
+  /// Fijos de valor variable cuyo día ya llegó: esperan que el usuario
+  /// escriba el valor real de la factura.
+  final List<ScheduledFixed> awaitingAmount;
+
+  /// Lo que aún falta por salir o entrar en el ciclo: lo que viene y las
+  /// facturas sin confirmar (por su estimado).
+  List<ScheduledFixed> get pending => [...awaitingAmount, ...upcoming];
+
   Money get upcomingExpenses => Money.sum(
-    upcoming.where((s) => s.movement.isExpense).map((s) => s.movement.amount),
+    pending.where((s) => s.movement.isExpense).map((s) => s.movement.amount),
   );
 
   Money get upcomingIncome => Money.sum(
-    upcoming.where((s) => !s.movement.isExpense).map((s) => s.movement.amount),
+    pending.where((s) => !s.movement.isExpense).map((s) => s.movement.amount),
   );
 
   /// Gastos fijos pendientes por categoría.
   Map<String, Money> get upcomingExpensesByCategory {
     final totals = <String, Money>{};
-    for (final s in upcoming.where((s) => s.movement.isExpense)) {
+    for (final s in pending.where((s) => s.movement.isExpense)) {
       totals.update(
         s.movement.categoryId,
         (total) => total + s.movement.amount,
@@ -73,6 +82,7 @@ final class FixedMovementScheduler {
     final due = <ScheduledFixed>[];
     final upcoming = <ScheduledFixed>[];
     final covered = <ScheduledFixed>[];
+    final awaiting = <ScheduledFixed>[];
     for (final movement in movements.where((m) => m.isActive)) {
       final last = movement.lastPostedOn;
       for (final date in cycle.datesForDayOfMonth(movement.dayOfMonth)) {
@@ -83,7 +93,11 @@ final class FixedMovementScheduler {
           if (!isFuture) covered.add(item);
           continue;
         }
-        (isFuture ? upcoming : due).add(item);
+        if (isFuture) {
+          upcoming.add(item);
+        } else {
+          (movement.isVariable ? awaiting : due).add(item);
+        }
       }
     }
     int byDate(ScheduledFixed a, ScheduledFixed b) => a.date.compareTo(b.date);
@@ -91,6 +105,7 @@ final class FixedMovementScheduler {
       due: due..sort(byDate),
       upcoming: upcoming..sort(byDate),
       covered: covered..sort(byDate),
+      awaitingAmount: awaiting..sort(byDate),
     );
   }
 

@@ -106,7 +106,7 @@ final class ReconcileBalance {
       cycleTransactions: current.transactions,
     );
     final done = <String>{};
-    for (final item in [...schedule.due, ...schedule.upcoming]) {
+    for (final item in [...schedule.due, ...schedule.pending]) {
       final movement = item.movement;
       if (!ids.contains(movement.id) || !done.add(movement.id)) continue;
       await _transactions.save(
@@ -119,6 +119,7 @@ final class ReconcileBalance {
           createdAt: now,
           description: movement.name,
           nature: movement.isExpense ? ExpenseNature.essential : null,
+          fixedMovementId: movement.id,
         ),
       );
       await _fixed.save(movement.copyWith(lastPostedOn: item.date));

@@ -1,15 +1,18 @@
 import 'package:finance_app/domain/categories/category.dart';
 import 'package:finance_app/domain/transactions/transaction.dart';
+import 'package:finance_app/presentation/quick_entry/quick_entry_sheet.dart';
 import 'package:finance_app/presentation/shared/category_style.dart';
 import 'package:finance_app/presentation/shared/formatters.dart';
 import 'package:flutter/material.dart';
 
 /// Fila de un movimiento: icono de categoría, descripción y monto con signo.
+/// Al tocarla se abre para editarlo o eliminarlo.
 class TransactionTile extends StatelessWidget {
   const new({
     required this.transaction,
     required this.category,
     this.showDate = true,
+    this.editable = true,
     super.key,
   });
 
@@ -18,6 +21,7 @@ class TransactionTile extends StatelessWidget {
   final Transaction transaction;
   final Category? category;
   final bool showDate;
+  final bool editable;
 
   @override
   Widget build(BuildContext context) {
@@ -34,6 +38,9 @@ class TransactionTile extends StatelessWidget {
 
     return ListTile(
       contentPadding: EdgeInsets.zero,
+      onTap: editable
+          ? () => showQuickEntrySheet(context, editing: transaction)
+          : null,
       leading: CategoryAvatar(category: category, size: 40),
       title: Text(
         description ?? categoryName,

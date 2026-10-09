@@ -38,13 +38,15 @@ class MainActivity : FlutterActivity() {
                 }
                 val language = call.argument<String>("language") ?: "es-CO"
                 val prompt = call.argument<String>("prompt")
-                startDictation(language, prompt, result)
+                val preferOffline = call.argument<Boolean>("preferOffline") ?: true
+                startDictation(language, prompt, preferOffline, result)
             }
     }
 
     private fun startDictation(
         language: String,
         prompt: String?,
+        preferOffline: Boolean,
         result: MethodChannel.Result,
     ) {
         val base = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
@@ -53,7 +55,10 @@ class MainActivity : FlutterActivity() {
                 RecognizerIntent.LANGUAGE_MODEL_FREE_FORM,
             )
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, language)
-            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, language)
+            // Sin paquete sin conexión, exigirlo hace fallar a Google con
+            // "la búsqueda por voz no está disponible".
+            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, preferOffline)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
             prompt?.let { putExtra(RecognizerIntent.EXTRA_PROMPT, it) }
         }

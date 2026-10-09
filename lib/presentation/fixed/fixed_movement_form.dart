@@ -1,3 +1,4 @@
+import 'package:finance_app/bootstrap/providers.dart';
 import 'package:finance_app/bootstrap/use_cases.dart';
 import 'package:finance_app/domain/categories/category.dart';
 import 'package:finance_app/domain/fixed/fixed_movement.dart';
@@ -30,10 +31,21 @@ class _FixedMovementFormSheetState
   late String? _categoryId = widget.movement?.categoryId;
   late int _day = widget.movement?.dayOfMonth ?? DateTime.now().day;
   late bool _isActive = widget.movement?.isActive ?? true;
-  bool _registerNow = true;
+  late bool _isVariable = widget.movement?.isVariable ?? false;
+  bool _alreadyPaid = true;
   bool _saving = false;
 
   bool get _isNew => widget.movement == null;
+  bool get _isExpense => _kind == TransactionKind.expense;
+
+  /// Si el día elegido ya pasó en el ciclo actual.
+  bool _dayPassed(WidgetRef ref) {
+    final now = ref.read(clockProvider).now();
+    final today = DateTime(now.year, now.month, now.day);
+    final cycle = ref.watch(cycleSummaryProvider).value?.cycle;
+    if (cycle == null) return _day < today.day;
+    return cycle.datesForDayOfMonth(_day).any((d) => !d.isAfter(today));
+  }
 
   @override
   void dispose() {
@@ -59,6 +71,7 @@ class _FixedMovementFormSheetState
         _categoryId != null &&
         (MoneyField.read(_amount)?.isPositive ?? false) &&
         _name.text.trim().isNotEmpty;
+    final dayPassed = _isNew && _dayPassed(ref);
 
     return FormSheet(
       title: _isNew ? 'Nuevo fijo' : 'Editar fijo',
@@ -109,8 +122,22 @@ class _FixedMovementFormSheetState
         ),
         MoneyField(
           controller: _amount,
-          label: 'Valor mensual',
+          label: _isVariable ? 'Valor estimado' : 'Valor mensual',
           onChanged: (_) => setState(() {}),
+        ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          value: _isVariable,
+          onChanged: (v) => setState(() => _isVariable = v),
+          title: const Text('El valor cambia cada mes'),
+          subtitle: Text(
+            _isExpense
+                ? 'Agua, luz, gas, internet, celular. Ese día te pregunta '
+                      'el valor de la factura; mientras tanto se usa el '
+                      'estimado.'
+                : 'Comisiones o pagos que varían. Ese día te pregunta '
+                      'cuánto llegó.',
+          ),
         ),
         DropdownButtonFormField<int>(
           initialValue: _day,
@@ -131,15 +158,22 @@ class _FixedMovementFormSheetState
           selectedId: _categoryId,
           onSelected: (id) => setState(() => _categoryId = id),
         ),
-        if (_isNew)
+        if (dayPassed)
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            value: _registerNow,
-            onChanged: (v) => setState(() => _registerNow = v),
-            title: const Text('Registrarlo también en este ciclo'),
-            subtitle: const Text('Apágalo si ya lo anotaste a mano este mes.'),
+            value: _alreadyPaid,
+            onChanged: (v) => setState(() => _alreadyPaid = v),
+            title: Text(
+              _isExpense ? 'Ya lo pagué este mes' : 'Ya lo recibí este mes',
+            ),
+            subtitle: Text(
+              _alreadyPaid
+                  ? 'El día $_day ya pasó: no se descuenta otra vez de lo que '
+                        'te queda (tu dinero real ya lo incluye).'
+                  : 'Se registrará con fecha del día $_day.',
+            ),
           )
-        else
+        else if (!_isNew)
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             value: _isActive,
@@ -163,8 +197,9 @@ class _FixedMovementFormSheetState
           categoryId: _categoryId!,
           dayOfMonth: _day,
           isActive: _isActive,
+          isVariable: _isVariable,
           lastPostedOn: widget.movement?.lastPostedOn,
-          registerInCurrentCycle: _registerNow,
+          registerInCurrentCycle: !_alreadyPaid,
         );
     if (!mounted) return;
     if (showResult(context, result, success: 'Fijo guardado')) {

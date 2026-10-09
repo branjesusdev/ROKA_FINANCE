@@ -7,6 +7,9 @@ abstract interface class TransactionRepository {
 
   Future<void> delete(String id);
 
+  /// Borra varios en una sola operación (todo o nada).
+  Future<void> deleteAll(Iterable<String> ids);
+
   Future<Transaction?> getById(String id);
 
   Future<List<Transaction>> getByPeriod(DateRange period);
@@ -19,6 +22,13 @@ abstract interface class TransactionRepository {
 
   /// Movimientos de un apartado (todas las fechas).
   Future<List<Transaction>> getLinkedToProvision(String provisionId);
+
+  /// Últimos [limit] movimientos generados por un fijo, del más reciente al
+  /// más antiguo.
+  Future<List<Transaction>> getLinkedToFixed(
+    String fixedMovementId, {
+    required int limit,
+  });
 
   /// Movimientos vinculados a algún apartado (todas las fechas).
   Stream<List<Transaction>> watchLinkedToProvisions();

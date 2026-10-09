@@ -55,9 +55,11 @@ class UpcomingFixedCard extends ConsumerWidget {
                       title: Text(item.movement.name),
                       subtitle: Text(
                         '${Formatters.shortDate(item.date)} · '
-                        '${categories[item.movement.categoryId]?.name ?? ''}',
+                        '${categories[item.movement.categoryId]?.name ?? ''}'
+                        '${item.movement.isVariable ? ' · estimado' : ''}',
                       ),
                       trailing: Text(
+                        '${item.movement.isVariable ? '≈ ' : ''}'
                         '${item.movement.isExpense ? '-' : '+'}'
                         '${Formatters.money(item.movement.amount)}',
                         style: theme.textTheme.titleSmall,

@@ -5,6 +5,7 @@ import 'package:finance_app/core/result.dart';
 import 'package:finance_app/domain/fixed/fixed_movement.dart';
 import 'package:finance_app/domain/fixed/fixed_movement_repository.dart';
 import 'package:finance_app/domain/fixed/fixed_movement_scheduler.dart';
+import 'package:finance_app/domain/fixed/variable_bill_estimator.dart';
 import 'package:finance_app/domain/shared/clock.dart';
 import 'package:finance_app/domain/shared/id_generator.dart';
 import 'package:finance_app/domain/shared/money.dart';
@@ -14,8 +15,9 @@ import 'package:finance_app/domain/transactions/transaction_repository.dart';
 /// Crea (sin `id`) o actualiza un movimiento fijo.
 ///
 /// Al crearlo, si su día ya pasó en el ciclo actual y
-/// `registerInCurrentCycle` es `false` (p. ej. ya se anotó a mano), se marca
-/// como registrado para no duplicarlo.
+/// `registerInCurrentCycle` es `false` (ya se pagó: el dinero real ya lo
+/// descuenta, o se anotó a mano), se marca como registrado para no
+/// duplicarlo.
 final class SaveFixedMovement {
   const new({
     required this._fixed,
@@ -37,6 +39,7 @@ final class SaveFixedMovement {
     required int dayOfMonth,
     String? id,
     bool isActive = true,
+    bool isVariable = false,
     DateTime? lastPostedOn,
     bool registerInCurrentCycle = true,
   }) {
@@ -67,6 +70,7 @@ final class SaveFixedMovement {
         categoryId: categoryId,
         dayOfMonth: dayOfMonth,
         isActive: isActive,
+        isVariable: isVariable,
         lastPostedOn: lastPosted,
       );
       await _fixed.save(movement);
@@ -81,6 +85,64 @@ final class DeleteFixedMovement {
   final FixedMovementRepository _fixed;
 
   Future<Result<void>> call(String id) => guardUseCase(() => _fixed.delete(id));
+}
+
+/// Registra el valor real de una factura de un fijo variable (luz, agua…)
+/// y actualiza su estimado con el promedio de las últimas facturas.
+final class ConfirmVariableFixed {
+  const new({
+    required this._fixed,
+    required this._transactions,
+    required this._clock,
+    required this._ids,
+  });
+
+  final FixedMovementRepository _fixed;
+  final TransactionRepository _transactions;
+  final Clock _clock;
+  final IdGenerator _ids;
+
+  /// [scheduledDate]: la fecha del fijo en el ciclo que se confirma.
+  Future<Result<Transaction>> call({
+    required FixedMovement movement,
+    required DateTime scheduledDate,
+    required Money amount,
+  }) {
+    if (!amount.isPositive) {
+      return invalid(ValidationCodes.amountMustBePositive);
+    }
+    return guardUseCase(() async {
+      final now = _clock.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final transaction = Transaction(
+        id: _ids.next(),
+        kind: movement.kind,
+        amount: amount,
+        categoryId: movement.categoryId,
+        // Factura adelantada: queda en su fecha para no salir del ciclo.
+        date: scheduledDate.isAfter(today) ? scheduledDate : today,
+        createdAt: now,
+        description: movement.name,
+        nature: movement.isExpense ? ExpenseNature.essential : null,
+        fixedMovementId: movement.id,
+      );
+      await _transactions.save(transaction);
+      final recent = await _transactions.getLinkedToFixed(
+        movement.id,
+        limit: VariableBillEstimator.lastBills,
+      );
+      final estimate = const VariableBillEstimator().estimate([
+        for (final t in recent) t.amount,
+      ]);
+      await _fixed.save(
+        movement.copyWith(
+          amount: estimate ?? amount,
+          lastPostedOn: scheduledDate,
+        ),
+      );
+      return transaction;
+    });
+  }
 }
 
 /// Registra como movimientos los fijos cuyo día ya llegó en el ciclo actual.
@@ -135,6 +197,7 @@ final class PostDueFixedMovements {
           createdAt: now,
           description: movement.name,
           nature: movement.isExpense ? ExpenseNature.essential : null,
+          fixedMovementId: movement.id,
         ),
       );
       markPosted(item);

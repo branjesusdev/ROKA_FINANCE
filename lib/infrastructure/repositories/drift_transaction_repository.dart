@@ -26,6 +26,16 @@ final class DriftTransactionRepository implements TransactionRepository {
   );
 
   @override
+  Future<void> deleteAll(Iterable<String> ids) => guardStorage(
+    'transactions.deleteAll',
+    () => _db.transaction(() async {
+      final list = ids.toList();
+      if (list.isEmpty) return;
+      await (_db.delete(_db.transactions)..where((t) => t.id.isIn(list))).go();
+    }),
+  );
+
+  @override
   Future<Transaction?> getById(String id) =>
       guardStorage('transactions.getById', () async {
         final query = _db.select(_db.transactions)
@@ -69,6 +79,20 @@ final class DriftTransactionRepository implements TransactionRepository {
               .get(),
         ),
       );
+
+  @override
+  Future<List<Transaction>> getLinkedToFixed(
+    String fixedMovementId, {
+    required int limit,
+  }) => guardStorage(
+    'transactions.getLinkedToFixed',
+    () async => _toDomain(
+      await (_newestFirst()
+            ..where((t) => t.fixedMovementId.equals(fixedMovementId))
+            ..limit(limit))
+          .get(),
+    ),
+  );
 
   @override
   Stream<List<Transaction>> watchLinkedToProvisions() => guardStorageStream(

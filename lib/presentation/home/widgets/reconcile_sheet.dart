@@ -38,7 +38,7 @@ class _ReconcileSheetState extends ConsumerState<ReconcileSheet> {
     final actual = MoneyField.read(_actual);
     final pending = [
       ...?summary?.upcomingFixed.due,
-      ...?summary?.upcomingFixed.upcoming,
+      ...?summary?.upcomingFixed.pending,
     ].where((s) => s.movement.isExpense).toList();
     final paidTotal = Money.sum(
       pending

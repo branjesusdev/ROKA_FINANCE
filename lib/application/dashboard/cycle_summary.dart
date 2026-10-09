@@ -17,12 +17,16 @@ import 'package:finance_app/domain/transactions/transaction.dart';
 /// Total de una categoría dentro del ciclo.
 final class CategoryTotal {
   const new({
+    required this.categoryId,
     required this.category,
     required this.amount,
     required this.share,
     required this.count,
   });
 
+  final String categoryId;
+
+  /// `null` si la categoría ya no existe.
   final Category? category;
   final Money amount;
 
@@ -302,6 +306,7 @@ final class CycleSummaryBuilder {
     return [
       for (final MapEntry(key: id, value: amount) in amounts.entries)
         CategoryTotal(
+          categoryId: id,
           category: byId[id],
           amount: amount,
           share: Percentage.ratio(amount, total) ?? Percentage.zero,

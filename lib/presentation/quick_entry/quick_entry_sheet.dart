@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:finance_app/application/transactions/frequent_categories.dart';
 import 'package:finance_app/application/transactions/register_transaction.dart';
+import 'package:finance_app/application/transactions/update_transaction.dart';
 import 'package:finance_app/bootstrap/use_cases.dart';
 import 'package:finance_app/core/result.dart';
 import 'package:finance_app/domain/categories/category.dart';
@@ -10,21 +11,25 @@ import 'package:finance_app/domain/transactions/transaction.dart';
 import 'package:finance_app/presentation/quick_entry/voice_entry_sheet.dart';
 import 'package:finance_app/presentation/shared/category_picker.dart';
 import 'package:finance_app/presentation/shared/data_providers.dart';
+import 'package:finance_app/presentation/shared/form_widgets.dart';
 import 'package:finance_app/presentation/shared/formatters.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Abre el registro rápido. Flujo: monto → categoría → Guardar.
 /// Con [draft] (p. ej. dictado por voz) el formulario llega prellenado para
-/// revisar y confirmar.
-Future<void> showQuickEntrySheet(BuildContext context, {VoiceDraft? draft}) =>
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      showDragHandle: true,
-      builder: (_) => QuickEntrySheet(draft: draft),
-    );
+/// revisar y confirmar. Con [editing] corrige o elimina ese movimiento.
+Future<void> showQuickEntrySheet(
+  BuildContext context, {
+  VoiceDraft? draft,
+  Transaction? editing,
+}) => showModalBottomSheet<void>(
+  context: context,
+  isScrollControlled: true,
+  useSafeArea: true,
+  showDragHandle: true,
+  builder: (_) => QuickEntrySheet(draft: draft, editing: editing),
+);
 
 /// Datos sugeridos para prellenar el registro.
 final class VoiceDraft {
@@ -48,32 +53,42 @@ final class VoiceDraft {
 }
 
 class QuickEntrySheet extends ConsumerStatefulWidget {
-  const new({this.draft, super.key});
+  const new({this.draft, this.editing, super.key});
 
   final VoiceDraft? draft;
+  final Transaction? editing;
 
   @override
   ConsumerState<QuickEntrySheet> createState() => _QuickEntrySheetState();
 }
 
 class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
+  static const _descriptionMaxLength = 60;
+
   late final _amount = TextEditingController(
-    text: widget.draft?.pesos == null
-        ? null
-        : Formatters.pesos(widget.draft!.pesos!),
+    text: switch ((widget.editing, widget.draft?.pesos)) {
+      (final editing?, _) => Formatters.pesos(
+        editing.amount.cents ~/ Money.centsPerPeso,
+      ),
+      (_, final pesos?) => Formatters.pesos(pesos),
+      _ => null,
+    },
   );
   late final _description = TextEditingController(
-    text: widget.draft?.description,
+    text: widget.editing?.description ?? widget.draft?.description,
   );
-  late TransactionKind _kind = widget.draft?.kind ?? TransactionKind.expense;
-  late String? _categoryId = widget.draft?.categoryId;
-  late DateTime? _date = widget.draft?.date;
-  ExpenseNature? _nature;
+  late TransactionKind _kind =
+      widget.editing?.kind ?? widget.draft?.kind ?? TransactionKind.expense;
+  late String? _categoryId =
+      widget.editing?.categoryId ?? widget.draft?.categoryId;
+  late DateTime? _date = widget.editing?.date ?? widget.draft?.date;
+  late ExpenseNature? _nature = widget.editing?.nature;
   bool _showAllCategories = false;
   bool _saving = false;
 
   int? get _pesos => PesosInputFormatter.parse(_amount.text);
   bool get _isExpense => _kind == TransactionKind.expense;
+  bool get _isEditing => widget.editing != null;
 
   @override
   void dispose() {
@@ -128,6 +143,9 @@ class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
               const SizedBox(height: 4),
               Text('Revisa y confirma.', style: theme.textTheme.bodySmall),
               const SizedBox(height: 12),
+            ] else if (_isEditing) ...[
+              Text('Editar movimiento', style: theme.textTheme.titleLarge),
+              const SizedBox(height: 12),
             ] else ...[
               Align(
                 alignment: Alignment.centerRight,
@@ -161,7 +179,7 @@ class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
             const SizedBox(height: 16),
             TextField(
               controller: _amount,
-              autofocus: widget.draft == null,
+              autofocus: widget.draft == null && !_isEditing,
               keyboardType: TextInputType.number,
               inputFormatters: [PesosInputFormatter()],
               style: theme.textTheme.headlineMedium,
@@ -195,28 +213,30 @@ class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
                     )
                   : null,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _description,
+              textCapitalization: TextCapitalization.sentences,
+              maxLength: _descriptionMaxLength,
+              decoration: const InputDecoration(
+                labelText: 'Descripción (opcional)',
+                hintText: 'Ej: Mercado del mes',
+                border: OutlineInputBorder(),
+              ),
+            ),
             ExpansionTile(
               initiallyExpanded:
-                  widget.draft?.description != null ||
-                  widget.draft?.date != null,
+                  widget.draft?.date != null || widget.editing?.nature != null,
               tilePadding: EdgeInsets.zero,
-              title: const Text('Más detalles (opcional)'),
+              title: const Text('Fecha y tipo de gasto (opcional)'),
               children: [
-                TextField(
-                  controller: _description,
-                  textCapitalization: TextCapitalization.sentences,
-                  decoration: const InputDecoration(
-                    labelText: 'Descripción',
-                    hintText: 'Ej: Mercado',
-                  ),
-                ),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.calendar_today),
                   title: Text(
                     _date == null ? 'Hoy' : Formatters.longDate(_date!),
                   ),
+                  trailing: const Icon(Icons.edit_calendar_outlined),
                   onTap: _pickDate,
                 ),
                 if (_isExpense)
@@ -243,11 +263,29 @@ class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
             FilledButton.icon(
               onPressed: canSave ? () => _save(selectedId) : null,
               icon: const Icon(Icons.check),
-              label: Text(_isExpense ? 'Guardar gasto' : 'Guardar ingreso'),
+              label: Text(
+                _isEditing
+                    ? 'Guardar cambios'
+                    : _isExpense
+                    ? 'Guardar gasto'
+                    : 'Guardar ingreso',
+              ),
               style: FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(52),
               ),
             ),
+            if (_isEditing) ...[
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: _saving ? null : _delete,
+                icon: const Icon(Icons.delete_outline),
+                label: Text(_isExpense ? 'Eliminar gasto' : 'Eliminar ingreso'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: theme.colorScheme.error,
+                  minimumSize: const Size.fromHeight(48),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -263,29 +301,46 @@ class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
 
   Future<void> _pickDate() async {
     final now = DateTime.now();
+    final initial = _date ?? now;
     final picked = await showDatePicker(
       context: context,
-      initialDate: _date ?? now,
+      initialDate: initial,
       firstDate: DateTime(now.year - 5),
-      lastDate: now,
+      lastDate: initial.isAfter(now) ? initial : now,
     );
     if (picked != null) setState(() => _date = picked);
   }
 
   Future<void> _save(String categoryId) async {
     setState(() => _saving = true);
-    final result = await ref
-        .read(registerTransactionProvider)
-        .call(
-          RegisterTransactionInput(
-            kind: _kind,
-            amount: Money.pesos(_pesos!),
-            categoryId: categoryId,
-            date: _date,
-            description: _description.text,
-            nature: _nature,
-          ),
-        );
+    final editing = widget.editing;
+    final amount = Money.pesos(_pesos!);
+    final result = editing == null
+        ? await ref
+              .read(registerTransactionProvider)
+              .call(
+                RegisterTransactionInput(
+                  kind: _kind,
+                  amount: amount,
+                  categoryId: categoryId,
+                  date: _date,
+                  description: _description.text,
+                  nature: _nature,
+                ),
+              )
+        : await ref
+              .read(updateTransactionProvider)
+              .call(
+                UpdateTransactionInput(
+                  id: editing.id,
+                  kind: _kind,
+                  amount: amount,
+                  categoryId: categoryId,
+                  date: _date ?? editing.date,
+                  description: _description.text,
+                  nature: _nature,
+                ),
+              );
     if (!mounted) return;
     final messenger = ScaffoldMessenger.of(context);
     switch (result) {
@@ -294,16 +349,46 @@ class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
         messenger.showSnackBar(
           SnackBar(
             content: Text(
-              _isExpense ? 'Gasto registrado' : 'Ingreso registrado',
+              _isEditing
+                  ? 'Cambios guardados'
+                  : _isExpense
+                  ? 'Gasto registrado'
+                  : 'Ingreso registrado',
             ),
           ),
         );
-      case Err():
+      case Err(:final failure):
         setState(() => _saving = false);
         messenger.showSnackBar(
-          const SnackBar(
-            content: Text('No se pudo guardar. Intenta de nuevo.'),
+          SnackBar(content: Text(failureMessage(failure))),
+        );
+    }
+  }
+
+  /// Elimina y ofrece deshacer, igual que al deslizar en Movimientos.
+  Future<void> _delete() async {
+    final editing = widget.editing!;
+    setState(() => _saving = true);
+    final useCase = ref.read(deleteTransactionProvider);
+    final result = await useCase(editing.id);
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    switch (result) {
+      case Ok():
+        Navigator.of(context).pop();
+        messenger.showSnackBar(
+          SnackBar(
+            content: const Text('Movimiento eliminado'),
+            action: SnackBarAction(
+              label: 'Deshacer',
+              onPressed: () => useCase.undo(editing),
+            ),
           ),
+        );
+      case Err(:final failure):
+        setState(() => _saving = false);
+        messenger.showSnackBar(
+          SnackBar(content: Text(failureMessage(failure))),
         );
     }
   }

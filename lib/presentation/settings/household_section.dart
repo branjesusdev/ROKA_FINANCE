@@ -24,7 +24,17 @@ class _HouseholdSectionState extends ConsumerState<HouseholdSection> {
     text: widget.settings.kidsMonthlyBuffer.isPositive
         ? MoneyField.initial(widget.settings.kidsMonthlyBuffer)
         : '',
-  );
+  )..addListener(_onBufferChanged);
+
+  /// Tras guardar se muestra "Guardado" en lugar del botón (el SnackBar
+  /// quedaría detrás de la hoja de ajustes); al editar vuelve el botón.
+  bool _justSaved = false;
+
+  Money get _typedBuffer => MoneyField.read(_buffer) ?? Money.zero;
+
+  bool get _hasChanges => _typedBuffer != widget.settings.kidsMonthlyBuffer;
+
+  void _onBufferChanged() => setState(() => _justSaved = false);
 
   @override
   void dispose() {
@@ -32,20 +42,20 @@ class _HouseholdSectionState extends ConsumerState<HouseholdSection> {
     super.dispose();
   }
 
-  Future<void> _update({
-    int? dependents,
-    bool? soloProvider,
-    Money? buffer,
-    String? success,
-  }) async {
+  Future<void> _saveBuffer() async {
+    FocusScope.of(context).unfocus();
     final result = await ref
         .read(updateHouseholdProvider)
-        .call(
-          dependents: dependents,
-          soloProvider: soloProvider,
-          kidsMonthlyBuffer: buffer,
-        );
-    if (mounted) showResult(context, result, success: success);
+        .call(kidsMonthlyBuffer: _typedBuffer);
+    if (!mounted) return;
+    if (showResult(context, result)) setState(() => _justSaved = true);
+  }
+
+  Future<void> _update({int? dependents, bool? soloProvider}) async {
+    final result = await ref
+        .read(updateHouseholdProvider)
+        .call(dependents: dependents, soloProvider: soloProvider);
+    if (mounted) showResult(context, result);
   }
 
   @override
@@ -120,13 +130,13 @@ class _HouseholdSectionState extends ConsumerState<HouseholdSection> {
                     () => _buffer.text = MoneyField.initial(suggestion),
                   ),
                 ),
-              FilledButton.tonal(
-                onPressed: () => _update(
-                  buffer: MoneyField.read(_buffer) ?? Money.zero,
-                  success: 'Apartado guardado.',
-                ),
-                child: const Text('Guardar apartado'),
-              ),
+              if (_hasChanges)
+                FilledButton.tonal(
+                  onPressed: _saveBuffer,
+                  child: const Text('Guardar apartado'),
+                )
+              else if (_justSaved)
+                _SavedBadge(color: theme.colorScheme.primary),
             ],
           ),
           const SizedBox(height: 8),
@@ -138,6 +148,33 @@ class _HouseholdSectionState extends ConsumerState<HouseholdSection> {
           ),
         ],
       ],
+    );
+  }
+}
+
+class _SavedBadge extends StatelessWidget {
+  const new({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      liveRegion: true,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.check_circle, color: color, size: 20),
+            const SizedBox(width: 6),
+            Text(
+              'Apartado guardado',
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -16,29 +16,38 @@ módulo dentro de la capa** porque:
 ```text
 lib/
   main.dart                      # runApp(ProviderScope(...)) — nada más
-  bootstrap/                     # composition root: providers que conectan adapters → ports
-  core/                          # Result, Failure, utilidades Dart puras
+  bootstrap/                     # providers.dart (adapters → ports), use_cases.dart (escrituras)
+  core/                          # Result, Failure, StorageException (Dart puro)
   domain/
     shared/                      # Money, Percentage, YearMonth, DateRange, TrafficLight, Clock, IdGenerator
-    categories/  accounts/  transactions/  budgets/
-    wealth/                      # Asset (activos)
-    debts/                       # Debt, InterestRate, LoanProjector
-    savings/                     # SavingsGoal, EmergencyFund, FinanceSettings
-    investments/
-    insights/                    # análisis de gasto, métricas de salud financiera
+    categories/ accounts/ transactions/ budgets/
+    cycles/                      # PayCycle, PayCycleResolver, DailySpendingCap
+    fixed/                       # FixedMovement, FixedMovementScheduler, VariableBillEstimator
+    provisions/                  # Provision (pagos del año), ProvisionPlanner
+    wealth/ debts/ investments/ savings/
+    insights/                    # CashFlowCalculator, SpendingInsightsAnalyzer
+    markets/ voice/ wisdom/      # watchlist, parser de voz, frases
   application/
-    <modulo>/                    # un archivo por caso de uso + read models (dto)
+    common/                      # guardUseCase, ValidationCodes, cleanText
+    dashboard/                   # CycleSummary, CyclePulse, SpendingRadar, DailySpending, HomeSummary
+    backup/                      # ports BackupStore/BackupFiles + ExportBackup/ImportBackup
+    categories/ cycles/ fixed/ provisions/ transactions/ budgets/ debts/ savings/ wealth/
+    advisor/ insights/ markets/ reminders/ settings/ voice/
   infrastructure/
-    persistence/drift/           # AppDatabase, tablas, migraciones, DAOs
-    repositories/                # Drift<X>Repository implements <X>Repository
+    persistence/drift/           # AppDatabase (migraciones v1→v8), tablas
+    repositories/                # Drift<X>Repository implements <X>Repository + storage_guard
     mappers/                     # fila drift ↔ entidad
-    system/                      # SystemClock, UuidIdGenerator
+    backup/                      # DriftBackupStore (JSON), AndroidBackupFiles (canal nativo)
+    notifications/ speech/ markets/ system/
   presentation/
-    app/                         # MaterialApp, tema, navegación (NavigationBar)
-    shared/                      # MoneyText, TrafficLightBadge, formatters intl
-    home/ transactions/ quick_expense/ budgets/ wealth/ debts/ savings/ investments/ insights/ settings/
-      screens/ widgets/ controllers/
-test/                            # espejo de lib/ + architecture_test.dart
+    app/                         # FinanceApp, AppTheme, AppShell (barra de iconos + FAB voz/+)
+    shared/                      # data_providers, formatters, CategoryStyle, DonutChart, form_widgets…
+    home/ transactions/ quick_entry/ days/ budgets/ wealth/ debts/ goals/ provisions/ fixed/
+    categories/ cfo/ insights/ settings/
+android/app/src/main/
+  kotlin/.../MainActivity.kt     # canales nativos (dictado, archivos de respaldo)
+  res/                           # icono adaptativo Roka (drawable + mipmap-anydpi-v26) y PNG legados
+test/                            # espejo de lib/ + architecture_test.dart + support/
 docs/
 ```
 
@@ -53,7 +62,9 @@ presentation ──▶ application ──▶ domain ◀── infrastructure
 - `domain`: Dart puro. Entidades, VOs, ports, servicios de cálculo. Sin I/O.
 - `application`: orquesta ports + servicios. Clases planas con `call()`. Sin Riverpod.
 - `infrastructure`: implementa ports. drift solo aquí.
-- `presentation`: Riverpod `Notifier`/`AsyncNotifier` llaman casos de uso; widgets solo pintan.
+- `presentation`: lecturas con `StreamProvider`/`FutureProvider` en `shared/data_providers.dart`
+  (observan ports y componen builders de `application/dashboard`); escrituras llamando casos de uso
+  de `bootstrap/use_cases.dart`. Los widgets solo pintan y traducen `Failure` a texto.
 
 ### Ports & Adapters (ejemplo)
 
@@ -86,6 +97,52 @@ traducen excepciones de drift a `StorageException` (core), cuyo `toString` no in
   Todo se normaliza a tasa efectiva mensual: `EM = (1 + EA)^(1/12) − 1`; `EM = NMV / 12`.
 - Amortización francesa (cuota fija). Seguros/comisiones = cargo mensual fijo que no abona a capital.
 
+### Navegación
+`AppShell`: barra inferior flotante solo con iconos (Inicio · Movimientos · Presupuesto ·
+Patrimonio · Metas · Tu CFO) en un `IndexedStack`; atrás desde otra sección vuelve a Inicio.
+Botones de voz y `+` en todas las secciones. AppBar: modo claro/oscuro, Análisis, Ajustes.
+Ajustes es una hoja inferior con: día de pago, avisos, mi hogar, cuadre, fijos, categorías,
+pagos del año, copia de seguridad y reiniciar mes.
+
+### Canales nativos (Android, `MainActivity.kt`)
+Se prefiere un canal pequeño a un paquete grande cuando la necesidad es puntual.
+
+| Canal | Métodos | Uso |
+|---|---|---|
+| `finance_app/dictation` | `recognize`, `diagnose` | Ventana de dictado de Google como respaldo de `speech_to_text` |
+| `finance_app/backup` | `save(fileName, content)` → bool, `open()` → String? | Selector de archivos (SAF: `ACTION_CREATE_DOCUMENT` / `ACTION_OPEN_DOCUMENT`); E/S en hilo aparte |
+
+Cancelar devuelve `false`/`null`; errores como `PlatformException` → el adapter los convierte
+en `StorageException`.
+
+### Copia de seguridad (exportar / importar)
+**Formato: JSON**, no CSV: los datos están enlazados (movimiento→fijo/deuda/apartado/categoría,
+abono→deuda, aporte→meta) y un CSV por tabla pierde esas relaciones. Un solo archivo
+`finanzas-copia-AAAA-MM-DD.json`:
+
+```json
+{ "app": "finance_app", "format": 1, "schemaVersion": 8, "exportedAt": "…",
+  "data": { "categories": [...], "accounts": [...], "debts": [...], "savingsGoals": [...],
+            "fixedMovements": [...], "provisions": [...], "transactions": [...],
+            "budgetLines": [...], "assets": [...], "extraPayments": [...],
+            "goalContributions": [...], "investments": [...], "settings": {...} } }
+```
+
+Filas = `toJson()` de drift (campos camelCase, montos en centavos, fechas en ms epoch).
+`DriftBackupStore` es infraestructura a propósito: serializa filas, no entidades, para no
+mantener un segundo mapper por tabla. Reglas de importación (una transacción, todo o nada):
+1. Mismo id ⇒ se omite.
+2. Si no, **clave natural** por tabla (p. ej. movimiento = tipo + valor + día + categoría +
+   descripción; fijo = nombre + tipo + categoría). Coincide ⇒ se omite y el id de la copia se
+   **remapea** al local, para que los registros que lo referencian (`refs`) apunten bien.
+   Las coincidencias se consumen una a una (2 cafés iguales en la copia y 1 local ⇒ entra 1).
+3. Lo demás se inserta (`insertOrIgnore`: choques con claves únicas cuentan como omitidos).
+4. Ajustes: se reemplazan por los de la copia.
+
+Orden de secciones = orden de llaves foráneas. Archivo ajeno, dañado (campos faltantes, enums
+desconocidos) o de versión más nueva ⇒ `InvalidBackupException` ⇒ `ValidationFailure`
+(`backupInvalid` / `backupFromNewerVersion`).
+
 ## Dependencias (verificadas en pub.dev el 2026-10-02, compatibles con Dart 3.13.4)
 
 | Paquete | Versión | Capa | Motivo |
@@ -95,6 +152,8 @@ traducen excepciones de drift a `StorageException` (core), cuyo `toString` no in
 | `flutter_riverpod` | 3.4.3 | presentation/bootstrap | estado + DI en uno; evita `get_it` redundante |
 | `intl` + `flutter_localizations` (SDK) | 0.20.3 | presentation | formato COP / fechas es-CO |
 | `uuid` | 4.6.0 | infra | IDs portables a cloud |
+| `flutter_local_notifications` + `timezone` + `flutter_timezone` | ^22.3.1 / ^0.11.1 / ^5.1.1 | infra | Recordatorio diario y avisos inteligentes programados |
+| `speech_to_text` | ^7.5.0 | infra | Dictado en el dispositivo (`onDevice`) |
 | `very_good_analysis` (dev) | 11.0.0 | — | lints estrictos (sustituye `flutter_lints`) |
 
 Descartados / diferidos:
@@ -102,7 +161,8 @@ Descartados / diferidos:
   (drift actual empaqueta SQLite vía build hooks).
 - `get_it`: Riverpod ya hace DI. `go_router`: `Navigator` + `NavigationBar` bastan en v1.
 - `decimal`: `Money` en enteros es suficiente. `mocktail`: preferimos fakes en memoria.
-- `fl_chart` (1.2.0): se decide en Fase 12; si barras/donut simples bastan, se dibujan con widgets.
+- `fl_chart`: descartado. Dona, barras diarias y araña se dibujan con `CustomPainter` propio.
+- `file_picker`/`share_plus`: descartados para el respaldo; basta el canal SAF nativo.
 - Sin riverpod_generator/freezed: menos codegen; `copyWith` manual en entidades pequeñas.
 
 ## Herramientas Claude Code del proyecto

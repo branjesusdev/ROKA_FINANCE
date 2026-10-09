@@ -35,7 +35,7 @@ class ProvisionsScreen extends ConsumerWidget {
         onPressed: () =>
             showFormSheet<void>(context, const ProvisionFormSheet()),
         icon: const Icon(Icons.add),
-        label: const Text('Nuevo pago'),
+        label: const Text('Nuevo'),
       ),
       body: AsyncView(
         value: ref.watch(cycleSummaryProvider),

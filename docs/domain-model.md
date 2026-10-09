@@ -1,4 +1,6 @@
-# Modelo de dominio inicial
+# Modelo de dominio
+
+Primera versión escrita en la fase 1; actualizada con lo implementado hasta el esquema v8.
 
 ## Inconsistencias detectadas en los requisitos y decisión propuesta
 
@@ -25,9 +27,9 @@
 
 | Entidad | Campos clave |
 |---|---|
-| `Category` | id, name, kind (`income`/`expense`), iconKey, colorKey, sortOrder, isArchived, countsAsSaving |
+| `Category` | id, name, kind (`income`/`expense`), iconKey (icono + color vía `CategoryStyle`), sortOrder, isArchived (ocultar = archivar; nunca se borran), countsAsSaving. Semillas con ids fijos `seed-…`; el usuario crea las suyas (`CreateCategory`, nombre único por tipo sin mayúsculas) |
 | `Account` | id, name, type (`cash`/`bank`/`card`/`other`) |
-| `Transaction` | id, kind, amount: Money, categoryId, date, description?, accountId?, nature? (solo gasto), notes?, debtId?, createdAt |
+| `Transaction` | id, kind, amount: Money, categoryId, date, description?, accountId?, nature? (solo gasto), notes?, debtId?, provisionId? (apartado), fixedMovementId? (fijo que lo generó), createdAt |
 | `BudgetLine` | id, period: YearMonth, categoryId, limit: Money |
 | `Asset` | id, name, type (`cash`/`bankAccount`/`vehicle`/`property`/`other`), currentValue, valuedAt, notes? |
 | `Debt` | id, name, type (`bankLoan`/`creditCard`/`personalLoan`/`other`), originalAmount, currentBalance, notes?, terms?: `LoanTerms` |
@@ -37,18 +39,23 @@
 | `EmergencyPlan` (VO) | essentialMonthlyExpenses, targetMonths → target = producto |
 | `GoalContribution` | id, goalId, amount, date (valor actual de la meta = Σ aportes) |
 | `Investment` | id, name, type (`fund`/`stocks`/`fixedTerm` (CDT)/`crypto`/`other`), investedAmount, currentValue, date, notes? |
-| `FinanceSettings` | savingsTargetRate, trafficLightThresholds, smallExpenseThreshold, payday (def. 20), dailyReminder, reminderHour (def. 18) |
+| `FinanceSettings` | savingsTargetRate, thresholds, smallExpenseThreshold, payday (def. 20), dailyReminder, reminderHour/Minute, smartNotifications, dependents, soloProvider, kidsMonthlyBuffer ("Mi hogar"), appearance (sistema/claro/oscuro). Fila única |
 | `PayCycle` (VO) | payday, start, endExclusive. Ciclo de sueldo: día de pago → día anterior al siguiente pago |
-| `FixedMovement` | id, name, kind, amount, categoryId, dayOfMonth, isActive, lastPostedOn? (evita duplicados) |
+| `FixedMovement` | id, name, kind, amount, categoryId, dayOfMonth, isActive, isVariable (factura de valor variable: espera el valor real), lastPostedOn? (evita duplicados) |
+| `Provision` | id, name, amount, everyMonths, nextDue, categoryId, isActive. "Pagos del año" (SOAT, colegio, gimnasio trimestral): se aparta una cuota por ciclo |
 
 Categorías semilla — gasto: Alimentación, Vivienda, Transporte, Educación, Salud, Entretenimiento,
 Deudas, Servicios, Compras, Hijos/Familia, Inversiones (`countsAsSaving`), Otros, Deporte (v2).
 Ingreso: Salario, Ingresos adicionales, Ingresos extraordinarios, Otros.
+Añadidas por migración: Mercado (v3), Apartados (v5), y dos archivadas que solo usa el cuadre:
+"Gastos sin registrar" (gasto) y "Saldo inicial / ajuste" (ingreso, no cuenta como ingreso) (v4).
 
 ## Ports (repositorios, en `domain/<modulo>/`)
 `CategoryRepository`, `AccountRepository`, `TransactionRepository`, `BudgetRepository`,
 `AssetRepository`, `DebtRepository` (incluye extra payments), `SavingsGoalRepository`
-(incluye aportes), `InvestmentRepository`, `SettingsRepository`, `FixedMovementRepository`. Todos con `Future` para comandos
+(incluye aportes), `InvestmentRepository`, `SettingsRepository`, `FixedMovementRepository`, `ProvisionRepository`.
+Ports en `application/` (no son repositorios de dominio): `BackupStore`, `BackupFiles`,
+`ReminderScheduler`, `SpeechInput`; en `domain/markets`: `MarketDataSource`. Todos con `Future` para comandos
 y `Stream watch*()` para lecturas que la UI observa. Fallos de almacenamiento → `StorageException`.
 `BudgetRepository.save` reemplaza el límite si ya existe línea para (mes, categoría).
 
@@ -68,6 +75,14 @@ y `Stream watch*()` para lecturas que la UI observa. Fallos de almacenamiento �
 - `FixedMovementScheduler` — fijos vencidos (registrar ya) y pendientes del ciclo actual.
 - `VoiceEntryParser` / `SpokenAmountParser` — frase dictada → tipo, monto, categoría,
   descripción, "ayer". Aritmética entera.
+- `PayCycleResolver` — el ciclo lo marca el sueldo real (ingreso en Salario) asociado al día de
+  pago más cercano: si llega antes, el ciclo arranca ese día; si llega tarde, el anterior se alarga.
+- `DailySpendingCap` — tope del día a día: lo que queda tras fijos pendientes, gastos del mes y
+  ahorro, repartido entre los días que faltan (no baja mientras gastas hoy).
+- `VariableBillEstimator` — estimado de facturas variables: promedio de las últimas, redondeado
+  hacia arriba.
+- `ProvisionPlanner` — cuánto apartar por ciclo y por día para cada pago del año; atraso.
+- `EssentialExpenseEstimator` — gastos esenciales mensuales sugeridos para el fondo de emergencia.
 - `SpendingInsightsAnalyzer` — participación por categoría, variación vs mes anterior, conteo y
   suma de compras pequeñas, uso de presupuesto. Devuelve `Insight` tipados (no strings): la UI los
   redacta en lenguaje descriptivo.
@@ -84,7 +99,23 @@ y `Stream watch*()` para lecturas que la UI observa. Fallos de almacenamiento �
 | investments | `UpsertInvestment`, `DeleteInvestment`, `GetPortfolioSummary` |
 | fixed / cycle | `SaveFixedMovement`, `DeleteFixedMovement`, `PostDueFixedMovements` (al abrir/reanudar la app), `UpdatePayday`, `CycleSummaryBuilder` (Home: lo que queda del sueldo) |
 | reminders / voice | `SyncDailyReminder` (port `ReminderScheduler`), port `SpeechInput` (reconocimiento en el dispositivo) |
+| categories (implementado) | `CreateCategory` (reactiva una oculta con el mismo nombre), `UpdateCategory` (renombrar, icono, ocultar/mostrar) |
+| cycles | `LoadCurrentCycle`, `ReconcileBalance` ("Cuadrar con mi dinero real"), `ResetCycleMovements` (con deshacer) |
+| provisions | aportes, devoluciones y "Ya lo pagué" sobre lo apartado |
+| backup | `ExportBackup` (`Ok(false)` = canceló), `ImportBackup` (`Ok(null)` = canceló; `BackupImportReport`: agregados, omitidos, movimientos) — ver `architecture.md` |
+| dashboard (read models) | `CycleSummaryBuilder` (Home), `CyclePulseBuilder` ("Así vas este ciclo"), `SpendingRadarBuilder` ("Tu huella de gasto"), `DailySpendingBuilder` + `CycleHistoryBuilder` (gasto por día, histórico de ciclos) |
+| advisor | `CfoBrief` (consejos accionables: tope de hoy, compras pequeñas, dinero quieto, fondo de emergencia, deuda cara) |
 | insights | `GetSpendingInsights`, `GetCategoryBreakdown`, `GetFinancialHealth`, `GetHomeSummary` (compone los anteriores) |
+
+## Lecturas descriptivas del ciclo
+- **Así vas este ciclo** (`CyclePulse`): día a día gastado vs ciclo pasado a la misma altura,
+  promedio diario, categoría principal, gasto más grande, días sin gastos, día de la semana con
+  más gasto (desde 14 días), días con registros.
+- **Tu huella de gasto** (`SpendingRadar`): araña con dos formas (este ciclo vs el pasado en los
+  mismos días). Ejes: hasta 6 categorías con más gasto (mínimo 3) o los 7 días de la semana.
+  Solo gasto variable: excluye fijos (`fixedMovementId`), ahorro, deudas y "Gastos sin registrar".
+  Frases: punta de la huella, mayor subida y mayor bajada (valor y %).
+- **Detalle por categoría**: tocar una categoría bajo la dona abre sus movimientos del ciclo con fecha.
 
 ## UX clave: registro rápido de gasto
 FAB `+` en Home → bottom sheet con monto enfocado (teclado numérico, formato `$5.000` en vivo) →
@@ -92,5 +123,8 @@ chips de 6 categorías frecuentes (últimos 30 días; semilla si no hay datos) �
 Fecha = hoy, cuenta = última usada. Descripción / fecha / notas en "Más detalles" colapsado.
 Objetivo: registrar en < 5 s con 2 toques + dígitos.
 
-Navegación (`NavigationBar`, 5 destinos): Inicio · Movimientos · Presupuesto · Patrimonio · Metas.
-Análisis y salud financiera se abren desde tarjetas del Home.
+Desde el registro se puede crear una categoría nueva (chip "+ Nueva"), que queda seleccionada.
+También se registra por voz ("gasté 20 mil en almuerzo ayer") con `VoiceEntryParser`.
+
+Navegación: barra de iconos con 6 secciones (Inicio · Movimientos · Presupuesto · Patrimonio ·
+Metas · Tu CFO). Análisis desde el AppBar y desde el Home.

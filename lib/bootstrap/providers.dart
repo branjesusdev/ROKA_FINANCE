@@ -1,3 +1,4 @@
+import 'package:finance_app/application/backup/backup_ports.dart';
 import 'package:finance_app/application/reminders/reminder_scheduler.dart';
 import 'package:finance_app/application/voice/speech_input.dart';
 import 'package:finance_app/domain/accounts/account_repository.dart';
@@ -14,6 +15,8 @@ import 'package:finance_app/domain/shared/clock.dart';
 import 'package:finance_app/domain/shared/id_generator.dart';
 import 'package:finance_app/domain/transactions/transaction_repository.dart';
 import 'package:finance_app/domain/wealth/asset_repository.dart';
+import 'package:finance_app/infrastructure/backup/android_backup_files.dart';
+import 'package:finance_app/infrastructure/backup/drift_backup_store.dart';
 import 'package:finance_app/infrastructure/markets/yahoo_market_data_source.dart';
 import 'package:finance_app/infrastructure/notifications/local_reminder_scheduler.dart';
 import 'package:finance_app/infrastructure/persistence/drift/app_database.dart';
@@ -103,4 +106,12 @@ final speechInputProvider = Provider<SpeechInput>((ref) => DeviceSpeechInput());
 /// Precios públicos de mercado (solo envía el símbolo consultado).
 final marketDataSourceProvider = Provider<MarketDataSource>(
   (ref) => YahooMarketDataSource(),
+);
+
+final backupStoreProvider = Provider<BackupStore>(
+  (ref) => DriftBackupStore(ref.watch(appDatabaseProvider)),
+);
+
+final backupFilesProvider = Provider<BackupFiles>(
+  (ref) => const AndroidBackupFiles(),
 );

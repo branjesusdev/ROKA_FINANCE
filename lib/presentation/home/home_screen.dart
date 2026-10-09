@@ -8,6 +8,7 @@ import 'package:finance_app/presentation/home/widgets/daily_cap_card.dart';
 import 'package:finance_app/presentation/home/widgets/kind_toggle.dart';
 import 'package:finance_app/presentation/home/widgets/pending_bills_card.dart';
 import 'package:finance_app/presentation/home/widgets/provisions_card.dart';
+import 'package:finance_app/presentation/home/widgets/spending_radar_card.dart';
 import 'package:finance_app/presentation/home/widgets/upcoming_fixed_card.dart';
 import 'package:finance_app/presentation/shared/async_view.dart';
 import 'package:finance_app/presentation/shared/data_providers.dart';
@@ -74,6 +75,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             kind: _kind,
             onOpenAnalysis: widget.onOpenAnalysis,
           ),
+          _spacing,
+          const SpendingRadarCard(),
           _spacing,
           UpcomingFixedCard(summary: summary),
           _spacing,

@@ -13,6 +13,9 @@ abstract final class ValidationCodes {
   static const hourOutOfRange = 'hour_out_of_range';
   static const monthsOutOfRange = 'months_out_of_range';
   static const notFound = 'not_found';
+  static const categoryExists = 'category_exists';
+  static const backupInvalid = 'backup_invalid';
+  static const backupFromNewerVersion = 'backup_from_newer_version';
 }
 
 Future<Result<T>> invalid<T>(String code) =>

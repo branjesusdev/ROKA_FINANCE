@@ -16,7 +16,7 @@ class FinanceApp extends ConsumerWidget {
     final appearance =
         ref.watch(settingsProvider).value?.appearance ?? Appearance.system;
     return MaterialApp(
-      title: 'Mis finanzas',
+      title: 'Roka',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),

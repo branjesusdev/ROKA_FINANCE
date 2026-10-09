@@ -95,7 +95,7 @@ class CategoryBreakdownCard extends StatelessWidget {
 }
 
 /// Lista compacta en una sola tarjeta. Muestra las primeras
-/// [_collapsedCount] y el resto al tocar "Ver todas".
+/// `_collapsedCount` y el resto al tocar "Ver todas".
 class _CategoryList extends StatefulWidget {
   const new({required this.totals, required this.cycle, required this.kind});
 

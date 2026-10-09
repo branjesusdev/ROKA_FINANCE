@@ -15,7 +15,7 @@
          No se envía ningún dato personal. -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="finance_app"
+        android:label="Roka"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

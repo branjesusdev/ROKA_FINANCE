@@ -1,5 +1,4 @@
 import 'package:finance_app/application/dashboard/cycle_summary.dart';
-import 'package:finance_app/domain/categories/category.dart';
 import 'package:finance_app/domain/cycles/pay_cycle.dart';
 import 'package:finance_app/domain/transactions/transaction.dart';
 import 'package:finance_app/presentation/shared/async_view.dart';
@@ -116,12 +115,10 @@ class CategoryMovementsSheet extends ConsumerWidget {
               )
             else
               for (final t in items)
-                TransactionTile(transaction: t, category: _category(category)),
+                TransactionTile(transaction: t, category: category),
           ],
         );
       },
     );
   }
-
-  Category? _category(Category? category) => category;
 }

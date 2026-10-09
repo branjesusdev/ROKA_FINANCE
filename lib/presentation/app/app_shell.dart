@@ -204,7 +204,6 @@ class _IconNavBar extends StatelessWidget {
   final ValueChanged<int> onSelected;
 
   static const _height = 64.0;
-  static const _inactive = Color(0xFF8E8E93);
 
   @override
   Widget build(BuildContext context) {
@@ -213,7 +212,9 @@ class _IconNavBar extends StatelessWidget {
       child: Container(
         height: _height,
         decoration: BoxDecoration(
-          color: AppTheme.ink,
+          color: Theme.of(context).brightness == Brightness.dark
+              ? AppTheme.inkOnDark
+              : AppTheme.ink,
           borderRadius: BorderRadius.circular(_height / 2),
         ),
         child: Row(
@@ -232,7 +233,9 @@ class _IconNavBar extends StatelessWidget {
                       i == selected
                           ? sections[i].selectedIcon
                           : sections[i].icon,
-                      color: i == selected ? Colors.white : _inactive,
+                      color: i == selected
+                          ? AppTheme.accent
+                          : AppTheme.inkMuted,
                       size: 26,
                     ),
                   ),

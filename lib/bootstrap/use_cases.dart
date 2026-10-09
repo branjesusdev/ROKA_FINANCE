@@ -1,4 +1,6 @@
+import 'package:finance_app/application/backup/backup_use_cases.dart';
 import 'package:finance_app/application/budgets/budget_use_cases.dart';
+import 'package:finance_app/application/categories/category_use_cases.dart';
 import 'package:finance_app/application/cycles/load_current_cycle.dart';
 import 'package:finance_app/application/cycles/reconcile_balance.dart';
 import 'package:finance_app/application/debts/debt_use_cases.dart';
@@ -247,4 +249,30 @@ final payProvisionProvider = Provider(
     clock: ref.watch(clockProvider),
     ids: ref.watch(idGeneratorProvider),
   ),
+);
+
+final exportBackupProvider = Provider(
+  (ref) => ExportBackup(
+    store: ref.watch(backupStoreProvider),
+    files: ref.watch(backupFilesProvider),
+    clock: ref.watch(clockProvider),
+  ),
+);
+
+final importBackupProvider = Provider(
+  (ref) => ImportBackup(
+    store: ref.watch(backupStoreProvider),
+    files: ref.watch(backupFilesProvider),
+  ),
+);
+
+final createCategoryProvider = Provider(
+  (ref) => CreateCategory(
+    categories: ref.watch(categoryRepositoryProvider),
+    ids: ref.watch(idGeneratorProvider),
+  ),
+);
+
+final updateCategoryProvider = Provider(
+  (ref) => UpdateCategory(ref.watch(categoryRepositoryProvider)),
 );

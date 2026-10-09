@@ -253,6 +253,11 @@ String failureMessage(Failure failure) => switch (failure) {
     ValidationCodes.monthsMustBePositive => 'Elige al menos 1 mes.',
     ValidationCodes.dayOutOfRange => 'Elige un día entre 1 y 31.',
     ValidationCodes.hourOutOfRange => 'Elige una hora válida.',
+    ValidationCodes.categoryExists => 'Ya tienes una categoría con ese nombre.',
+    ValidationCodes.backupInvalid =>
+      'Ese archivo no es una copia de la app o está dañado.',
+    ValidationCodes.backupFromNewerVersion =>
+      'La copia es de una versión más nueva. Actualiza la app.',
     _ => 'Revisa los datos.',
   },
   NotFoundFailure() => 'No se encontró el registro.',

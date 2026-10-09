@@ -3,6 +3,7 @@ import 'package:finance_app/application/dashboard/cycle_pulse.dart';
 import 'package:finance_app/application/dashboard/cycle_summary.dart';
 import 'package:finance_app/application/dashboard/daily_spending.dart';
 import 'package:finance_app/application/dashboard/home_summary.dart';
+import 'package:finance_app/application/dashboard/spending_radar.dart';
 import 'package:finance_app/application/insights/financial_health.dart';
 import 'package:finance_app/application/markets/load_watchlist.dart';
 import 'package:finance_app/bootstrap/providers.dart';
@@ -408,6 +409,27 @@ final cyclePulseProvider = FutureProvider<CyclePulse>((ref) async {
   );
   final categories = await ref.watch(categoriesProvider.future);
   return const CyclePulseBuilder().build(
+    cycle: cycle,
+    today: now,
+    cycleTransactions: await current,
+    previousCycle: previousCycle,
+    previousCycleTransactions: await previous,
+    savingCategoryIds: _savingIds(categories),
+  );
+});
+
+/// "Tu huella de gasto" (araña): este ciclo vs el pasado a esta altura.
+final spendingRadarProvider = FutureProvider<SpendingRadar>((ref) async {
+  final resolver = await ref.watch(payCycleResolverProvider.future);
+  final now = ref.watch(clockProvider).now();
+  final cycle = resolver.containing(now);
+  final previousCycle = resolver.previousOf(cycle);
+  final current = ref.watch(transactionsInRangeProvider(cycle.range).future);
+  final previous = ref.watch(
+    transactionsInRangeProvider(previousCycle.range).future,
+  );
+  final categories = await ref.watch(categoriesProvider.future);
+  return const SpendingRadarBuilder().build(
     cycle: cycle,
     today: now,
     cycleTransactions: await current,

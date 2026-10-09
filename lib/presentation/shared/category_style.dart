@@ -25,6 +25,35 @@ abstract final class CategoryStyle {
     'additional_income': (Icons.work, Color(0xFF4D7C0F)),
     'extraordinary_income': (Icons.card_giftcard, Color(0xFFA16207)),
     'other': (Icons.more_horiz, Color(0xFF6B7280)),
+    // Para categorías propias.
+    'pets': (Icons.pets, Color(0xFF92400E)),
+    'beauty': (Icons.content_cut, Color(0xFFF59E0B)),
+    'clothes': (Icons.checkroom, Color(0xFF7C2D12)),
+    'travel': (Icons.flight, Color(0xFF0E7490)),
+    'tech': (Icons.phone_iphone, Color(0xFF334155)),
+    'coffee': (Icons.local_cafe, Color(0xFF854D0E)),
+    'gifts': (Icons.redeem, Color(0xFFB45309)),
+    'car': (Icons.directions_car, Color(0xFF1E40AF)),
+    'fuel': (Icons.local_gas_station, Color(0xFFC2410C)),
+    'baby': (Icons.child_friendly, Color(0xFF0F766E)),
+    'subscriptions': (Icons.subscriptions, Color(0xFF1D4ED8)),
+    'savings': (Icons.savings, Color(0xFF166534)),
+    'business': (Icons.storefront, Color(0xFF3F6212)),
+    'church': (Icons.volunteer_activism, Color(0xFF57534E)),
+  };
+
+  /// Iconos que se pueden elegir al crear o editar una categoría.
+  static List<String> get choosableKeys => _styles.keys
+      .where((key) => !_reserved.contains(key))
+      .toList(growable: false);
+
+  /// Con significado especial en la app: no se ofrecen al elegir.
+  static const _reserved = {
+    'debts',
+    'investments',
+    'provisions',
+    'untracked',
+    'balance',
   };
 
   static const _fallback = Color(0xFF9E9E9E);

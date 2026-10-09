@@ -5,9 +5,11 @@ import 'package:finance_app/bootstrap/providers.dart';
 import 'package:finance_app/bootstrap/use_cases.dart';
 import 'package:finance_app/domain/cycles/pay_cycle.dart';
 import 'package:finance_app/domain/savings/finance_settings.dart';
+import 'package:finance_app/presentation/categories/categories_screen.dart';
 import 'package:finance_app/presentation/fixed/fixed_movements_screen.dart';
 import 'package:finance_app/presentation/home/widgets/reconcile_sheet.dart';
 import 'package:finance_app/presentation/provisions/provisions_screen.dart';
+import 'package:finance_app/presentation/settings/backup_section.dart';
 import 'package:finance_app/presentation/settings/household_section.dart';
 import 'package:finance_app/presentation/settings/reset_cycle_tile.dart';
 import 'package:finance_app/presentation/shared/data_providers.dart';
@@ -150,6 +152,20 @@ class SettingsSheet extends ConsumerWidget {
           ),
           ListTile(
             contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.category_outlined),
+            title: const Text('Categorías'),
+            subtitle: const Text('Crea las tuyas, renómbralas u ocúltalas'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context)
+              ..pop()
+              ..push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const CategoriesScreen(),
+                ),
+              ),
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.calendar_month),
             title: const Text('Pagos del año'),
             subtitle: const Text('SOAT, tecnomecánica, gimnasio, colegio…'),
@@ -162,6 +178,8 @@ class SettingsSheet extends ConsumerWidget {
                 ),
               ),
           ),
+          const Divider(),
+          const BackupSection(),
           const Divider(),
           const ResetCycleTile(),
         ],
@@ -208,7 +226,7 @@ class _ReminderStatus extends ConsumerWidget {
 
   static const _inexactWarning =
       'El teléfono no permite avisos a la hora exacta: pueden llegar tarde. '
-      'Actívalo en Ajustes › Apps › finance_app › Alarmas y recordatorios.';
+      'Actívalo en Ajustes › Apps › Roka › Alarmas y recordatorios.';
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

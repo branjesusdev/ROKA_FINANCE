@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Roka: roca facetada (solidez) con una línea que sube (crecimiento).
+     Lienzo 108x108; todo dentro de la zona segura central de 66. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Cara izquierda (luz) -->
+    <path
+        android:fillColor="#D4F08F"
+        android:pathData="M34,38 L54,28 L50,54 L26,58 Z" />
+    <!-- Cara derecha -->
+    <path
+        android:fillColor="#B3DD62"
+        android:pathData="M54,28 L78,40 L82,66 L50,54 Z" />
+    <!-- Base (sombra) -->
+    <path
+        android:fillColor="#8CBF3F"
+        android:pathData="M26,58 L50,54 L82,66 L64,82 L36,80 Z" />
+    <!-- Tendencia que sube, tallada en la roca -->
+    <path
+        android:strokeColor="#102521"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M35,70 L46,60 L56,66 L70,52" />
+    <path
+        android:fillColor="#102521"
+        android:pathData="M76,46 L64,48 L74,58 Z" />
+</vector>

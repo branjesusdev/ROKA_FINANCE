@@ -22,6 +22,7 @@ abstract final class Formatters {
   static final _longDate = DateFormat("EEEE d 'de' MMMM", locale);
   static final _month = DateFormat("MMMM 'de' y", locale);
   static final _weekday = DateFormat('EEEE', locale);
+  static final _weekdayShort = DateFormat('EEE', locale);
   static final _pesos = NumberFormat.decimalPattern(locale);
 
   static String money(Money money) =>
@@ -45,6 +46,11 @@ abstract final class Formatters {
     final name = _weekday.format(DateTime(2026, 1, 4 + weekday));
     return name.endsWith('s') ? name : '${name}s';
   }
+
+  /// 1 = lunes … 7 = domingo, abreviado ("Lun").
+  static String weekdayShort(int weekday) => _capitalize(
+    _weekdayShort.format(DateTime(2026, 1, 4 + weekday)).replaceAll('.', ''),
+  );
 
   static String _capitalize(String text) =>
       text.isEmpty ? text : text[0].toUpperCase() + text.substring(1);

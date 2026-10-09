@@ -8,6 +8,7 @@ import 'package:finance_app/core/result.dart';
 import 'package:finance_app/domain/categories/category.dart';
 import 'package:finance_app/domain/shared/money.dart';
 import 'package:finance_app/domain/transactions/transaction.dart';
+import 'package:finance_app/presentation/categories/category_form.dart';
 import 'package:finance_app/presentation/quick_entry/voice_entry_sheet.dart';
 import 'package:finance_app/presentation/shared/category_picker.dart';
 import 'package:finance_app/presentation/shared/data_providers.dart';
@@ -95,6 +96,13 @@ class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
     _amount.dispose();
     _description.dispose();
     super.dispose();
+  }
+
+  Future<void> _createCategory(CategoryKind kind) async {
+    final created = await showCategoryForm(context, kind: kind);
+    if (created != null && mounted) {
+      setState(() => _categoryId = created.id);
+    }
   }
 
   @override
@@ -198,8 +206,11 @@ class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
               categories: visible,
               selectedId: selectedId,
               onSelected: (id) => setState(() => _categoryId = id),
-              trailing: all.length > visible.length || _showAllCategories
-                  ? ActionChip(
+              trailing: Wrap(
+                spacing: 8,
+                children: [
+                  if (all.length > visible.length || _showAllCategories)
+                    ActionChip(
                       avatar: Icon(
                         _showAllCategories
                             ? Icons.expand_less
@@ -210,8 +221,14 @@ class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
                       onPressed: () => setState(
                         () => _showAllCategories = !_showAllCategories,
                       ),
-                    )
-                  : null,
+                    ),
+                  ActionChip(
+                    avatar: const Icon(Icons.add, size: 18),
+                    label: const Text('Nueva'),
+                    onPressed: () => _createCategory(categoryKind),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 16),
             TextField(

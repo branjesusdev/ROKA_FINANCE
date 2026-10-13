@@ -98,11 +98,35 @@ traducen excepciones de drift a `StorageException` (core), cuyo `toString` no in
 - Amortización francesa (cuota fija). Seguros/comisiones = cargo mensual fijo que no abona a capital.
 
 ### Navegación
-`AppShell`: barra inferior flotante solo con iconos (Inicio · Movimientos · Presupuesto ·
-Patrimonio · Metas · Tu CFO) en un `IndexedStack`; atrás desde otra sección vuelve a Inicio.
-Botones de voz y `+` en todas las secciones. AppBar: modo claro/oscuro, Análisis, Ajustes.
-Ajustes es una hoja inferior con: día de pago, avisos, mi hogar, cuadre, fijos, categorías,
-pagos del año, copia de seguridad y reiniciar mes.
+`AppShell`: barra inferior flotante con **5 destinos con icono y nombre** (Inicio · Movimientos
+· Plan · Patrimonio · Tu CFO) en un `IndexedStack`; Plan = pestañas Presupuesto | Metas. Atrás
+desde otra sección vuelve a Inicio. Botones de voz y `+` en todas las secciones. AppBar: modo
+claro/oscuro, Análisis, Ajustes. Ajustes es una hoja inferior con: día de pago, avisos, Tu CFO
+con IA, mi hogar, cuadre, fijos, categorías, pagos del año, copia de seguridad y reiniciar mes.
+
+Al abrir/volver a la app: registra fijos vencidos, reprograma avisos (con las alertas por
+reglas), guarda la foto mensual del patrimonio (`RecordNetWorth`) y, si toca, corre la revisión
+periódica de la IA (`RunAiReview.isDue`) y muestra su resultado como notificación.
+
+### Tu CFO con IA (opt-in)
+- **Reglas primero**: dinero libre (`MoneyOverviewBuilder`), reservas de fijos
+  (`FixedCoverageCalculator`), alertas (`FinancialAlertsBuilder`) y reparto de extraordinarios
+  (`WindfallPlanner`) son deterministas, sin red y con tests. La IA solo interpreta.
+- **Ports** (`application/advisor/ai_ports.dart`): `AiAdvisor` (adapter `GroqAiAdvisor`,
+  `dart:io` HTTP, modelo `openai/gpt-oss-120b`, JSON mode) y `AiKeyStore` (adapter
+  `DriftAiKeyStore`). Revisiones: port de dominio `AiReviewRepository` (tabla `ai_reviews`,
+  últimas 12).
+- **Qué sale del teléfono**: solo `FinancialSnapshot` (totales por categoría, fijos, apartados,
+  deudas con tasa, bienes por tipo, metas, patrimonio, precios de la lista si se pidieron y las
+  alertas). Sin descripciones, notas, movimientos individuales ni nombres escritos por el
+  usuario (deudas = "Deuda 1 (tipo)"). Visible en Ajustes › Tu CFO con IA antes de activar.
+- **Llave**: la pega el usuario; vive en la tabla `ai_secrets` (base privada de la app). No está
+  en el código/APK, no va en la copia de seguridad y nunca se loguea.
+- **Periodicidad real**: diaria/semanal/mensual, evaluada al abrir la app (Android no garantiza
+  tareas en segundo plano). Las alertas por reglas sí se programan como notificación local
+  (resumen a las 8 p. m. y facturas vencidas a las 9 a. m.).
+- Nada modifica datos sin confirmación: el reparto de un extraordinario se aplica solo con las
+  partes que el usuario marca (`ApplyWindfallSlices`).
 
 ### Canales nativos (Android, `MainActivity.kt`)
 Se prefiere un canal pequeño a un paquete grande cuando la necesidad es puntual.
@@ -121,11 +145,12 @@ abono→deuda, aporte→meta) y un CSV por tabla pierde esas relaciones. Un solo
 `finanzas-copia-AAAA-MM-DD.json`:
 
 ```json
-{ "app": "finance_app", "format": 1, "schemaVersion": 8, "exportedAt": "…",
+{ "app": "finance_app", "format": 1, "schemaVersion": 9, "exportedAt": "…",
   "data": { "categories": [...], "accounts": [...], "debts": [...], "savingsGoals": [...],
             "fixedMovements": [...], "provisions": [...], "transactions": [...],
             "budgetLines": [...], "assets": [...], "extraPayments": [...],
-            "goalContributions": [...], "investments": [...], "settings": {...} } }
+            "goalContributions": [...], "investments": [...], "netWorthSnapshots": [...],
+            "settings": {...} } }
 ```
 
 Filas = `toJson()` de drift (campos camelCase, montos en centavos, fechas en ms epoch).
@@ -137,7 +162,11 @@ mantener un segundo mapper por tabla. Reglas de importación (una transacción, 
    **remapea** al local, para que los registros que lo referencian (`refs`) apunten bien.
    Las coincidencias se consumen una a una (2 cafés iguales en la copia y 1 local ⇒ entra 1).
 3. Lo demás se inserta (`insertOrIgnore`: choques con claves únicas cuentan como omitidos).
-4. Ajustes: se reemplazan por los de la copia.
+4. Ajustes: se reemplazan por los de la copia; los campos que la copia no trae (p. ej. los de IA
+   en una copia v8) conservan el valor del teléfono.
+5. **Copias viejas**: columnas nuevas no nulas sin dato toman `_Section.defaults`
+   (`test/fixtures/backup_v8.json` lo verifica). No se exportan `ai_secrets` (secreto) ni
+   `ai_reviews` (derivadas).
 
 Orden de secciones = orden de llaves foráneas. Archivo ajeno, dañado (campos faltantes, enums
 desconocidos) o de versión más nueva ⇒ `InvalidBackupException` ⇒ `ValidationFailure`

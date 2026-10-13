@@ -1,3 +1,4 @@
+import 'package:finance_app/application/advisor/financial_alerts.dart';
 import 'package:finance_app/application/dashboard/cycle_summary.dart';
 import 'package:finance_app/application/reminders/reminder_planner.dart';
 import 'package:finance_app/application/reminders/reminder_scheduler.dart';
@@ -152,5 +153,48 @@ void main() {
     await TestReminder(scheduler: scheduler, clock: clock).call();
     expect(scheduler.shown, hasLength(1));
     expect(scheduler.scheduled.last.at, now.add(const Duration(minutes: 1)));
+  });
+
+  group('resumen de alertas', () {
+    FinancialAlert alert(String title, AlertSeverity severity) =>
+        FinancialAlert(
+          key: title,
+          kind: AlertKind.overBudget,
+          severity: severity,
+          title: title,
+          detail: '',
+          action: 'Haz algo',
+        );
+
+    test('un solo aviso a las 8 p. m. con lo urgente', () {
+      final reminders = planner.plan(
+        settings: const FinanceSettings(),
+        now: now,
+        alerts: [
+          alert('Te faltan para el arriendo', AlertSeverity.critical),
+          alert('Comida subió', AlertSeverity.warning),
+          alert('Deuda cara', AlertSeverity.info),
+        ],
+      );
+      final digest = reminders.where(
+        (r) => r.id == ReminderPlanner.alertsDigestId,
+      );
+      expect(digest.single.title, 'Te faltan para el arriendo');
+      expect(digest.single.body, contains('Comida subió'));
+      expect(digest.single.body, isNot(contains('Deuda cara')));
+      expect(digest.single.at.hour, ReminderPlanner.alertsDigestHour);
+    });
+
+    test('sin nada urgente no avisa', () {
+      final reminders = planner.plan(
+        settings: const FinanceSettings(),
+        now: now,
+        alerts: [alert('Deuda cara', AlertSeverity.info)],
+      );
+      expect(
+        reminders.map((r) => r.id),
+        isNot(contains(ReminderPlanner.alertsDigestId)),
+      );
+    });
   });
 }

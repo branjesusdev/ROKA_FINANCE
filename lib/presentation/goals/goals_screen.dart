@@ -28,7 +28,7 @@ class GoalsScreen extends ConsumerWidget {
     final others = items.where((i) => i.goal.type != GoalType.emergency);
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 160),
       children: [
         if (summary != null) ...[
           SavingsCard(savings: summary.savings, mainGoal: null),

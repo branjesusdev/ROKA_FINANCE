@@ -6,6 +6,21 @@ import 'package:meta/meta.dart';
 /// Apariencia de la app: la del teléfono, clara u oscura.
 enum Appearance { system, light, dark }
 
+/// Cada cuánto "Tu CFO con IA" revisa tus finanzas (al abrir la app).
+enum ReviewFrequency {
+  daily(Duration(days: 1)),
+  weekly(Duration(days: 7)),
+  monthly(Duration(days: 30));
+
+  new(this.interval);
+
+  final Duration interval;
+
+  /// `true` si ya pasó el intervalo desde [last] (o nunca se revisó).
+  bool isDue({required DateTime? last, required DateTime now}) =>
+      last == null || !now.isBefore(last.add(interval));
+}
+
 /// Preferencias configurables por el usuario.
 @immutable
 final class FinanceSettings {
@@ -22,6 +37,8 @@ final class FinanceSettings {
     this.soloProvider = false,
     this.kidsMonthlyBuffer = Money.zero,
     this.appearance = Appearance.system,
+    this.aiEnabled = false,
+    this.aiReviewFrequency = ReviewFrequency.weekly,
   });
 
   /// Referencia (no obligación): 10% del ingreso.
@@ -109,6 +126,11 @@ final class FinanceSettings {
 
   final Appearance appearance;
 
+  /// El usuario aceptó enviar un resumen (sin descripciones) al proveedor
+  /// de IA. Apagado por defecto.
+  final bool aiEnabled;
+  final ReviewFrequency aiReviewFrequency;
+
   bool get hasDependents => dependents > 0;
 
   /// Meses de gastos esenciales que debería cubrir el fondo de emergencia.
@@ -137,6 +159,8 @@ final class FinanceSettings {
     bool? soloProvider,
     Money? kidsMonthlyBuffer,
     Appearance? appearance,
+    bool? aiEnabled,
+    ReviewFrequency? aiReviewFrequency,
   }) => FinanceSettings(
     savingsTargetRate: savingsTargetRate ?? this.savingsTargetRate,
     thresholds: thresholds ?? this.thresholds,
@@ -150,6 +174,8 @@ final class FinanceSettings {
     soloProvider: soloProvider ?? this.soloProvider,
     kidsMonthlyBuffer: kidsMonthlyBuffer ?? this.kidsMonthlyBuffer,
     appearance: appearance ?? this.appearance,
+    aiEnabled: aiEnabled ?? this.aiEnabled,
+    aiReviewFrequency: aiReviewFrequency ?? this.aiReviewFrequency,
   );
 
   @override
@@ -166,7 +192,9 @@ final class FinanceSettings {
       other.dependents == dependents &&
       other.soloProvider == soloProvider &&
       other.kidsMonthlyBuffer == kidsMonthlyBuffer &&
-      other.appearance == appearance;
+      other.appearance == appearance &&
+      other.aiEnabled == aiEnabled &&
+      other.aiReviewFrequency == aiReviewFrequency;
 
   @override
   int get hashCode => Object.hash(
@@ -182,5 +210,7 @@ final class FinanceSettings {
     soloProvider,
     kidsMonthlyBuffer,
     appearance,
+    aiEnabled,
+    aiReviewFrequency,
   );
 }

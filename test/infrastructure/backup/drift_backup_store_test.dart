@@ -1,11 +1,17 @@
 import 'dart:convert';
+import 'dart:io';
+
+import 'package:drift/drift.dart' hide isNotNull, isNull;
 
 import 'package:finance_app/application/backup/backup_ports.dart';
 import 'package:finance_app/domain/fixed/fixed_movement.dart';
+import 'package:finance_app/domain/savings/finance_settings.dart';
 import 'package:finance_app/domain/shared/money.dart';
 import 'package:finance_app/domain/transactions/transaction.dart';
 import 'package:finance_app/infrastructure/backup/drift_backup_store.dart';
 import 'package:finance_app/infrastructure/persistence/drift/app_database.dart';
+import 'package:finance_app/infrastructure/repositories/drift_asset_repository.dart';
+import 'package:finance_app/infrastructure/repositories/drift_category_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_fixed_movement_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_settings_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_transaction_repository.dart';
@@ -176,5 +182,81 @@ void main() {
       throwsA(isA<InvalidBackupException>()),
     );
     expect(await allTransactions(target), isEmpty);
+  });
+
+  group('copia de la versión anterior (esquema v8)', () {
+    final v8 = File('test/fixtures/backup_v8.json').readAsStringSync();
+
+    test('importa todo en un teléfono vacío', () async {
+      final target = createTestDatabase();
+      final report = await DriftBackupStore(target).import(v8);
+
+      expect(report.movementsAdded, 4);
+      final tx = await allTransactions(target);
+      expect(tx.map((t) => t.id), containsAll(['tx-salary', 'tx-rent']));
+      final assets = await DriftAssetRepository(target).getAll();
+      expect(assets.single.monthlyCost, Money.zero);
+      final categories = await DriftCategoryRepository(target)
+          .getAll(includeArchived: true);
+      expect(
+        categories.firstWhere((c) => c.id == 'user-cat-pets').isExtraordinary,
+        isFalse,
+      );
+      // Las categorías nuevas siguen ahí.
+      expect(categories.where((c) => c.isExtraordinary), isNotEmpty);
+    });
+
+    test('conserva los ajustes de IA que la copia no trae', () async {
+      final target = createTestDatabase();
+      final settings = DriftSettingsRepository(target);
+      await settings.save(
+        (await settings.get()).copyWith(
+          aiEnabled: true,
+          aiReviewFrequency: ReviewFrequency.daily,
+        ),
+      );
+
+      await DriftBackupStore(target).import(v8);
+
+      final after = await settings.get();
+      expect(after.aiEnabled, isTrue);
+      expect(after.aiReviewFrequency, ReviewFrequency.daily);
+    });
+
+    test('importarla dos veces no duplica', () async {
+      final target = createTestDatabase();
+      await DriftBackupStore(target).import(v8);
+      final second = await DriftBackupStore(target).import(v8);
+      expect(second.added, 0);
+    });
+  });
+
+  test('exporta el historial de patrimonio y no la llave de IA', () async {
+    final source = createTestDatabase();
+    await source
+        .into(source.aiSecrets)
+        .insert(
+          AiSecretsCompanion.insert(id: const Value(1), apiKey: 'secreta'),
+        );
+    await source
+        .into(source.netWorthSnapshots)
+        .insert(
+          NetWorthSnapshotsCompanion.insert(
+            id: 'nw-1',
+            year: 2026,
+            month: 9,
+            assetsCents: 100,
+            investmentsCents: 0,
+            liabilitiesCents: 50,
+            takenAt: DateTime(2026, 9, 30),
+          ),
+        );
+
+    final json = await DriftBackupStore(source).export(exportedAt: exportedAt);
+
+    expect(json, isNot(contains('secreta')));
+    final target = createTestDatabase();
+    await DriftBackupStore(target).import(json);
+    expect(await target.select(target.netWorthSnapshots).get(), hasLength(1));
   });
 }

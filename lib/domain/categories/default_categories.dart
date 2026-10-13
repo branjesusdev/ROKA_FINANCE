@@ -5,6 +5,9 @@ import 'package:finance_app/domain/categories/category.dart';
 abstract final class DefaultCategories {
   static const debtsId = 'seed-expense-debts';
 
+  /// Ahorro e inversión: cuenta como ahorro, no como gasto.
+  static const investmentsId = 'seed-expense-investments';
+
   /// El ingreso en esta categoría marca el inicio de un ciclo.
   static const salaryId = 'seed-income-salary';
 
@@ -146,7 +149,7 @@ abstract final class DefaultCategories {
       sortOrder: 9,
     ),
     Category(
-      id: 'seed-expense-investments',
+      id: investmentsId,
       name: 'Inversiones',
       kind: CategoryKind.expense,
       iconKey: 'investments',
@@ -166,6 +169,80 @@ abstract final class DefaultCategories {
     provisions,
   ];
 
+  /// Ingreso extraordinario genérico (ya existía; desde v9 se marca como
+  /// extraordinario).
+  static const extraordinaryId = 'seed-income-extraordinary';
+
+  /// Ingresos que no llegan cada mes. Añadidos en el esquema v9 (también se
+  /// insertan al migrar). La IA y el tope diario no los cuentan como dinero
+  /// mensual permanente.
+  static const extraordinaryIncomes = <Category>[
+    Category(
+      id: 'seed-income-prima',
+      name: 'Prima de servicios',
+      kind: CategoryKind.income,
+      iconKey: 'bonus',
+      sortOrder: 5,
+      isExtraordinary: true,
+    ),
+    Category(
+      id: 'seed-income-severance',
+      name: 'Cesantías',
+      kind: CategoryKind.income,
+      iconKey: 'severance',
+      sortOrder: 6,
+      isExtraordinary: true,
+    ),
+    Category(
+      id: 'seed-income-severance-interest',
+      name: 'Intereses de cesantías',
+      kind: CategoryKind.income,
+      iconKey: 'interest',
+      sortOrder: 7,
+      isExtraordinary: true,
+    ),
+    Category(
+      id: 'seed-income-bonus',
+      name: 'Bonificaciones',
+      kind: CategoryKind.income,
+      iconKey: 'bonus',
+      sortOrder: 8,
+      isExtraordinary: true,
+    ),
+    Category(
+      id: 'seed-income-commissions',
+      name: 'Comisiones',
+      kind: CategoryKind.income,
+      iconKey: 'commission',
+      sortOrder: 9,
+      isExtraordinary: true,
+    ),
+    Category(
+      id: 'seed-income-refunds',
+      name: 'Devoluciones',
+      kind: CategoryKind.income,
+      iconKey: 'refund',
+      sortOrder: 10,
+      isExtraordinary: true,
+    ),
+    Category(
+      id: 'seed-income-asset-sale',
+      name: 'Venta de activos',
+      kind: CategoryKind.income,
+      iconKey: 'asset_sale',
+      sortOrder: 11,
+      isExtraordinary: true,
+    ),
+    Category(
+      id: 'seed-income-business',
+      name: 'Utilidades de negocio',
+      kind: CategoryKind.income,
+      iconKey: 'business',
+      sortOrder: 12,
+      isExtraordinary: true,
+    ),
+  ];
+
   static const incomes = <Category>[
     Category(
       id: salaryId,
@@ -181,11 +258,12 @@ abstract final class DefaultCategories {
       sortOrder: 1,
     ),
     Category(
-      id: 'seed-income-extraordinary',
+      id: extraordinaryId,
       name: 'Ingresos extraordinarios',
       kind: CategoryKind.income,
       iconKey: 'extraordinary_income',
       sortOrder: 2,
+      isExtraordinary: true,
     ),
     Category(
       id: 'seed-income-other',
@@ -195,6 +273,7 @@ abstract final class DefaultCategories {
       sortOrder: 3,
     ),
     balanceAdjustment,
+    ...extraordinaryIncomes,
   ];
 
   static const List<Category> all = [...expenses, ...incomes];

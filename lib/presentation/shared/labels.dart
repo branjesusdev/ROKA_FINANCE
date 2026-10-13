@@ -12,6 +12,7 @@ abstract final class Labels {
     AssetType.bankAccount => 'Cuenta bancaria',
     AssetType.vehicle => 'Vehículo',
     AssetType.property => 'Propiedad',
+    AssetType.business => 'Negocio / participación',
     AssetType.other => 'Otro',
   };
 
@@ -20,6 +21,7 @@ abstract final class Labels {
     AssetType.bankAccount => Icons.account_balance_outlined,
     AssetType.vehicle => Icons.directions_car_outlined,
     AssetType.property => Icons.house_outlined,
+    AssetType.business => Icons.storefront_outlined,
     AssetType.other => Icons.category_outlined,
   };
 
@@ -64,6 +66,7 @@ abstract final class Labels {
     GoalType.housing => 'Vivienda',
     GoalType.investment => 'Inversión',
     GoalType.custom => 'Personalizada',
+    GoalType.business => 'Capital para emprender',
   };
 
   static IconData goalIcon(GoalType type) => switch (type) {
@@ -73,5 +76,6 @@ abstract final class Labels {
     GoalType.housing => Icons.house_outlined,
     GoalType.investment => Icons.trending_up,
     GoalType.custom => Icons.flag_outlined,
+    GoalType.business => Icons.storefront_outlined,
   };
 }

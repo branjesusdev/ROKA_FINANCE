@@ -54,3 +54,38 @@ categoría (excluye los reservados: deudas, inversiones, apartados y los del cua
 - PNG legados (`mipmap-*/ic_launcher.png`, 48–192 px) generados con el mismo trazo en un
   cuadrado redondeado. Si se cambia el vector, regenerarlos con la misma geometría.
 - Sin capa `monochrome`: la línea se perdería al teñir el icono con el tema del sistema.
+
+## Revisión 2026-10-12: por qué el diseño anterior no convencía
+
+Diagnóstico de `ui-ux-pro-max` (plugin v2.11.0, `--design-system "personal finance budgeting
+mobile app trust clarity"`): propone una **landing de App Store**, paleta **azul genérica**
+(#1E40AF) y un checklist **web** (hover, `cursor-pointer`, breakpoints 1440 px). Aplicado tal
+cual a una app Flutter móvil con marca propia da un resultado genérico: por eso "no
+convencía". Se tomó solo lo que aplica a este producto:
+- Navegación inferior **≤ 5 destinos y con nombre** (antes: 6 iconos sin texto).
+- Nada de botones solo con icono sin etiqueta; objetivos táctiles ≥ 48 px.
+- Jerarquía: un número protagonista por pantalla; contraste AA/AAA; color + icono + texto.
+Se descartó: paleta azul, landing, hover/cursor, fuentes externas (Lexend) — la marca verde
+bosque + lima se mantiene.
+
+Problemas concretos encontrados en la app:
+1. El Home mostraba "Te queda" (saldo) como número principal: se confundía con dinero libre.
+2. 15 tarjetas del mismo peso visual: nada indicaba qué hacer primero.
+3. Barra de 6 iconos sin nombre (Presupuesto/Metas/Patrimonio se confundían).
+4. Fijos sin estado (¿alcanza o no?), alertas dispersas en Tu CFO.
+
+## Dirección visual "claridad accionable"
+- **Tarjeta héroe** (`MoneyHeroCard`): fondo `forest` (en oscuro `surfaceContainerHighest`),
+  número en lima = **Libre para gastar hasta tu sueldo**; debajo, barra apilada
+  disponible = fijos + pagos del año + ahorro + libre (colores `#7FB3A5`, `#E2C46B`,
+  `#6FA8DC`, lima) con leyenda en texto, y el tope de hoy. Montos con cifras tabulares.
+- **Orden del Home** (responde las preguntas en orden): héroe → facturas por confirmar →
+  **Qué hacer ahora** (IA + alertas) → **Próximos pagos** con estado y barra de reserva →
+  pagos del año → gastos/ingresos por categoría → gasto por día → patrimonio y metas → araña →
+  pulso.
+- **Estados** (`status_style.dart`): `StatusChip` = icono + texto sobre fondo al 12 %.
+  Urgente = rojo (`error`), Atención = ámbar `#B45309`/`#FCD34D`, Oportunidad = verde azulado
+  `#2F6B5E`/`#9FD4C4`, Logro/Cubierto = verde `#15803D`/`#86EFAC`.
+- **Navegación**: píldora oscura de 68 px con 5 destinos (icono + nombre), indicador lima.
+- Gráfica nueva: evolución del patrimonio (`NetWorthHistoryCard`, línea con relleno suave y
+  `Semantics` con inicio/fin).

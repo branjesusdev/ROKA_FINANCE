@@ -20,7 +20,12 @@ final class DriftDebtRepository implements DebtRepository {
   @override
   Future<void> delete(String id) => guardStorage(
     'debts.delete',
-    () => (_db.delete(_db.debts)..where((d) => d.id.equals(id))).go(),
+    () => _db.transaction(() async {
+      // El vínculo del activo no tiene FK (columna agregada en migración).
+      await (_db.update(_db.assets)..where((a) => a.linkedDebtId.equals(id)))
+          .write(const AssetsCompanion(linkedDebtId: Value(null)));
+      await (_db.delete(_db.debts)..where((d) => d.id.equals(id))).go();
+    }),
   );
 
   @override

@@ -1,7 +1,9 @@
+import 'package:finance_app/application/advisor/ai_ports.dart';
 import 'package:finance_app/application/backup/backup_ports.dart';
 import 'package:finance_app/application/reminders/reminder_scheduler.dart';
 import 'package:finance_app/application/voice/speech_input.dart';
 import 'package:finance_app/domain/accounts/account_repository.dart';
+import 'package:finance_app/domain/advisor/ai_review.dart';
 import 'package:finance_app/domain/budgets/budget_repository.dart';
 import 'package:finance_app/domain/categories/category_repository.dart';
 import 'package:finance_app/domain/debts/debt_repository.dart';
@@ -15,18 +17,23 @@ import 'package:finance_app/domain/shared/clock.dart';
 import 'package:finance_app/domain/shared/id_generator.dart';
 import 'package:finance_app/domain/transactions/transaction_repository.dart';
 import 'package:finance_app/domain/wealth/asset_repository.dart';
+import 'package:finance_app/domain/wealth/net_worth_snapshot.dart';
+import 'package:finance_app/infrastructure/ai/groq_ai_advisor.dart';
 import 'package:finance_app/infrastructure/backup/android_backup_files.dart';
 import 'package:finance_app/infrastructure/backup/drift_backup_store.dart';
 import 'package:finance_app/infrastructure/markets/yahoo_market_data_source.dart';
 import 'package:finance_app/infrastructure/notifications/local_reminder_scheduler.dart';
 import 'package:finance_app/infrastructure/persistence/drift/app_database.dart';
 import 'package:finance_app/infrastructure/repositories/drift_account_repository.dart';
+import 'package:finance_app/infrastructure/repositories/drift_ai_key_store.dart';
+import 'package:finance_app/infrastructure/repositories/drift_ai_review_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_asset_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_budget_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_category_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_debt_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_fixed_movement_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_investment_repository.dart';
+import 'package:finance_app/infrastructure/repositories/drift_net_worth_history_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_provision_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_savings_goal_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_settings_repository.dart';
@@ -115,3 +122,19 @@ final backupStoreProvider = Provider<BackupStore>(
 final backupFilesProvider = Provider<BackupFiles>(
   (ref) => const AndroidBackupFiles(),
 );
+
+final netWorthHistoryRepositoryProvider = Provider<NetWorthHistoryRepository>(
+  (ref) => DriftNetWorthHistoryRepository(ref.watch(appDatabaseProvider)),
+);
+
+final aiReviewRepositoryProvider = Provider<AiReviewRepository>(
+  (ref) => DriftAiReviewRepository(ref.watch(appDatabaseProvider)),
+);
+
+/// La llave de IA vive solo en el teléfono (no en el código ni en la copia).
+final aiKeyStoreProvider = Provider<AiKeyStore>(
+  (ref) => DriftAiKeyStore(ref.watch(appDatabaseProvider)),
+);
+
+/// IA remota (opt-in): solo recibe el resumen agregado que arma la app.
+final aiAdvisorProvider = Provider<AiAdvisor>((ref) => GroqAiAdvisor());

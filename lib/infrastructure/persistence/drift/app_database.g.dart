@@ -86,6 +86,21 @@ class $CategoriesTable extends Categories
       'CHECK ("counts_as_saving" IN (0, 1))',
     ),
   );
+  static const VerificationMeta _isExtraordinaryMeta = const VerificationMeta(
+    'isExtraordinary',
+  );
+  @override
+  late final GeneratedColumn<bool> isExtraordinary = GeneratedColumn<bool>(
+    'is_extraordinary',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_extraordinary" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -95,6 +110,7 @@ class $CategoriesTable extends Categories
     sortOrder,
     isArchived,
     countsAsSaving,
+    isExtraordinary,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -156,6 +172,15 @@ class $CategoriesTable extends Categories
     } else if (isInserting) {
       context.missing(_countsAsSavingMeta);
     }
+    if (data.containsKey('is_extraordinary')) {
+      context.handle(
+        _isExtraordinaryMeta,
+        isExtraordinary.isAcceptableOrUnknown(
+          data['is_extraordinary']!,
+          _isExtraordinaryMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -195,6 +220,10 @@ class $CategoriesTable extends Categories
         DriftSqlType.bool,
         data['${effectivePrefix}counts_as_saving'],
       )!,
+      isExtraordinary: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_extraordinary'],
+      )!,
     );
   }
 
@@ -215,6 +244,7 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
   final int sortOrder;
   final bool isArchived;
   final bool countsAsSaving;
+  final bool isExtraordinary;
   const CategoryRow({
     required this.id,
     required this.name,
@@ -223,6 +253,7 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
     required this.sortOrder,
     required this.isArchived,
     required this.countsAsSaving,
+    required this.isExtraordinary,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -238,6 +269,7 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
     map['sort_order'] = Variable<int>(sortOrder);
     map['is_archived'] = Variable<bool>(isArchived);
     map['counts_as_saving'] = Variable<bool>(countsAsSaving);
+    map['is_extraordinary'] = Variable<bool>(isExtraordinary);
     return map;
   }
 
@@ -250,6 +282,7 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
       sortOrder: Value(sortOrder),
       isArchived: Value(isArchived),
       countsAsSaving: Value(countsAsSaving),
+      isExtraordinary: Value(isExtraordinary),
     );
   }
 
@@ -268,6 +301,7 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
       isArchived: serializer.fromJson<bool>(json['isArchived']),
       countsAsSaving: serializer.fromJson<bool>(json['countsAsSaving']),
+      isExtraordinary: serializer.fromJson<bool>(json['isExtraordinary']),
     );
   }
   @override
@@ -283,6 +317,7 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
       'sortOrder': serializer.toJson<int>(sortOrder),
       'isArchived': serializer.toJson<bool>(isArchived),
       'countsAsSaving': serializer.toJson<bool>(countsAsSaving),
+      'isExtraordinary': serializer.toJson<bool>(isExtraordinary),
     };
   }
 
@@ -294,6 +329,7 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
     int? sortOrder,
     bool? isArchived,
     bool? countsAsSaving,
+    bool? isExtraordinary,
   }) => CategoryRow(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -302,6 +338,7 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
     sortOrder: sortOrder ?? this.sortOrder,
     isArchived: isArchived ?? this.isArchived,
     countsAsSaving: countsAsSaving ?? this.countsAsSaving,
+    isExtraordinary: isExtraordinary ?? this.isExtraordinary,
   );
   CategoryRow copyWithCompanion(CategoriesCompanion data) {
     return CategoryRow(
@@ -316,6 +353,9 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
       countsAsSaving: data.countsAsSaving.present
           ? data.countsAsSaving.value
           : this.countsAsSaving,
+      isExtraordinary: data.isExtraordinary.present
+          ? data.isExtraordinary.value
+          : this.isExtraordinary,
     );
   }
 
@@ -328,7 +368,8 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
           ..write('iconKey: $iconKey, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('isArchived: $isArchived, ')
-          ..write('countsAsSaving: $countsAsSaving')
+          ..write('countsAsSaving: $countsAsSaving, ')
+          ..write('isExtraordinary: $isExtraordinary')
           ..write(')'))
         .toString();
   }
@@ -342,6 +383,7 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
     sortOrder,
     isArchived,
     countsAsSaving,
+    isExtraordinary,
   );
   @override
   bool operator ==(Object other) =>
@@ -353,7 +395,8 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
           other.iconKey == this.iconKey &&
           other.sortOrder == this.sortOrder &&
           other.isArchived == this.isArchived &&
-          other.countsAsSaving == this.countsAsSaving);
+          other.countsAsSaving == this.countsAsSaving &&
+          other.isExtraordinary == this.isExtraordinary);
 }
 
 class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
@@ -364,6 +407,7 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
   final Value<int> sortOrder;
   final Value<bool> isArchived;
   final Value<bool> countsAsSaving;
+  final Value<bool> isExtraordinary;
   final Value<int> rowid;
   const CategoriesCompanion({
     this.id = const Value.absent(),
@@ -373,6 +417,7 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
     this.sortOrder = const Value.absent(),
     this.isArchived = const Value.absent(),
     this.countsAsSaving = const Value.absent(),
+    this.isExtraordinary = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   CategoriesCompanion.insert({
@@ -383,6 +428,7 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
     required int sortOrder,
     required bool isArchived,
     required bool countsAsSaving,
+    this.isExtraordinary = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        name = Value(name),
@@ -399,6 +445,7 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
     Expression<int>? sortOrder,
     Expression<bool>? isArchived,
     Expression<bool>? countsAsSaving,
+    Expression<bool>? isExtraordinary,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -409,6 +456,7 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
       if (sortOrder != null) 'sort_order': sortOrder,
       if (isArchived != null) 'is_archived': isArchived,
       if (countsAsSaving != null) 'counts_as_saving': countsAsSaving,
+      if (isExtraordinary != null) 'is_extraordinary': isExtraordinary,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -421,6 +469,7 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
     Value<int>? sortOrder,
     Value<bool>? isArchived,
     Value<bool>? countsAsSaving,
+    Value<bool>? isExtraordinary,
     Value<int>? rowid,
   }) {
     return CategoriesCompanion(
@@ -431,6 +480,7 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
       sortOrder: sortOrder ?? this.sortOrder,
       isArchived: isArchived ?? this.isArchived,
       countsAsSaving: countsAsSaving ?? this.countsAsSaving,
+      isExtraordinary: isExtraordinary ?? this.isExtraordinary,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -461,6 +511,9 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
     if (countsAsSaving.present) {
       map['counts_as_saving'] = Variable<bool>(countsAsSaving.value);
     }
+    if (isExtraordinary.present) {
+      map['is_extraordinary'] = Variable<bool>(isExtraordinary.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -477,6 +530,7 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
           ..write('sortOrder: $sortOrder, ')
           ..write('isArchived: $isArchived, ')
           ..write('countsAsSaving: $countsAsSaving, ')
+          ..write('isExtraordinary: $isExtraordinary, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2787,6 +2841,49 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, AssetRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _monthlyCostCentsMeta = const VerificationMeta(
+    'monthlyCostCents',
+  );
+  @override
+  late final GeneratedColumn<int> monthlyCostCents = GeneratedColumn<int>(
+    'monthly_cost_cents',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _monthlyIncomeCentsMeta =
+      const VerificationMeta('monthlyIncomeCents');
+  @override
+  late final GeneratedColumn<int> monthlyIncomeCents = GeneratedColumn<int>(
+    'monthly_income_cents',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<Liquidity?, String> liquidity =
+      GeneratedColumn<String>(
+        'liquidity',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      ).withConverter<Liquidity?>($AssetsTable.$converterliquidityn);
+  static const VerificationMeta _linkedDebtIdMeta = const VerificationMeta(
+    'linkedDebtId',
+  );
+  @override
+  late final GeneratedColumn<String> linkedDebtId = GeneratedColumn<String>(
+    'linked_debt_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2795,6 +2892,10 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, AssetRow> {
     currentValueCents,
     valuedAt,
     notes,
+    monthlyCostCents,
+    monthlyIncomeCents,
+    liquidity,
+    linkedDebtId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2846,6 +2947,33 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, AssetRow> {
         notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
       );
     }
+    if (data.containsKey('monthly_cost_cents')) {
+      context.handle(
+        _monthlyCostCentsMeta,
+        monthlyCostCents.isAcceptableOrUnknown(
+          data['monthly_cost_cents']!,
+          _monthlyCostCentsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('monthly_income_cents')) {
+      context.handle(
+        _monthlyIncomeCentsMeta,
+        monthlyIncomeCents.isAcceptableOrUnknown(
+          data['monthly_income_cents']!,
+          _monthlyIncomeCentsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('linked_debt_id')) {
+      context.handle(
+        _linkedDebtIdMeta,
+        linkedDebtId.isAcceptableOrUnknown(
+          data['linked_debt_id']!,
+          _linkedDebtIdMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -2881,6 +3009,24 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, AssetRow> {
         DriftSqlType.string,
         data['${effectivePrefix}notes'],
       ),
+      monthlyCostCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}monthly_cost_cents'],
+      )!,
+      monthlyIncomeCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}monthly_income_cents'],
+      )!,
+      liquidity: $AssetsTable.$converterliquidityn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}liquidity'],
+        ),
+      ),
+      linkedDebtId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}linked_debt_id'],
+      ),
     );
   }
 
@@ -2891,6 +3037,10 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, AssetRow> {
 
   static JsonTypeConverter2<AssetType, String, String> $convertertype =
       const EnumNameConverter<AssetType>(AssetType.values);
+  static JsonTypeConverter2<Liquidity, String, String> $converterliquidity =
+      const EnumNameConverter<Liquidity>(Liquidity.values);
+  static JsonTypeConverter2<Liquidity?, String?, String?> $converterliquidityn =
+      JsonTypeConverter2.asNullable($converterliquidity);
 }
 
 class AssetRow extends DataClass implements Insertable<AssetRow> {
@@ -2900,6 +3050,10 @@ class AssetRow extends DataClass implements Insertable<AssetRow> {
   final int currentValueCents;
   final DateTime valuedAt;
   final String? notes;
+  final int monthlyCostCents;
+  final int monthlyIncomeCents;
+  final Liquidity? liquidity;
+  final String? linkedDebtId;
   const AssetRow({
     required this.id,
     required this.name,
@@ -2907,6 +3061,10 @@ class AssetRow extends DataClass implements Insertable<AssetRow> {
     required this.currentValueCents,
     required this.valuedAt,
     this.notes,
+    required this.monthlyCostCents,
+    required this.monthlyIncomeCents,
+    this.liquidity,
+    this.linkedDebtId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2921,6 +3079,16 @@ class AssetRow extends DataClass implements Insertable<AssetRow> {
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
     }
+    map['monthly_cost_cents'] = Variable<int>(monthlyCostCents);
+    map['monthly_income_cents'] = Variable<int>(monthlyIncomeCents);
+    if (!nullToAbsent || liquidity != null) {
+      map['liquidity'] = Variable<String>(
+        $AssetsTable.$converterliquidityn.toSql(liquidity),
+      );
+    }
+    if (!nullToAbsent || linkedDebtId != null) {
+      map['linked_debt_id'] = Variable<String>(linkedDebtId);
+    }
     return map;
   }
 
@@ -2934,6 +3102,14 @@ class AssetRow extends DataClass implements Insertable<AssetRow> {
       notes: notes == null && nullToAbsent
           ? const Value.absent()
           : Value(notes),
+      monthlyCostCents: Value(monthlyCostCents),
+      monthlyIncomeCents: Value(monthlyIncomeCents),
+      liquidity: liquidity == null && nullToAbsent
+          ? const Value.absent()
+          : Value(liquidity),
+      linkedDebtId: linkedDebtId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(linkedDebtId),
     );
   }
 
@@ -2951,6 +3127,12 @@ class AssetRow extends DataClass implements Insertable<AssetRow> {
       currentValueCents: serializer.fromJson<int>(json['currentValueCents']),
       valuedAt: serializer.fromJson<DateTime>(json['valuedAt']),
       notes: serializer.fromJson<String?>(json['notes']),
+      monthlyCostCents: serializer.fromJson<int>(json['monthlyCostCents']),
+      monthlyIncomeCents: serializer.fromJson<int>(json['monthlyIncomeCents']),
+      liquidity: $AssetsTable.$converterliquidityn.fromJson(
+        serializer.fromJson<String?>(json['liquidity']),
+      ),
+      linkedDebtId: serializer.fromJson<String?>(json['linkedDebtId']),
     );
   }
   @override
@@ -2965,6 +3147,12 @@ class AssetRow extends DataClass implements Insertable<AssetRow> {
       'currentValueCents': serializer.toJson<int>(currentValueCents),
       'valuedAt': serializer.toJson<DateTime>(valuedAt),
       'notes': serializer.toJson<String?>(notes),
+      'monthlyCostCents': serializer.toJson<int>(monthlyCostCents),
+      'monthlyIncomeCents': serializer.toJson<int>(monthlyIncomeCents),
+      'liquidity': serializer.toJson<String?>(
+        $AssetsTable.$converterliquidityn.toJson(liquidity),
+      ),
+      'linkedDebtId': serializer.toJson<String?>(linkedDebtId),
     };
   }
 
@@ -2975,6 +3163,10 @@ class AssetRow extends DataClass implements Insertable<AssetRow> {
     int? currentValueCents,
     DateTime? valuedAt,
     Value<String?> notes = const Value.absent(),
+    int? monthlyCostCents,
+    int? monthlyIncomeCents,
+    Value<Liquidity?> liquidity = const Value.absent(),
+    Value<String?> linkedDebtId = const Value.absent(),
   }) => AssetRow(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -2982,6 +3174,10 @@ class AssetRow extends DataClass implements Insertable<AssetRow> {
     currentValueCents: currentValueCents ?? this.currentValueCents,
     valuedAt: valuedAt ?? this.valuedAt,
     notes: notes.present ? notes.value : this.notes,
+    monthlyCostCents: monthlyCostCents ?? this.monthlyCostCents,
+    monthlyIncomeCents: monthlyIncomeCents ?? this.monthlyIncomeCents,
+    liquidity: liquidity.present ? liquidity.value : this.liquidity,
+    linkedDebtId: linkedDebtId.present ? linkedDebtId.value : this.linkedDebtId,
   );
   AssetRow copyWithCompanion(AssetsCompanion data) {
     return AssetRow(
@@ -2993,6 +3189,16 @@ class AssetRow extends DataClass implements Insertable<AssetRow> {
           : this.currentValueCents,
       valuedAt: data.valuedAt.present ? data.valuedAt.value : this.valuedAt,
       notes: data.notes.present ? data.notes.value : this.notes,
+      monthlyCostCents: data.monthlyCostCents.present
+          ? data.monthlyCostCents.value
+          : this.monthlyCostCents,
+      monthlyIncomeCents: data.monthlyIncomeCents.present
+          ? data.monthlyIncomeCents.value
+          : this.monthlyIncomeCents,
+      liquidity: data.liquidity.present ? data.liquidity.value : this.liquidity,
+      linkedDebtId: data.linkedDebtId.present
+          ? data.linkedDebtId.value
+          : this.linkedDebtId,
     );
   }
 
@@ -3004,14 +3210,28 @@ class AssetRow extends DataClass implements Insertable<AssetRow> {
           ..write('type: $type, ')
           ..write('currentValueCents: $currentValueCents, ')
           ..write('valuedAt: $valuedAt, ')
-          ..write('notes: $notes')
+          ..write('notes: $notes, ')
+          ..write('monthlyCostCents: $monthlyCostCents, ')
+          ..write('monthlyIncomeCents: $monthlyIncomeCents, ')
+          ..write('liquidity: $liquidity, ')
+          ..write('linkedDebtId: $linkedDebtId')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, name, type, currentValueCents, valuedAt, notes);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    type,
+    currentValueCents,
+    valuedAt,
+    notes,
+    monthlyCostCents,
+    monthlyIncomeCents,
+    liquidity,
+    linkedDebtId,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3021,7 +3241,11 @@ class AssetRow extends DataClass implements Insertable<AssetRow> {
           other.type == this.type &&
           other.currentValueCents == this.currentValueCents &&
           other.valuedAt == this.valuedAt &&
-          other.notes == this.notes);
+          other.notes == this.notes &&
+          other.monthlyCostCents == this.monthlyCostCents &&
+          other.monthlyIncomeCents == this.monthlyIncomeCents &&
+          other.liquidity == this.liquidity &&
+          other.linkedDebtId == this.linkedDebtId);
 }
 
 class AssetsCompanion extends UpdateCompanion<AssetRow> {
@@ -3031,6 +3255,10 @@ class AssetsCompanion extends UpdateCompanion<AssetRow> {
   final Value<int> currentValueCents;
   final Value<DateTime> valuedAt;
   final Value<String?> notes;
+  final Value<int> monthlyCostCents;
+  final Value<int> monthlyIncomeCents;
+  final Value<Liquidity?> liquidity;
+  final Value<String?> linkedDebtId;
   final Value<int> rowid;
   const AssetsCompanion({
     this.id = const Value.absent(),
@@ -3039,6 +3267,10 @@ class AssetsCompanion extends UpdateCompanion<AssetRow> {
     this.currentValueCents = const Value.absent(),
     this.valuedAt = const Value.absent(),
     this.notes = const Value.absent(),
+    this.monthlyCostCents = const Value.absent(),
+    this.monthlyIncomeCents = const Value.absent(),
+    this.liquidity = const Value.absent(),
+    this.linkedDebtId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   AssetsCompanion.insert({
@@ -3048,6 +3280,10 @@ class AssetsCompanion extends UpdateCompanion<AssetRow> {
     required int currentValueCents,
     required DateTime valuedAt,
     this.notes = const Value.absent(),
+    this.monthlyCostCents = const Value.absent(),
+    this.monthlyIncomeCents = const Value.absent(),
+    this.liquidity = const Value.absent(),
+    this.linkedDebtId = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        name = Value(name),
@@ -3061,6 +3297,10 @@ class AssetsCompanion extends UpdateCompanion<AssetRow> {
     Expression<int>? currentValueCents,
     Expression<DateTime>? valuedAt,
     Expression<String>? notes,
+    Expression<int>? monthlyCostCents,
+    Expression<int>? monthlyIncomeCents,
+    Expression<String>? liquidity,
+    Expression<String>? linkedDebtId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -3070,6 +3310,11 @@ class AssetsCompanion extends UpdateCompanion<AssetRow> {
       if (currentValueCents != null) 'current_value_cents': currentValueCents,
       if (valuedAt != null) 'valued_at': valuedAt,
       if (notes != null) 'notes': notes,
+      if (monthlyCostCents != null) 'monthly_cost_cents': monthlyCostCents,
+      if (monthlyIncomeCents != null)
+        'monthly_income_cents': monthlyIncomeCents,
+      if (liquidity != null) 'liquidity': liquidity,
+      if (linkedDebtId != null) 'linked_debt_id': linkedDebtId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -3081,6 +3326,10 @@ class AssetsCompanion extends UpdateCompanion<AssetRow> {
     Value<int>? currentValueCents,
     Value<DateTime>? valuedAt,
     Value<String?>? notes,
+    Value<int>? monthlyCostCents,
+    Value<int>? monthlyIncomeCents,
+    Value<Liquidity?>? liquidity,
+    Value<String?>? linkedDebtId,
     Value<int>? rowid,
   }) {
     return AssetsCompanion(
@@ -3090,6 +3339,10 @@ class AssetsCompanion extends UpdateCompanion<AssetRow> {
       currentValueCents: currentValueCents ?? this.currentValueCents,
       valuedAt: valuedAt ?? this.valuedAt,
       notes: notes ?? this.notes,
+      monthlyCostCents: monthlyCostCents ?? this.monthlyCostCents,
+      monthlyIncomeCents: monthlyIncomeCents ?? this.monthlyIncomeCents,
+      liquidity: liquidity ?? this.liquidity,
+      linkedDebtId: linkedDebtId ?? this.linkedDebtId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -3117,6 +3370,20 @@ class AssetsCompanion extends UpdateCompanion<AssetRow> {
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
     }
+    if (monthlyCostCents.present) {
+      map['monthly_cost_cents'] = Variable<int>(monthlyCostCents.value);
+    }
+    if (monthlyIncomeCents.present) {
+      map['monthly_income_cents'] = Variable<int>(monthlyIncomeCents.value);
+    }
+    if (liquidity.present) {
+      map['liquidity'] = Variable<String>(
+        $AssetsTable.$converterliquidityn.toSql(liquidity.value),
+      );
+    }
+    if (linkedDebtId.present) {
+      map['linked_debt_id'] = Variable<String>(linkedDebtId.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -3132,6 +3399,10 @@ class AssetsCompanion extends UpdateCompanion<AssetRow> {
           ..write('currentValueCents: $currentValueCents, ')
           ..write('valuedAt: $valuedAt, ')
           ..write('notes: $notes, ')
+          ..write('monthlyCostCents: $monthlyCostCents, ')
+          ..write('monthlyIncomeCents: $monthlyIncomeCents, ')
+          ..write('liquidity: $liquidity, ')
+          ..write('linkedDebtId: $linkedDebtId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -4971,6 +5242,34 @@ class $FinanceSettingsTableTable extends FinanceSettingsTable
       ).withConverter<Appearance>(
         $FinanceSettingsTableTable.$converterappearance,
       );
+  static const VerificationMeta _aiEnabledMeta = const VerificationMeta(
+    'aiEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> aiEnabled = GeneratedColumn<bool>(
+    'ai_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("ai_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<ReviewFrequency, String>
+  aiReviewFrequency =
+      GeneratedColumn<String>(
+        'ai_review_frequency',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: Constant(ReviewFrequency.weekly.name),
+      ).withConverter<ReviewFrequency>(
+        $FinanceSettingsTableTable.$converteraiReviewFrequency,
+      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -4987,6 +5286,8 @@ class $FinanceSettingsTableTable extends FinanceSettingsTable
     soloProvider,
     kidsMonthlyBufferCents,
     appearance,
+    aiEnabled,
+    aiReviewFrequency,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -5113,6 +5414,12 @@ class $FinanceSettingsTableTable extends FinanceSettingsTable
         ),
       );
     }
+    if (data.containsKey('ai_enabled')) {
+      context.handle(
+        _aiEnabledMeta,
+        aiEnabled.isAcceptableOrUnknown(data['ai_enabled']!, _aiEnabledMeta),
+      );
+    }
     return context;
   }
 
@@ -5180,6 +5487,17 @@ class $FinanceSettingsTableTable extends FinanceSettingsTable
           data['${effectivePrefix}appearance'],
         )!,
       ),
+      aiEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}ai_enabled'],
+      )!,
+      aiReviewFrequency: $FinanceSettingsTableTable.$converteraiReviewFrequency
+          .fromSql(
+            attachedDatabase.typeMapping.read(
+              DriftSqlType.string,
+              data['${effectivePrefix}ai_review_frequency'],
+            )!,
+          ),
     );
   }
 
@@ -5190,6 +5508,10 @@ class $FinanceSettingsTableTable extends FinanceSettingsTable
 
   static JsonTypeConverter2<Appearance, String, String> $converterappearance =
       const EnumNameConverter<Appearance>(Appearance.values);
+  static JsonTypeConverter2<ReviewFrequency, String, String>
+  $converteraiReviewFrequency = const EnumNameConverter<ReviewFrequency>(
+    ReviewFrequency.values,
+  );
 }
 
 class SettingsRow extends DataClass implements Insertable<SettingsRow> {
@@ -5207,6 +5529,8 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
   final bool soloProvider;
   final int kidsMonthlyBufferCents;
   final Appearance appearance;
+  final bool aiEnabled;
+  final ReviewFrequency aiReviewFrequency;
   const SettingsRow({
     required this.id,
     required this.savingsTargetBasisPoints,
@@ -5222,6 +5546,8 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     required this.soloProvider,
     required this.kidsMonthlyBufferCents,
     required this.appearance,
+    required this.aiEnabled,
+    required this.aiReviewFrequency,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -5250,6 +5576,14 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
         $FinanceSettingsTableTable.$converterappearance.toSql(appearance),
       );
     }
+    map['ai_enabled'] = Variable<bool>(aiEnabled);
+    {
+      map['ai_review_frequency'] = Variable<String>(
+        $FinanceSettingsTableTable.$converteraiReviewFrequency.toSql(
+          aiReviewFrequency,
+        ),
+      );
+    }
     return map;
   }
 
@@ -5269,6 +5603,8 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       soloProvider: Value(soloProvider),
       kidsMonthlyBufferCents: Value(kidsMonthlyBufferCents),
       appearance: Value(appearance),
+      aiEnabled: Value(aiEnabled),
+      aiReviewFrequency: Value(aiReviewFrequency),
     );
   }
 
@@ -5304,6 +5640,9 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       appearance: $FinanceSettingsTableTable.$converterappearance.fromJson(
         serializer.fromJson<String>(json['appearance']),
       ),
+      aiEnabled: serializer.fromJson<bool>(json['aiEnabled']),
+      aiReviewFrequency: $FinanceSettingsTableTable.$converteraiReviewFrequency
+          .fromJson(serializer.fromJson<String>(json['aiReviewFrequency'])),
     );
   }
   @override
@@ -5332,6 +5671,12 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       'appearance': serializer.toJson<String>(
         $FinanceSettingsTableTable.$converterappearance.toJson(appearance),
       ),
+      'aiEnabled': serializer.toJson<bool>(aiEnabled),
+      'aiReviewFrequency': serializer.toJson<String>(
+        $FinanceSettingsTableTable.$converteraiReviewFrequency.toJson(
+          aiReviewFrequency,
+        ),
+      ),
     };
   }
 
@@ -5350,6 +5695,8 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     bool? soloProvider,
     int? kidsMonthlyBufferCents,
     Appearance? appearance,
+    bool? aiEnabled,
+    ReviewFrequency? aiReviewFrequency,
   }) => SettingsRow(
     id: id ?? this.id,
     savingsTargetBasisPoints:
@@ -5370,6 +5717,8 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     kidsMonthlyBufferCents:
         kidsMonthlyBufferCents ?? this.kidsMonthlyBufferCents,
     appearance: appearance ?? this.appearance,
+    aiEnabled: aiEnabled ?? this.aiEnabled,
+    aiReviewFrequency: aiReviewFrequency ?? this.aiReviewFrequency,
   );
   SettingsRow copyWithCompanion(FinanceSettingsTableCompanion data) {
     return SettingsRow(
@@ -5411,6 +5760,10 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       appearance: data.appearance.present
           ? data.appearance.value
           : this.appearance,
+      aiEnabled: data.aiEnabled.present ? data.aiEnabled.value : this.aiEnabled,
+      aiReviewFrequency: data.aiReviewFrequency.present
+          ? data.aiReviewFrequency.value
+          : this.aiReviewFrequency,
     );
   }
 
@@ -5430,7 +5783,9 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           ..write('dependents: $dependents, ')
           ..write('soloProvider: $soloProvider, ')
           ..write('kidsMonthlyBufferCents: $kidsMonthlyBufferCents, ')
-          ..write('appearance: $appearance')
+          ..write('appearance: $appearance, ')
+          ..write('aiEnabled: $aiEnabled, ')
+          ..write('aiReviewFrequency: $aiReviewFrequency')
           ..write(')'))
         .toString();
   }
@@ -5451,6 +5806,8 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     soloProvider,
     kidsMonthlyBufferCents,
     appearance,
+    aiEnabled,
+    aiReviewFrequency,
   );
   @override
   bool operator ==(Object other) =>
@@ -5469,7 +5826,9 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           other.dependents == this.dependents &&
           other.soloProvider == this.soloProvider &&
           other.kidsMonthlyBufferCents == this.kidsMonthlyBufferCents &&
-          other.appearance == this.appearance);
+          other.appearance == this.appearance &&
+          other.aiEnabled == this.aiEnabled &&
+          other.aiReviewFrequency == this.aiReviewFrequency);
 }
 
 class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
@@ -5487,6 +5846,8 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
   final Value<bool> soloProvider;
   final Value<int> kidsMonthlyBufferCents;
   final Value<Appearance> appearance;
+  final Value<bool> aiEnabled;
+  final Value<ReviewFrequency> aiReviewFrequency;
   const FinanceSettingsTableCompanion({
     this.id = const Value.absent(),
     this.savingsTargetBasisPoints = const Value.absent(),
@@ -5502,6 +5863,8 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     this.soloProvider = const Value.absent(),
     this.kidsMonthlyBufferCents = const Value.absent(),
     this.appearance = const Value.absent(),
+    this.aiEnabled = const Value.absent(),
+    this.aiReviewFrequency = const Value.absent(),
   });
   FinanceSettingsTableCompanion.insert({
     this.id = const Value.absent(),
@@ -5518,6 +5881,8 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     this.soloProvider = const Value.absent(),
     this.kidsMonthlyBufferCents = const Value.absent(),
     this.appearance = const Value.absent(),
+    this.aiEnabled = const Value.absent(),
+    this.aiReviewFrequency = const Value.absent(),
   }) : savingsTargetBasisPoints = Value(savingsTargetBasisPoints),
        warningFromBasisPoints = Value(warningFromBasisPoints),
        criticalAboveBasisPoints = Value(criticalAboveBasisPoints),
@@ -5537,6 +5902,8 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     Expression<bool>? soloProvider,
     Expression<int>? kidsMonthlyBufferCents,
     Expression<String>? appearance,
+    Expression<bool>? aiEnabled,
+    Expression<String>? aiReviewFrequency,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -5558,6 +5925,8 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
       if (kidsMonthlyBufferCents != null)
         'kids_monthly_buffer_cents': kidsMonthlyBufferCents,
       if (appearance != null) 'appearance': appearance,
+      if (aiEnabled != null) 'ai_enabled': aiEnabled,
+      if (aiReviewFrequency != null) 'ai_review_frequency': aiReviewFrequency,
     });
   }
 
@@ -5576,6 +5945,8 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     Value<bool>? soloProvider,
     Value<int>? kidsMonthlyBufferCents,
     Value<Appearance>? appearance,
+    Value<bool>? aiEnabled,
+    Value<ReviewFrequency>? aiReviewFrequency,
   }) {
     return FinanceSettingsTableCompanion(
       id: id ?? this.id,
@@ -5597,6 +5968,8 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
       kidsMonthlyBufferCents:
           kidsMonthlyBufferCents ?? this.kidsMonthlyBufferCents,
       appearance: appearance ?? this.appearance,
+      aiEnabled: aiEnabled ?? this.aiEnabled,
+      aiReviewFrequency: aiReviewFrequency ?? this.aiReviewFrequency,
     );
   }
 
@@ -5657,6 +6030,16 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
         $FinanceSettingsTableTable.$converterappearance.toSql(appearance.value),
       );
     }
+    if (aiEnabled.present) {
+      map['ai_enabled'] = Variable<bool>(aiEnabled.value);
+    }
+    if (aiReviewFrequency.present) {
+      map['ai_review_frequency'] = Variable<String>(
+        $FinanceSettingsTableTable.$converteraiReviewFrequency.toSql(
+          aiReviewFrequency.value,
+        ),
+      );
+    }
     return map;
   }
 
@@ -5676,7 +6059,9 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
           ..write('dependents: $dependents, ')
           ..write('soloProvider: $soloProvider, ')
           ..write('kidsMonthlyBufferCents: $kidsMonthlyBufferCents, ')
-          ..write('appearance: $appearance')
+          ..write('appearance: $appearance, ')
+          ..write('aiEnabled: $aiEnabled, ')
+          ..write('aiReviewFrequency: $aiReviewFrequency')
           ..write(')'))
         .toString();
   }
@@ -6753,6 +7138,934 @@ class ProvisionsCompanion extends UpdateCompanion<ProvisionRow> {
   }
 }
 
+class $NetWorthSnapshotsTable extends NetWorthSnapshots
+    with TableInfo<$NetWorthSnapshotsTable, NetWorthSnapshotRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $NetWorthSnapshotsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _yearMeta = const VerificationMeta('year');
+  @override
+  late final GeneratedColumn<int> year = GeneratedColumn<int>(
+    'year',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _monthMeta = const VerificationMeta('month');
+  @override
+  late final GeneratedColumn<int> month = GeneratedColumn<int>(
+    'month',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _assetsCentsMeta = const VerificationMeta(
+    'assetsCents',
+  );
+  @override
+  late final GeneratedColumn<int> assetsCents = GeneratedColumn<int>(
+    'assets_cents',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _investmentsCentsMeta = const VerificationMeta(
+    'investmentsCents',
+  );
+  @override
+  late final GeneratedColumn<int> investmentsCents = GeneratedColumn<int>(
+    'investments_cents',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _liabilitiesCentsMeta = const VerificationMeta(
+    'liabilitiesCents',
+  );
+  @override
+  late final GeneratedColumn<int> liabilitiesCents = GeneratedColumn<int>(
+    'liabilities_cents',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _takenAtMeta = const VerificationMeta(
+    'takenAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> takenAt = GeneratedColumn<DateTime>(
+    'taken_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    year,
+    month,
+    assetsCents,
+    investmentsCents,
+    liabilitiesCents,
+    takenAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'net_worth_snapshots';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<NetWorthSnapshotRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('year')) {
+      context.handle(
+        _yearMeta,
+        year.isAcceptableOrUnknown(data['year']!, _yearMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_yearMeta);
+    }
+    if (data.containsKey('month')) {
+      context.handle(
+        _monthMeta,
+        month.isAcceptableOrUnknown(data['month']!, _monthMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_monthMeta);
+    }
+    if (data.containsKey('assets_cents')) {
+      context.handle(
+        _assetsCentsMeta,
+        assetsCents.isAcceptableOrUnknown(
+          data['assets_cents']!,
+          _assetsCentsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_assetsCentsMeta);
+    }
+    if (data.containsKey('investments_cents')) {
+      context.handle(
+        _investmentsCentsMeta,
+        investmentsCents.isAcceptableOrUnknown(
+          data['investments_cents']!,
+          _investmentsCentsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_investmentsCentsMeta);
+    }
+    if (data.containsKey('liabilities_cents')) {
+      context.handle(
+        _liabilitiesCentsMeta,
+        liabilitiesCents.isAcceptableOrUnknown(
+          data['liabilities_cents']!,
+          _liabilitiesCentsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_liabilitiesCentsMeta);
+    }
+    if (data.containsKey('taken_at')) {
+      context.handle(
+        _takenAtMeta,
+        takenAt.isAcceptableOrUnknown(data['taken_at']!, _takenAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_takenAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {year, month},
+  ];
+  @override
+  NetWorthSnapshotRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return NetWorthSnapshotRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      year: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}year'],
+      )!,
+      month: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}month'],
+      )!,
+      assetsCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}assets_cents'],
+      )!,
+      investmentsCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}investments_cents'],
+      )!,
+      liabilitiesCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}liabilities_cents'],
+      )!,
+      takenAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}taken_at'],
+      )!,
+    );
+  }
+
+  @override
+  $NetWorthSnapshotsTable createAlias(String alias) {
+    return $NetWorthSnapshotsTable(attachedDatabase, alias);
+  }
+}
+
+class NetWorthSnapshotRow extends DataClass
+    implements Insertable<NetWorthSnapshotRow> {
+  final String id;
+  final int year;
+  final int month;
+  final int assetsCents;
+  final int investmentsCents;
+  final int liabilitiesCents;
+  final DateTime takenAt;
+  const NetWorthSnapshotRow({
+    required this.id,
+    required this.year,
+    required this.month,
+    required this.assetsCents,
+    required this.investmentsCents,
+    required this.liabilitiesCents,
+    required this.takenAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['year'] = Variable<int>(year);
+    map['month'] = Variable<int>(month);
+    map['assets_cents'] = Variable<int>(assetsCents);
+    map['investments_cents'] = Variable<int>(investmentsCents);
+    map['liabilities_cents'] = Variable<int>(liabilitiesCents);
+    map['taken_at'] = Variable<DateTime>(takenAt);
+    return map;
+  }
+
+  NetWorthSnapshotsCompanion toCompanion(bool nullToAbsent) {
+    return NetWorthSnapshotsCompanion(
+      id: Value(id),
+      year: Value(year),
+      month: Value(month),
+      assetsCents: Value(assetsCents),
+      investmentsCents: Value(investmentsCents),
+      liabilitiesCents: Value(liabilitiesCents),
+      takenAt: Value(takenAt),
+    );
+  }
+
+  factory NetWorthSnapshotRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return NetWorthSnapshotRow(
+      id: serializer.fromJson<String>(json['id']),
+      year: serializer.fromJson<int>(json['year']),
+      month: serializer.fromJson<int>(json['month']),
+      assetsCents: serializer.fromJson<int>(json['assetsCents']),
+      investmentsCents: serializer.fromJson<int>(json['investmentsCents']),
+      liabilitiesCents: serializer.fromJson<int>(json['liabilitiesCents']),
+      takenAt: serializer.fromJson<DateTime>(json['takenAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'year': serializer.toJson<int>(year),
+      'month': serializer.toJson<int>(month),
+      'assetsCents': serializer.toJson<int>(assetsCents),
+      'investmentsCents': serializer.toJson<int>(investmentsCents),
+      'liabilitiesCents': serializer.toJson<int>(liabilitiesCents),
+      'takenAt': serializer.toJson<DateTime>(takenAt),
+    };
+  }
+
+  NetWorthSnapshotRow copyWith({
+    String? id,
+    int? year,
+    int? month,
+    int? assetsCents,
+    int? investmentsCents,
+    int? liabilitiesCents,
+    DateTime? takenAt,
+  }) => NetWorthSnapshotRow(
+    id: id ?? this.id,
+    year: year ?? this.year,
+    month: month ?? this.month,
+    assetsCents: assetsCents ?? this.assetsCents,
+    investmentsCents: investmentsCents ?? this.investmentsCents,
+    liabilitiesCents: liabilitiesCents ?? this.liabilitiesCents,
+    takenAt: takenAt ?? this.takenAt,
+  );
+  NetWorthSnapshotRow copyWithCompanion(NetWorthSnapshotsCompanion data) {
+    return NetWorthSnapshotRow(
+      id: data.id.present ? data.id.value : this.id,
+      year: data.year.present ? data.year.value : this.year,
+      month: data.month.present ? data.month.value : this.month,
+      assetsCents: data.assetsCents.present
+          ? data.assetsCents.value
+          : this.assetsCents,
+      investmentsCents: data.investmentsCents.present
+          ? data.investmentsCents.value
+          : this.investmentsCents,
+      liabilitiesCents: data.liabilitiesCents.present
+          ? data.liabilitiesCents.value
+          : this.liabilitiesCents,
+      takenAt: data.takenAt.present ? data.takenAt.value : this.takenAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NetWorthSnapshotRow(')
+          ..write('id: $id, ')
+          ..write('year: $year, ')
+          ..write('month: $month, ')
+          ..write('assetsCents: $assetsCents, ')
+          ..write('investmentsCents: $investmentsCents, ')
+          ..write('liabilitiesCents: $liabilitiesCents, ')
+          ..write('takenAt: $takenAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    year,
+    month,
+    assetsCents,
+    investmentsCents,
+    liabilitiesCents,
+    takenAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is NetWorthSnapshotRow &&
+          other.id == this.id &&
+          other.year == this.year &&
+          other.month == this.month &&
+          other.assetsCents == this.assetsCents &&
+          other.investmentsCents == this.investmentsCents &&
+          other.liabilitiesCents == this.liabilitiesCents &&
+          other.takenAt == this.takenAt);
+}
+
+class NetWorthSnapshotsCompanion extends UpdateCompanion<NetWorthSnapshotRow> {
+  final Value<String> id;
+  final Value<int> year;
+  final Value<int> month;
+  final Value<int> assetsCents;
+  final Value<int> investmentsCents;
+  final Value<int> liabilitiesCents;
+  final Value<DateTime> takenAt;
+  final Value<int> rowid;
+  const NetWorthSnapshotsCompanion({
+    this.id = const Value.absent(),
+    this.year = const Value.absent(),
+    this.month = const Value.absent(),
+    this.assetsCents = const Value.absent(),
+    this.investmentsCents = const Value.absent(),
+    this.liabilitiesCents = const Value.absent(),
+    this.takenAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  NetWorthSnapshotsCompanion.insert({
+    required String id,
+    required int year,
+    required int month,
+    required int assetsCents,
+    required int investmentsCents,
+    required int liabilitiesCents,
+    required DateTime takenAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       year = Value(year),
+       month = Value(month),
+       assetsCents = Value(assetsCents),
+       investmentsCents = Value(investmentsCents),
+       liabilitiesCents = Value(liabilitiesCents),
+       takenAt = Value(takenAt);
+  static Insertable<NetWorthSnapshotRow> custom({
+    Expression<String>? id,
+    Expression<int>? year,
+    Expression<int>? month,
+    Expression<int>? assetsCents,
+    Expression<int>? investmentsCents,
+    Expression<int>? liabilitiesCents,
+    Expression<DateTime>? takenAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (year != null) 'year': year,
+      if (month != null) 'month': month,
+      if (assetsCents != null) 'assets_cents': assetsCents,
+      if (investmentsCents != null) 'investments_cents': investmentsCents,
+      if (liabilitiesCents != null) 'liabilities_cents': liabilitiesCents,
+      if (takenAt != null) 'taken_at': takenAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  NetWorthSnapshotsCompanion copyWith({
+    Value<String>? id,
+    Value<int>? year,
+    Value<int>? month,
+    Value<int>? assetsCents,
+    Value<int>? investmentsCents,
+    Value<int>? liabilitiesCents,
+    Value<DateTime>? takenAt,
+    Value<int>? rowid,
+  }) {
+    return NetWorthSnapshotsCompanion(
+      id: id ?? this.id,
+      year: year ?? this.year,
+      month: month ?? this.month,
+      assetsCents: assetsCents ?? this.assetsCents,
+      investmentsCents: investmentsCents ?? this.investmentsCents,
+      liabilitiesCents: liabilitiesCents ?? this.liabilitiesCents,
+      takenAt: takenAt ?? this.takenAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (year.present) {
+      map['year'] = Variable<int>(year.value);
+    }
+    if (month.present) {
+      map['month'] = Variable<int>(month.value);
+    }
+    if (assetsCents.present) {
+      map['assets_cents'] = Variable<int>(assetsCents.value);
+    }
+    if (investmentsCents.present) {
+      map['investments_cents'] = Variable<int>(investmentsCents.value);
+    }
+    if (liabilitiesCents.present) {
+      map['liabilities_cents'] = Variable<int>(liabilitiesCents.value);
+    }
+    if (takenAt.present) {
+      map['taken_at'] = Variable<DateTime>(takenAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NetWorthSnapshotsCompanion(')
+          ..write('id: $id, ')
+          ..write('year: $year, ')
+          ..write('month: $month, ')
+          ..write('assetsCents: $assetsCents, ')
+          ..write('investmentsCents: $investmentsCents, ')
+          ..write('liabilitiesCents: $liabilitiesCents, ')
+          ..write('takenAt: $takenAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $AiReviewsTable extends AiReviews
+    with TableInfo<$AiReviewsTable, AiReviewRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AiReviewsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _contentMeta = const VerificationMeta(
+    'content',
+  );
+  @override
+  late final GeneratedColumn<String> content = GeneratedColumn<String>(
+    'content',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, createdAt, content];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'ai_reviews';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AiReviewRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('content')) {
+      context.handle(
+        _contentMeta,
+        content.isAcceptableOrUnknown(data['content']!, _contentMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_contentMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AiReviewRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AiReviewRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      content: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}content'],
+      )!,
+    );
+  }
+
+  @override
+  $AiReviewsTable createAlias(String alias) {
+    return $AiReviewsTable(attachedDatabase, alias);
+  }
+}
+
+class AiReviewRow extends DataClass implements Insertable<AiReviewRow> {
+  final String id;
+  final DateTime createdAt;
+
+  /// JSON con el titular y las recomendaciones.
+  final String content;
+  const AiReviewRow({
+    required this.id,
+    required this.createdAt,
+    required this.content,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['content'] = Variable<String>(content);
+    return map;
+  }
+
+  AiReviewsCompanion toCompanion(bool nullToAbsent) {
+    return AiReviewsCompanion(
+      id: Value(id),
+      createdAt: Value(createdAt),
+      content: Value(content),
+    );
+  }
+
+  factory AiReviewRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AiReviewRow(
+      id: serializer.fromJson<String>(json['id']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      content: serializer.fromJson<String>(json['content']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'content': serializer.toJson<String>(content),
+    };
+  }
+
+  AiReviewRow copyWith({String? id, DateTime? createdAt, String? content}) =>
+      AiReviewRow(
+        id: id ?? this.id,
+        createdAt: createdAt ?? this.createdAt,
+        content: content ?? this.content,
+      );
+  AiReviewRow copyWithCompanion(AiReviewsCompanion data) {
+    return AiReviewRow(
+      id: data.id.present ? data.id.value : this.id,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      content: data.content.present ? data.content.value : this.content,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AiReviewRow(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('content: $content')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, createdAt, content);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AiReviewRow &&
+          other.id == this.id &&
+          other.createdAt == this.createdAt &&
+          other.content == this.content);
+}
+
+class AiReviewsCompanion extends UpdateCompanion<AiReviewRow> {
+  final Value<String> id;
+  final Value<DateTime> createdAt;
+  final Value<String> content;
+  final Value<int> rowid;
+  const AiReviewsCompanion({
+    this.id = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.content = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AiReviewsCompanion.insert({
+    required String id,
+    required DateTime createdAt,
+    required String content,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       createdAt = Value(createdAt),
+       content = Value(content);
+  static Insertable<AiReviewRow> custom({
+    Expression<String>? id,
+    Expression<DateTime>? createdAt,
+    Expression<String>? content,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (createdAt != null) 'created_at': createdAt,
+      if (content != null) 'content': content,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AiReviewsCompanion copyWith({
+    Value<String>? id,
+    Value<DateTime>? createdAt,
+    Value<String>? content,
+    Value<int>? rowid,
+  }) {
+    return AiReviewsCompanion(
+      id: id ?? this.id,
+      createdAt: createdAt ?? this.createdAt,
+      content: content ?? this.content,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (content.present) {
+      map['content'] = Variable<String>(content.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AiReviewsCompanion(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('content: $content, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $AiSecretsTable extends AiSecrets
+    with TableInfo<$AiSecretsTable, AiSecretRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AiSecretsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _apiKeyMeta = const VerificationMeta('apiKey');
+  @override
+  late final GeneratedColumn<String> apiKey = GeneratedColumn<String>(
+    'api_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, apiKey];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'ai_secrets';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AiSecretRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('api_key')) {
+      context.handle(
+        _apiKeyMeta,
+        apiKey.isAcceptableOrUnknown(data['api_key']!, _apiKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_apiKeyMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AiSecretRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AiSecretRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      apiKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}api_key'],
+      )!,
+    );
+  }
+
+  @override
+  $AiSecretsTable createAlias(String alias) {
+    return $AiSecretsTable(attachedDatabase, alias);
+  }
+}
+
+class AiSecretRow extends DataClass implements Insertable<AiSecretRow> {
+  final int id;
+  final String apiKey;
+  const AiSecretRow({required this.id, required this.apiKey});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['api_key'] = Variable<String>(apiKey);
+    return map;
+  }
+
+  AiSecretsCompanion toCompanion(bool nullToAbsent) {
+    return AiSecretsCompanion(id: Value(id), apiKey: Value(apiKey));
+  }
+
+  factory AiSecretRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AiSecretRow(
+      id: serializer.fromJson<int>(json['id']),
+      apiKey: serializer.fromJson<String>(json['apiKey']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'apiKey': serializer.toJson<String>(apiKey),
+    };
+  }
+
+  AiSecretRow copyWith({int? id, String? apiKey}) =>
+      AiSecretRow(id: id ?? this.id, apiKey: apiKey ?? this.apiKey);
+  AiSecretRow copyWithCompanion(AiSecretsCompanion data) {
+    return AiSecretRow(
+      id: data.id.present ? data.id.value : this.id,
+      apiKey: data.apiKey.present ? data.apiKey.value : this.apiKey,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AiSecretRow(')
+          ..write('id: $id, ')
+          ..write('apiKey: $apiKey')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, apiKey);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AiSecretRow &&
+          other.id == this.id &&
+          other.apiKey == this.apiKey);
+}
+
+class AiSecretsCompanion extends UpdateCompanion<AiSecretRow> {
+  final Value<int> id;
+  final Value<String> apiKey;
+  const AiSecretsCompanion({
+    this.id = const Value.absent(),
+    this.apiKey = const Value.absent(),
+  });
+  AiSecretsCompanion.insert({
+    this.id = const Value.absent(),
+    required String apiKey,
+  }) : apiKey = Value(apiKey);
+  static Insertable<AiSecretRow> custom({
+    Expression<int>? id,
+    Expression<String>? apiKey,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (apiKey != null) 'api_key': apiKey,
+    });
+  }
+
+  AiSecretsCompanion copyWith({Value<int>? id, Value<String>? apiKey}) {
+    return AiSecretsCompanion(id: id ?? this.id, apiKey: apiKey ?? this.apiKey);
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (apiKey.present) {
+      map['api_key'] = Variable<String>(apiKey.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AiSecretsCompanion(')
+          ..write('id: $id, ')
+          ..write('apiKey: $apiKey')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -6771,6 +8084,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $FinanceSettingsTableTable(this);
   late final $FixedMovementsTable fixedMovements = $FixedMovementsTable(this);
   late final $ProvisionsTable provisions = $ProvisionsTable(this);
+  late final $NetWorthSnapshotsTable netWorthSnapshots =
+      $NetWorthSnapshotsTable(this);
+  late final $AiReviewsTable aiReviews = $AiReviewsTable(this);
+  late final $AiSecretsTable aiSecrets = $AiSecretsTable(this);
   late final Index transactionsDateIdx = Index(
     'transactions_date_idx',
     'CREATE INDEX transactions_date_idx ON transactions (date)',
@@ -6793,6 +8110,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     financeSettingsTable,
     fixedMovements,
     provisions,
+    netWorthSnapshots,
+    aiReviews,
+    aiSecrets,
     transactionsDateIdx,
   ];
   @override
@@ -6836,6 +8156,7 @@ typedef $$CategoriesTableCreateCompanionBuilder = CategoriesCompanion Function({
   required int sortOrder,
   required bool isArchived,
   required bool countsAsSaving,
+  Value<bool> isExtraordinary,
   Value<int> rowid,
 });
 typedef $$CategoriesTableUpdateCompanionBuilder = CategoriesCompanion Function({
@@ -6846,6 +8167,7 @@ typedef $$CategoriesTableUpdateCompanionBuilder = CategoriesCompanion Function({
   Value<int> sortOrder,
   Value<bool> isArchived,
   Value<bool> countsAsSaving,
+  Value<bool> isExtraordinary,
   Value<int> rowid,
 });
 
@@ -6968,6 +8290,11 @@ class $$CategoriesTableFilterComposer
 
   ColumnFilters<bool> get countsAsSaving => $composableBuilder(
     column: $table.countsAsSaving,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isExtraordinary => $composableBuilder(
+    column: $table.isExtraordinary,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7115,6 +8442,11 @@ class $$CategoriesTableOrderingComposer
     column: $table.countsAsSaving,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get isExtraordinary => $composableBuilder(
+    column: $table.isExtraordinary,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$CategoriesTableAnnotationComposer
@@ -7148,6 +8480,11 @@ class $$CategoriesTableAnnotationComposer
 
   GeneratedColumn<bool> get countsAsSaving => $composableBuilder(
     column: $table.countsAsSaving,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isExtraordinary => $composableBuilder(
+    column: $table.isExtraordinary,
     builder: (column) => column,
   );
 
@@ -7292,6 +8629,7 @@ class $$CategoriesTableTableManager
                 Value<int> sortOrder = const Value.absent(),
                 Value<bool> isArchived = const Value.absent(),
                 Value<bool> countsAsSaving = const Value.absent(),
+                Value<bool> isExtraordinary = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CategoriesCompanion(
                 id: id,
@@ -7301,6 +8639,7 @@ class $$CategoriesTableTableManager
                 sortOrder: sortOrder,
                 isArchived: isArchived,
                 countsAsSaving: countsAsSaving,
+                isExtraordinary: isExtraordinary,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -7312,6 +8651,7 @@ class $$CategoriesTableTableManager
                 required int sortOrder,
                 required bool isArchived,
                 required bool countsAsSaving,
+                Value<bool> isExtraordinary = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CategoriesCompanion.insert(
                 id: id,
@@ -7321,6 +8661,7 @@ class $$CategoriesTableTableManager
                 sortOrder: sortOrder,
                 isArchived: isArchived,
                 countsAsSaving: countsAsSaving,
+                isExtraordinary: isExtraordinary,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -9249,6 +10590,10 @@ typedef $$AssetsTableCreateCompanionBuilder = AssetsCompanion Function({
   required int currentValueCents,
   required DateTime valuedAt,
   Value<String?> notes,
+  Value<int> monthlyCostCents,
+  Value<int> monthlyIncomeCents,
+  Value<Liquidity?> liquidity,
+  Value<String?> linkedDebtId,
   Value<int> rowid,
 });
 typedef $$AssetsTableUpdateCompanionBuilder = AssetsCompanion Function({
@@ -9258,6 +10603,10 @@ typedef $$AssetsTableUpdateCompanionBuilder = AssetsCompanion Function({
   Value<int> currentValueCents,
   Value<DateTime> valuedAt,
   Value<String?> notes,
+  Value<int> monthlyCostCents,
+  Value<int> monthlyIncomeCents,
+  Value<Liquidity?> liquidity,
+  Value<String?> linkedDebtId,
   Value<int> rowid,
 });
 
@@ -9300,6 +10649,27 @@ class $$AssetsTableFilterComposer
     column: $table.notes,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnFilters<int> get monthlyCostCents => $composableBuilder(
+    column: $table.monthlyCostCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get monthlyIncomeCents => $composableBuilder(
+    column: $table.monthlyIncomeCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<Liquidity?, Liquidity, String> get liquidity =>
+      $composableBuilder(
+        column: $table.liquidity,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<String> get linkedDebtId => $composableBuilder(
+    column: $table.linkedDebtId,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$AssetsTableOrderingComposer
@@ -9340,6 +10710,26 @@ class $$AssetsTableOrderingComposer
     column: $table.notes,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get monthlyCostCents => $composableBuilder(
+    column: $table.monthlyCostCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get monthlyIncomeCents => $composableBuilder(
+    column: $table.monthlyIncomeCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get liquidity => $composableBuilder(
+    column: $table.liquidity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get linkedDebtId => $composableBuilder(
+    column: $table.linkedDebtId,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AssetsTableAnnotationComposer
@@ -9370,6 +10760,24 @@ class $$AssetsTableAnnotationComposer
 
   GeneratedColumn<String> get notes =>
       $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<int> get monthlyCostCents => $composableBuilder(
+    column: $table.monthlyCostCents,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get monthlyIncomeCents => $composableBuilder(
+    column: $table.monthlyIncomeCents,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<Liquidity?, String> get liquidity =>
+      $composableBuilder(column: $table.liquidity, builder: (column) => column);
+
+  GeneratedColumn<String> get linkedDebtId => $composableBuilder(
+    column: $table.linkedDebtId,
+    builder: (column) => column,
+  );
 }
 
 class $$AssetsTableTableManager
@@ -9406,6 +10814,10 @@ class $$AssetsTableTableManager
                 Value<int> currentValueCents = const Value.absent(),
                 Value<DateTime> valuedAt = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
+                Value<int> monthlyCostCents = const Value.absent(),
+                Value<int> monthlyIncomeCents = const Value.absent(),
+                Value<Liquidity?> liquidity = const Value.absent(),
+                Value<String?> linkedDebtId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => AssetsCompanion(
                 id: id,
@@ -9414,6 +10826,10 @@ class $$AssetsTableTableManager
                 currentValueCents: currentValueCents,
                 valuedAt: valuedAt,
                 notes: notes,
+                monthlyCostCents: monthlyCostCents,
+                monthlyIncomeCents: monthlyIncomeCents,
+                liquidity: liquidity,
+                linkedDebtId: linkedDebtId,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -9424,6 +10840,10 @@ class $$AssetsTableTableManager
                 required int currentValueCents,
                 required DateTime valuedAt,
                 Value<String?> notes = const Value.absent(),
+                Value<int> monthlyCostCents = const Value.absent(),
+                Value<int> monthlyIncomeCents = const Value.absent(),
+                Value<Liquidity?> liquidity = const Value.absent(),
+                Value<String?> linkedDebtId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => AssetsCompanion.insert(
                 id: id,
@@ -9432,6 +10852,10 @@ class $$AssetsTableTableManager
                 currentValueCents: currentValueCents,
                 valuedAt: valuedAt,
                 notes: notes,
+                monthlyCostCents: monthlyCostCents,
+                monthlyIncomeCents: monthlyIncomeCents,
+                liquidity: liquidity,
+                linkedDebtId: linkedDebtId,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -10725,6 +12149,8 @@ typedef $$FinanceSettingsTableTableCreateCompanionBuilder =
       Value<bool> soloProvider,
       Value<int> kidsMonthlyBufferCents,
       Value<Appearance> appearance,
+      Value<bool> aiEnabled,
+      Value<ReviewFrequency> aiReviewFrequency,
     });
 typedef $$FinanceSettingsTableTableUpdateCompanionBuilder =
     FinanceSettingsTableCompanion Function({
@@ -10742,6 +12168,8 @@ typedef $$FinanceSettingsTableTableUpdateCompanionBuilder =
       Value<bool> soloProvider,
       Value<int> kidsMonthlyBufferCents,
       Value<Appearance> appearance,
+      Value<bool> aiEnabled,
+      Value<ReviewFrequency> aiReviewFrequency,
     });
 
 class $$FinanceSettingsTableTableFilterComposer
@@ -10821,6 +12249,17 @@ class $$FinanceSettingsTableTableFilterComposer
   ColumnWithTypeConverterFilters<Appearance, Appearance, String>
   get appearance => $composableBuilder(
     column: $table.appearance,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<bool> get aiEnabled => $composableBuilder(
+    column: $table.aiEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<ReviewFrequency, ReviewFrequency, String>
+  get aiReviewFrequency => $composableBuilder(
+    column: $table.aiReviewFrequency,
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 }
@@ -10903,6 +12342,16 @@ class $$FinanceSettingsTableTableOrderingComposer
     column: $table.appearance,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get aiEnabled => $composableBuilder(
+    column: $table.aiEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get aiReviewFrequency => $composableBuilder(
+    column: $table.aiReviewFrequency,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$FinanceSettingsTableTableAnnotationComposer
@@ -10980,6 +12429,15 @@ class $$FinanceSettingsTableTableAnnotationComposer
         column: $table.appearance,
         builder: (column) => column,
       );
+
+  GeneratedColumn<bool> get aiEnabled =>
+      $composableBuilder(column: $table.aiEnabled, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<ReviewFrequency, String>
+  get aiReviewFrequency => $composableBuilder(
+    column: $table.aiReviewFrequency,
+    builder: (column) => column,
+  );
 }
 
 class $$FinanceSettingsTableTableTableManager
@@ -11039,6 +12497,8 @@ class $$FinanceSettingsTableTableTableManager
                 Value<bool> soloProvider = const Value.absent(),
                 Value<int> kidsMonthlyBufferCents = const Value.absent(),
                 Value<Appearance> appearance = const Value.absent(),
+                Value<bool> aiEnabled = const Value.absent(),
+                Value<ReviewFrequency> aiReviewFrequency = const Value.absent(),
               }) => FinanceSettingsTableCompanion(
                 id: id,
                 savingsTargetBasisPoints: savingsTargetBasisPoints,
@@ -11054,6 +12514,8 @@ class $$FinanceSettingsTableTableTableManager
                 soloProvider: soloProvider,
                 kidsMonthlyBufferCents: kidsMonthlyBufferCents,
                 appearance: appearance,
+                aiEnabled: aiEnabled,
+                aiReviewFrequency: aiReviewFrequency,
               ),
           createCompanionCallback:
               ({
@@ -11071,6 +12533,8 @@ class $$FinanceSettingsTableTableTableManager
                 Value<bool> soloProvider = const Value.absent(),
                 Value<int> kidsMonthlyBufferCents = const Value.absent(),
                 Value<Appearance> appearance = const Value.absent(),
+                Value<bool> aiEnabled = const Value.absent(),
+                Value<ReviewFrequency> aiReviewFrequency = const Value.absent(),
               }) => FinanceSettingsTableCompanion.insert(
                 id: id,
                 savingsTargetBasisPoints: savingsTargetBasisPoints,
@@ -11086,6 +12550,8 @@ class $$FinanceSettingsTableTableTableManager
                 soloProvider: soloProvider,
                 kidsMonthlyBufferCents: kidsMonthlyBufferCents,
                 appearance: appearance,
+                aiEnabled: aiEnabled,
+                aiReviewFrequency: aiReviewFrequency,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -11883,6 +13349,579 @@ typedef $$ProvisionsTableProcessedTableManager =
       ProvisionRow,
       PrefetchHooks Function({bool categoryId})
     >;
+typedef $$NetWorthSnapshotsTableCreateCompanionBuilder =
+    NetWorthSnapshotsCompanion Function({
+      required String id,
+      required int year,
+      required int month,
+      required int assetsCents,
+      required int investmentsCents,
+      required int liabilitiesCents,
+      required DateTime takenAt,
+      Value<int> rowid,
+    });
+typedef $$NetWorthSnapshotsTableUpdateCompanionBuilder =
+    NetWorthSnapshotsCompanion Function({
+      Value<String> id,
+      Value<int> year,
+      Value<int> month,
+      Value<int> assetsCents,
+      Value<int> investmentsCents,
+      Value<int> liabilitiesCents,
+      Value<DateTime> takenAt,
+      Value<int> rowid,
+    });
+
+class $$NetWorthSnapshotsTableFilterComposer
+    extends Composer<_$AppDatabase, $NetWorthSnapshotsTable> {
+  $$NetWorthSnapshotsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get year => $composableBuilder(
+    column: $table.year,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get month => $composableBuilder(
+    column: $table.month,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get assetsCents => $composableBuilder(
+    column: $table.assetsCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get investmentsCents => $composableBuilder(
+    column: $table.investmentsCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get liabilitiesCents => $composableBuilder(
+    column: $table.liabilitiesCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get takenAt => $composableBuilder(
+    column: $table.takenAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$NetWorthSnapshotsTableOrderingComposer
+    extends Composer<_$AppDatabase, $NetWorthSnapshotsTable> {
+  $$NetWorthSnapshotsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get year => $composableBuilder(
+    column: $table.year,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get month => $composableBuilder(
+    column: $table.month,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get assetsCents => $composableBuilder(
+    column: $table.assetsCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get investmentsCents => $composableBuilder(
+    column: $table.investmentsCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get liabilitiesCents => $composableBuilder(
+    column: $table.liabilitiesCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get takenAt => $composableBuilder(
+    column: $table.takenAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$NetWorthSnapshotsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $NetWorthSnapshotsTable> {
+  $$NetWorthSnapshotsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get year =>
+      $composableBuilder(column: $table.year, builder: (column) => column);
+
+  GeneratedColumn<int> get month =>
+      $composableBuilder(column: $table.month, builder: (column) => column);
+
+  GeneratedColumn<int> get assetsCents => $composableBuilder(
+    column: $table.assetsCents,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get investmentsCents => $composableBuilder(
+    column: $table.investmentsCents,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get liabilitiesCents => $composableBuilder(
+    column: $table.liabilitiesCents,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get takenAt =>
+      $composableBuilder(column: $table.takenAt, builder: (column) => column);
+}
+
+class $$NetWorthSnapshotsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $NetWorthSnapshotsTable,
+          NetWorthSnapshotRow,
+          $$NetWorthSnapshotsTableFilterComposer,
+          $$NetWorthSnapshotsTableOrderingComposer,
+          $$NetWorthSnapshotsTableAnnotationComposer,
+          $$NetWorthSnapshotsTableCreateCompanionBuilder,
+          $$NetWorthSnapshotsTableUpdateCompanionBuilder,
+          (
+            NetWorthSnapshotRow,
+            BaseReferences<
+              _$AppDatabase,
+              $NetWorthSnapshotsTable,
+              NetWorthSnapshotRow
+            >,
+          ),
+          NetWorthSnapshotRow,
+          PrefetchHooks Function()
+        > {
+  $$NetWorthSnapshotsTableTableManager(
+    _$AppDatabase db,
+    $NetWorthSnapshotsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$NetWorthSnapshotsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$NetWorthSnapshotsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$NetWorthSnapshotsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<int> year = const Value.absent(),
+                Value<int> month = const Value.absent(),
+                Value<int> assetsCents = const Value.absent(),
+                Value<int> investmentsCents = const Value.absent(),
+                Value<int> liabilitiesCents = const Value.absent(),
+                Value<DateTime> takenAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => NetWorthSnapshotsCompanion(
+                id: id,
+                year: year,
+                month: month,
+                assetsCents: assetsCents,
+                investmentsCents: investmentsCents,
+                liabilitiesCents: liabilitiesCents,
+                takenAt: takenAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required int year,
+                required int month,
+                required int assetsCents,
+                required int investmentsCents,
+                required int liabilitiesCents,
+                required DateTime takenAt,
+                Value<int> rowid = const Value.absent(),
+              }) => NetWorthSnapshotsCompanion.insert(
+                id: id,
+                year: year,
+                month: month,
+                assetsCents: assetsCents,
+                investmentsCents: investmentsCents,
+                liabilitiesCents: liabilitiesCents,
+                takenAt: takenAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$NetWorthSnapshotsTable, NetWorthSnapshotRow>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $NetWorthSnapshotsTable,
+                    NetWorthSnapshotRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$NetWorthSnapshotsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $NetWorthSnapshotsTable,
+      NetWorthSnapshotRow,
+      $$NetWorthSnapshotsTableFilterComposer,
+      $$NetWorthSnapshotsTableOrderingComposer,
+      $$NetWorthSnapshotsTableAnnotationComposer,
+      $$NetWorthSnapshotsTableCreateCompanionBuilder,
+      $$NetWorthSnapshotsTableUpdateCompanionBuilder,
+      (
+        NetWorthSnapshotRow,
+        BaseReferences<
+          _$AppDatabase,
+          $NetWorthSnapshotsTable,
+          NetWorthSnapshotRow
+        >,
+      ),
+      NetWorthSnapshotRow,
+      PrefetchHooks Function()
+    >;
+typedef $$AiReviewsTableCreateCompanionBuilder = AiReviewsCompanion Function({
+  required String id,
+  required DateTime createdAt,
+  required String content,
+  Value<int> rowid,
+});
+typedef $$AiReviewsTableUpdateCompanionBuilder = AiReviewsCompanion Function({
+  Value<String> id,
+  Value<DateTime> createdAt,
+  Value<String> content,
+  Value<int> rowid,
+});
+
+class $$AiReviewsTableFilterComposer
+    extends Composer<_$AppDatabase, $AiReviewsTable> {
+  $$AiReviewsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AiReviewsTableOrderingComposer
+    extends Composer<_$AppDatabase, $AiReviewsTable> {
+  $$AiReviewsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AiReviewsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AiReviewsTable> {
+  $$AiReviewsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get content =>
+      $composableBuilder(column: $table.content, builder: (column) => column);
+}
+
+class $$AiReviewsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AiReviewsTable,
+          AiReviewRow,
+          $$AiReviewsTableFilterComposer,
+          $$AiReviewsTableOrderingComposer,
+          $$AiReviewsTableAnnotationComposer,
+          $$AiReviewsTableCreateCompanionBuilder,
+          $$AiReviewsTableUpdateCompanionBuilder,
+          (
+            AiReviewRow,
+            BaseReferences<_$AppDatabase, $AiReviewsTable, AiReviewRow>,
+          ),
+          AiReviewRow,
+          PrefetchHooks Function()
+        > {
+  $$AiReviewsTableTableManager(_$AppDatabase db, $AiReviewsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AiReviewsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AiReviewsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AiReviewsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<String> content = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AiReviewsCompanion(
+                id: id,
+                createdAt: createdAt,
+                content: content,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required DateTime createdAt,
+                required String content,
+                Value<int> rowid = const Value.absent(),
+              }) => AiReviewsCompanion.insert(
+                id: id,
+                createdAt: createdAt,
+                content: content,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$AiReviewsTable, AiReviewRow>(table),
+                  BaseReferences<_$AppDatabase, $AiReviewsTable, AiReviewRow>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AiReviewsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AiReviewsTable,
+      AiReviewRow,
+      $$AiReviewsTableFilterComposer,
+      $$AiReviewsTableOrderingComposer,
+      $$AiReviewsTableAnnotationComposer,
+      $$AiReviewsTableCreateCompanionBuilder,
+      $$AiReviewsTableUpdateCompanionBuilder,
+      (
+        AiReviewRow,
+        BaseReferences<_$AppDatabase, $AiReviewsTable, AiReviewRow>,
+      ),
+      AiReviewRow,
+      PrefetchHooks Function()
+    >;
+typedef $$AiSecretsTableCreateCompanionBuilder = AiSecretsCompanion Function({
+  Value<int> id,
+  required String apiKey,
+});
+typedef $$AiSecretsTableUpdateCompanionBuilder = AiSecretsCompanion Function({
+  Value<int> id,
+  Value<String> apiKey,
+});
+
+class $$AiSecretsTableFilterComposer
+    extends Composer<_$AppDatabase, $AiSecretsTable> {
+  $$AiSecretsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get apiKey => $composableBuilder(
+    column: $table.apiKey,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AiSecretsTableOrderingComposer
+    extends Composer<_$AppDatabase, $AiSecretsTable> {
+  $$AiSecretsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get apiKey => $composableBuilder(
+    column: $table.apiKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AiSecretsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AiSecretsTable> {
+  $$AiSecretsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get apiKey =>
+      $composableBuilder(column: $table.apiKey, builder: (column) => column);
+}
+
+class $$AiSecretsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AiSecretsTable,
+          AiSecretRow,
+          $$AiSecretsTableFilterComposer,
+          $$AiSecretsTableOrderingComposer,
+          $$AiSecretsTableAnnotationComposer,
+          $$AiSecretsTableCreateCompanionBuilder,
+          $$AiSecretsTableUpdateCompanionBuilder,
+          (
+            AiSecretRow,
+            BaseReferences<_$AppDatabase, $AiSecretsTable, AiSecretRow>,
+          ),
+          AiSecretRow,
+          PrefetchHooks Function()
+        > {
+  $$AiSecretsTableTableManager(_$AppDatabase db, $AiSecretsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AiSecretsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AiSecretsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AiSecretsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> apiKey = const Value.absent(),
+          }) => AiSecretsCompanion(id: id, apiKey: apiKey),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String apiKey,
+          }) => AiSecretsCompanion.insert(id: id, apiKey: apiKey),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$AiSecretsTable, AiSecretRow>(table),
+                  BaseReferences<_$AppDatabase, $AiSecretsTable, AiSecretRow>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AiSecretsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AiSecretsTable,
+      AiSecretRow,
+      $$AiSecretsTableFilterComposer,
+      $$AiSecretsTableOrderingComposer,
+      $$AiSecretsTableAnnotationComposer,
+      $$AiSecretsTableCreateCompanionBuilder,
+      $$AiSecretsTableUpdateCompanionBuilder,
+      (
+        AiSecretRow,
+        BaseReferences<_$AppDatabase, $AiSecretsTable, AiSecretRow>,
+      ),
+      AiSecretRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -11913,4 +13952,10 @@ class $AppDatabaseManager {
       $$FixedMovementsTableTableManager(_db, _db.fixedMovements);
   $$ProvisionsTableTableManager get provisions =>
       $$ProvisionsTableTableManager(_db, _db.provisions);
+  $$NetWorthSnapshotsTableTableManager get netWorthSnapshots =>
+      $$NetWorthSnapshotsTableTableManager(_db, _db.netWorthSnapshots);
+  $$AiReviewsTableTableManager get aiReviews =>
+      $$AiReviewsTableTableManager(_db, _db.aiReviews);
+  $$AiSecretsTableTableManager get aiSecrets =>
+      $$AiSecretsTableTableManager(_db, _db.aiSecrets);
 }

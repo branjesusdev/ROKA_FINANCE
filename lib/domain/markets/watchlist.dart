@@ -70,6 +70,36 @@ abstract final class TechWatchlist {
       kind: WatchKind.company,
     ),
     WatchItem(
+      symbol: 'HUMN',
+      name: 'Roundhill Humanoid Robotics',
+      why: 'Fondo de robots humanoides: reparte el riesgo entre el tema.',
+      kind: WatchKind.thematicFund,
+    ),
+    WatchItem(
+      symbol: 'VST',
+      name: 'Vistra',
+      why: 'Energía (nuclear y gas) para centros de datos de IA.',
+      kind: WatchKind.company,
+    ),
+    WatchItem(
+      symbol: 'LITE',
+      name: 'Lumentum',
+      why: 'Láseres y ópticos que conectan los centros de datos de IA.',
+      kind: WatchKind.company,
+    ),
+    WatchItem(
+      symbol: 'COHR',
+      name: 'Coherent',
+      why: 'Láseres y transceptores ópticos para redes de IA.',
+      kind: WatchKind.company,
+    ),
+    WatchItem(
+      symbol: 'HLIT',
+      name: 'Harmonic',
+      why: 'Video por internet y banda ancha (cable y fibra).',
+      kind: WatchKind.company,
+    ),
+    WatchItem(
       symbol: 'NOVT',
       name: 'Novanta',
       why: 'Fotónica y control de movimiento de precisión para robots.',

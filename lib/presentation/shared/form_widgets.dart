@@ -262,6 +262,15 @@ String failureMessage(Failure failure) => switch (failure) {
   },
   NotFoundFailure() => 'No se encontró el registro.',
   StorageFailure() => 'No se pudo guardar. Intenta de nuevo.',
+  RemoteFailure(:final message) => switch (message) {
+    'missingKey' => 'Pega tu llave de Groq en Ajustes › Tu CFO con IA.',
+    'unauthorized' => 'La llave de Groq no sirve o fue revocada. Cámbiala.',
+    'rateLimited' => 'Groq pidió esperar un poco. Intenta en unos minutos.',
+    'disabled' => 'Activa "Tu CFO con IA" en Ajustes para usarlo.',
+    'invalidResponse' =>
+      'La IA respondió algo que no se pudo leer. Intenta de nuevo.',
+    _ => 'Sin conexión con la IA. Revisa tu internet e intenta de nuevo.',
+  },
 };
 
 /// Confirmación simple antes de eliminar.

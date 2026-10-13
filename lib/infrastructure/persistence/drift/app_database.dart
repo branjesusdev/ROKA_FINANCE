@@ -34,6 +34,9 @@ part 'app_database.g.dart';
     FinanceSettingsTable,
     FixedMovements,
     Provisions,
+    NetWorthSnapshots,
+    AiReviews,
+    AiSecrets,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -45,7 +48,7 @@ class AppDatabase extends _$AppDatabase {
   static const fileName = 'finance_app';
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -54,6 +57,11 @@ class AppDatabase extends _$AppDatabase {
       await _seedDefaults();
     },
     onUpgrade: (migrator, from, to) async {
+      // Primero: los pasos de abajo insertan categorías con todas las
+      // columnas actuales.
+      if (from < 9) {
+        await migrator.addColumn(categories, categories.isExtraordinary);
+      }
       if (from < 2) {
         await migrator.createTable(fixedMovements);
         await migrator.addColumn(
@@ -136,6 +144,32 @@ class AppDatabase extends _$AppDatabase {
           financeSettingsTable,
           financeSettingsTable.appearance,
         );
+      }
+      if (from < 9) {
+        for (final column in <GeneratedColumn<Object>>[
+          assets.monthlyCostCents,
+          assets.monthlyIncomeCents,
+          assets.liquidity,
+          assets.linkedDebtId,
+        ]) {
+          await migrator.addColumn(assets, column);
+        }
+        for (final column in <GeneratedColumn<Object>>[
+          financeSettingsTable.aiEnabled,
+          financeSettingsTable.aiReviewFrequency,
+        ]) {
+          await migrator.addColumn(financeSettingsTable, column);
+        }
+        await migrator.createTable(netWorthSnapshots);
+        await migrator.createTable(aiReviews);
+        await migrator.createTable(aiSecrets);
+        await (update(categories)
+              ..where((c) => c.id.equals(DefaultCategories.extraordinaryId)))
+            .write(const CategoriesCompanion(isExtraordinary: Value(true)));
+        for (final category in DefaultCategories.extraordinaryIncomes) {
+          await into(categories)
+              .insert(category.toCompanion(), mode: InsertMode.insertOrIgnore);
+        }
       }
     },
     beforeOpen: (_) => customStatement('PRAGMA foreign_keys = ON'),

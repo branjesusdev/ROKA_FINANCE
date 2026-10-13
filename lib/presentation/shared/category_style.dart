@@ -25,6 +25,13 @@ abstract final class CategoryStyle {
     'additional_income': (Icons.work, Color(0xFF4D7C0F)),
     'extraordinary_income': (Icons.card_giftcard, Color(0xFFA16207)),
     'other': (Icons.more_horiz, Color(0xFF6B7280)),
+    // Ingresos extraordinarios.
+    'bonus': (Icons.workspace_premium, Color(0xFFB45309)),
+    'severance': (Icons.account_balance_wallet, Color(0xFF166534)),
+    'interest': (Icons.percent, Color(0xFF4D7C0F)),
+    'commission': (Icons.handshake, Color(0xFF0E7490)),
+    'refund': (Icons.replay, Color(0xFF0369A1)),
+    'asset_sale': (Icons.sell, Color(0xFF92400E)),
     // Para categorías propias.
     'pets': (Icons.pets, Color(0xFF92400E)),
     'beauty': (Icons.content_cut, Color(0xFFF59E0B)),

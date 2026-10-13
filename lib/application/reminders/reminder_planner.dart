@@ -1,3 +1,4 @@
+import 'package:finance_app/application/advisor/financial_alerts.dart';
 import 'package:finance_app/application/common/money_text.dart';
 import 'package:finance_app/application/dashboard/cycle_summary.dart';
 import 'package:finance_app/application/reminders/reminder_scheduler.dart';
@@ -18,6 +19,15 @@ final class ReminderPlanner {
   static const fixedFirstId = 30;
   static const paydayId = 50;
   static const cycleCloseId = 51;
+  static const alertsDigestId = 52;
+  static const overdueBillsId = 53;
+
+  /// Hora del resumen de alertas (la noche, para planear el día siguiente).
+  static const alertsDigestHour = 20;
+  static const overdueBillsHour = 9;
+
+  /// Alertas mencionadas en el resumen.
+  static const digestAlerts = 2;
   static const testId = 99;
 
   /// Días de resúmenes de la mañana programados por adelantado.
@@ -32,6 +42,7 @@ final class ReminderPlanner {
     required FinanceSettings settings,
     required DateTime now,
     CycleSummary? summary,
+    List<FinancialAlert> alerts = const [],
   }) {
     final reminders = <Reminder>[];
     if (settings.dailyReminder) {
@@ -65,6 +76,12 @@ final class ReminderPlanner {
       reminders
         ..addAll(_fixedHeadsUp(now, summary))
         ..addAll(_cycleEdges(now, summary));
+      if (_overdueBills(now, summary) case final reminder?) {
+        reminders.add(reminder);
+      }
+    }
+    if (_alertsDigest(now, alerts) case final reminder?) {
+      reminders.add(reminder);
     }
     return reminders;
   }
@@ -194,6 +211,50 @@ final class ReminderPlanner {
                   'regístralo ese día: lo que sobró pasa a ahorro.',
       );
     }
+  }
+
+  /// Una sola notificación al día con lo urgente (reglas, no IA). Se
+  /// reprograma con cada cambio: no se repite ni se acumula.
+  Reminder? _alertsDigest(DateTime now, List<FinancialAlert> alerts) {
+    final urgent = alerts
+        .where(
+          (a) =>
+              a.severity == AlertSeverity.critical ||
+              a.severity == AlertSeverity.warning,
+        )
+        .toList();
+    if (urgent.isEmpty) return null;
+    final first = urgent.first;
+    final more = urgent.length - 1;
+    return Reminder(
+      id: alertsDigestId,
+      at: _next(now, alertsDigestHour, 0),
+      title: first.title,
+      body: [
+        first.action,
+        for (final a in urgent.skip(1).take(digestAlerts - 1)) '• ${a.title}',
+        if (more >= digestAlerts) 'Y ${more - digestAlerts + 1} más en Tu CFO.',
+      ].join('\n'),
+    );
+  }
+
+  /// Facturas cuyo día pasó sin valor real: aviso a la mañana siguiente.
+  Reminder? _overdueBills(DateTime now, CycleSummary summary) {
+    final overdue = summary.upcomingFixed.awaitingAmount
+        .where((s) => s.movement.isExpense)
+        .toList();
+    if (overdue.isEmpty) return null;
+    final names = overdue.map((s) => s.movement.name).join(', ');
+    return Reminder(
+      id: overdueBillsId,
+      at: _next(now, overdueBillsHour, 0),
+      title: overdue.length == 1
+          ? 'Falta confirmar la factura de $names'
+          : 'Faltan ${overdue.length} facturas por confirmar',
+      body:
+          '$names: su día ya pasó. ¿Ya pagaste? Escribe el valor real en '
+          'Inicio para que tus cuentas cuadren.',
+    );
   }
 
   static DateTime _next(DateTime now, int hour, int minute) {

@@ -16,6 +16,8 @@ import 'package:finance_app/domain/wealth/asset.dart';
 // v6: vínculo del movimiento con el fijo que lo generó.
 // v7: fijos de valor variable (facturas de servicios).
 // v8: apariencia clara/oscura.
+// v9: ingresos extraordinarios, datos de activos (costo, ingreso, liquidez,
+//     crédito), historial de patrimonio, IA (ajustes, revisiones y llave).
 
 @DataClassName('CategoryRow')
 class Categories extends Table {
@@ -26,6 +28,8 @@ class Categories extends Table {
   IntColumn get sortOrder => integer()();
   BoolColumn get isArchived => boolean()();
   BoolColumn get countsAsSaving => boolean()();
+  BoolColumn get isExtraordinary =>
+      boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -95,6 +99,13 @@ class Assets extends Table {
   IntColumn get currentValueCents => integer()();
   DateTimeColumn get valuedAt => dateTime()();
   TextColumn get notes => text().nullable()();
+  IntColumn get monthlyCostCents => integer().withDefault(const Constant(0))();
+  IntColumn get monthlyIncomeCents =>
+      integer().withDefault(const Constant(0))();
+  TextColumn get liquidity => textEnum<Liquidity>().nullable()();
+  // Sin FK: SQLite no deja agregar columnas con referencias en una
+  // migración. Al borrar la deuda, el repositorio limpia el vínculo.
+  TextColumn get linkedDebtId => text().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -203,6 +214,10 @@ class FinanceSettingsTable extends Table {
       integer().withDefault(const Constant(0))();
   TextColumn get appearance =>
       textEnum<Appearance>().withDefault(Constant(Appearance.system.name))();
+  BoolColumn get aiEnabled => boolean().withDefault(const Constant(false))();
+  TextColumn get aiReviewFrequency => textEnum<ReviewFrequency>().withDefault(
+    Constant(ReviewFrequency.weekly.name),
+  )();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -233,6 +248,54 @@ class Provisions extends Table {
   DateTimeColumn get nextDue => dateTime()();
   TextColumn get categoryId => text().references(Categories, #id)();
   BoolColumn get isActive => boolean()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Patrimonio al cierre de cada mes (evolución histórica). Se guarda solo:
+/// una fila por mes, la última vez que se abrió la app en ese mes.
+@DataClassName('NetWorthSnapshotRow')
+class NetWorthSnapshots extends Table {
+  TextColumn get id => text()();
+  IntColumn get year => integer()();
+  IntColumn get month => integer()();
+  IntColumn get assetsCents => integer()();
+  IntColumn get investmentsCents => integer()();
+  IntColumn get liabilitiesCents => integer()();
+  DateTimeColumn get takenAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+
+  @override
+  List<Set<Column<Object>>> get uniqueKeys => [
+    {year, month},
+  ];
+}
+
+/// Revisiones de "Tu CFO con IA". Son derivadas (se pueden volver a pedir):
+/// no van en la copia de seguridad.
+@DataClassName('AiReviewRow')
+class AiReviews extends Table {
+  TextColumn get id => text()();
+  DateTimeColumn get createdAt => dateTime()();
+
+  /// JSON con el titular y las recomendaciones.
+  TextColumn get content => text()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Llave del proveedor de IA. Fila única. Nunca va en la copia de
+/// seguridad ni en los logs.
+@DataClassName('AiSecretRow')
+class AiSecrets extends Table {
+  static const singletonId = 1;
+
+  IntColumn get id => integer()();
+  TextColumn get apiKey => text()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};

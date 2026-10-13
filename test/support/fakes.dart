@@ -1,8 +1,12 @@
 import 'dart:async';
 
+import 'package:finance_app/application/advisor/ai_ports.dart';
 import 'package:finance_app/application/reminders/reminder_scheduler.dart';
 import 'package:finance_app/application/voice/speech_input.dart';
 import 'package:finance_app/core/storage_exception.dart';
+import 'package:finance_app/domain/advisor/ai_review.dart';
+import 'package:finance_app/domain/savings/finance_settings.dart';
+import 'package:finance_app/domain/savings/settings_repository.dart';
 import 'package:finance_app/domain/shared/clock.dart';
 import 'package:finance_app/domain/shared/date_range.dart';
 import 'package:finance_app/domain/shared/id_generator.dart';
@@ -137,4 +141,66 @@ final class FakeSpeechInput implements SpeechInput {
 
   @override
   Future<String> diagnostics() async => '';
+}
+
+/// IA falsa: devuelve [response] o lanza [error]. Guarda lo que recibió.
+final class FakeAiAdvisor implements AiAdvisor {
+  String response = '{}';
+  AiAdvisorException? error;
+  final prompts = <String>[];
+
+  @override
+  Future<String> complete({
+    required String apiKey,
+    required String system,
+    required String prompt,
+    bool json = false,
+  }) async {
+    prompts.add(prompt);
+    if (error case final error?) throw error;
+    return response;
+  }
+}
+
+final class FakeAiKeyStore implements AiKeyStore {
+  new([this.key]);
+
+  String? key;
+
+  @override
+  Future<String?> read() async => key;
+
+  @override
+  Future<void> save(String? key) async => this.key = key;
+
+  @override
+  Stream<bool> watchHasKey() => Stream.value(key != null);
+}
+
+final class FakeAiReviewRepository implements AiReviewRepository {
+  final saved = <AiReview>[];
+
+  @override
+  Future<AiReview?> latest() async => saved.lastOrNull;
+
+  @override
+  Future<void> save(AiReview review) async => saved.add(review);
+
+  @override
+  Stream<AiReview?> watchLatest() => Stream.value(saved.lastOrNull);
+}
+
+final class FakeSettingsRepository implements SettingsRepository {
+  new([this.value = const FinanceSettings()]);
+
+  FinanceSettings value;
+
+  @override
+  Future<FinanceSettings> get() async => value;
+
+  @override
+  Future<void> save(FinanceSettings settings) async => value = settings;
+
+  @override
+  Stream<FinanceSettings> watch() => Stream.value(value);
 }

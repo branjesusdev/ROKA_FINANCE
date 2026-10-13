@@ -23,6 +23,8 @@ extension SettingsRowMapper on SettingsRow {
     soloProvider: soloProvider,
     kidsMonthlyBuffer: Money(kidsMonthlyBufferCents),
     appearance: appearance,
+    aiEnabled: aiEnabled,
+    aiReviewFrequency: aiReviewFrequency,
   );
 }
 
@@ -43,5 +45,7 @@ extension SettingsCompanionMapper on FinanceSettings {
         soloProvider: Value(soloProvider),
         kidsMonthlyBufferCents: Value(kidsMonthlyBuffer.cents),
         appearance: Value(appearance),
+        aiEnabled: Value(aiEnabled),
+        aiReviewFrequency: Value(aiReviewFrequency),
       );
 }

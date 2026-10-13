@@ -1,7 +1,17 @@
 import 'package:finance_app/domain/shared/money.dart';
 import 'package:meta/meta.dart';
 
-enum GoalType { emergency, travel, vehicle, housing, investment, custom }
+enum GoalType {
+  emergency,
+  travel,
+  vehicle,
+  housing,
+  investment,
+  custom,
+
+  /// Capital para emprender un negocio.
+  business,
+}
 
 /// Fondo de emergencia: N meses de gastos esenciales.
 @immutable

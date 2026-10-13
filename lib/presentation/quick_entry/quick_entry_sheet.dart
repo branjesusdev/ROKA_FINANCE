@@ -6,6 +6,8 @@ import 'package:finance_app/application/transactions/update_transaction.dart';
 import 'package:finance_app/bootstrap/use_cases.dart';
 import 'package:finance_app/core/result.dart';
 import 'package:finance_app/domain/categories/category.dart';
+import 'package:finance_app/domain/fixed/fixed_movement_scheduler.dart';
+import 'package:finance_app/domain/fixed/fixed_payment_matcher.dart';
 import 'package:finance_app/domain/shared/money.dart';
 import 'package:finance_app/domain/transactions/transaction.dart';
 import 'package:finance_app/presentation/categories/category_form.dart';
@@ -14,6 +16,7 @@ import 'package:finance_app/presentation/shared/category_picker.dart';
 import 'package:finance_app/presentation/shared/data_providers.dart';
 import 'package:finance_app/presentation/shared/form_widgets.dart';
 import 'package:finance_app/presentation/shared/formatters.dart';
+import 'package:finance_app/presentation/windfall/windfall_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -329,9 +332,27 @@ class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
   }
 
   Future<void> _save(String categoryId) async {
-    setState(() => _saving = true);
     final editing = widget.editing;
     final amount = Money.pesos(_pesos!);
+    if (editing == null && _isExpense) {
+      final schedule = ref.read(cycleSummaryProvider).value?.upcomingFixed;
+      final match = schedule == null
+          ? null
+          : const FixedPaymentMatcher().match(
+              schedule: schedule,
+              categoryId: categoryId,
+              amount: amount,
+            );
+      if (match != null) {
+        final answer = await _askIsFixed(match);
+        if (answer == null || !mounted) return;
+        if (answer) {
+          await _payFixed(match, amount);
+          return;
+        }
+      }
+    }
+    setState(() => _saving = true);
     final result = editing == null
         ? await ref
               .read(registerTransactionProvider)
@@ -362,7 +383,24 @@ class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
     final messenger = ScaffoldMessenger.of(context);
     switch (result) {
       case Ok():
-        Navigator.of(context).pop();
+        final navigator = Navigator.of(context);
+        final parent = navigator.context;
+        final category = (ref.read(categoriesProvider).value ?? const [])
+            .where((c) => c.id == categoryId)
+            .firstOrNull;
+        navigator.pop();
+        if (editing == null &&
+            !_isExpense &&
+            (category?.isExtraordinary ?? false) &&
+            parent.mounted) {
+          unawaited(
+            showWindfallSheet(
+              parent,
+              amount: amount,
+              sourceName: category!.name,
+            ),
+          );
+        }
         messenger.showSnackBar(
           SnackBar(
             content: Text(
@@ -379,6 +417,51 @@ class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
         messenger.showSnackBar(
           SnackBar(content: Text(failureMessage(failure))),
         );
+    }
+  }
+
+  /// `true`: es ese pago fijo; `false`: es otro gasto; `null`: canceló.
+  Future<bool?> _askIsFixed(ScheduledFixed match) => showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      icon: const Icon(Icons.event_repeat),
+      title: Text('¿Es el pago de ${match.movement.name}?'),
+      content: Text(
+        'Tienes ${match.movement.name} por '
+        '${Formatters.money(match.movement.amount)} con fecha '
+        '${Formatters.shortDate(match.date)} y aún no está registrado. Si es '
+        'ese pago, lo marco como pagado para no contarlo dos veces.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('No, es otro gasto'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Sí, es ese pago'),
+        ),
+      ],
+    ),
+  );
+
+  Future<void> _payFixed(ScheduledFixed match, Money amount) async {
+    setState(() => _saving = true);
+    final result = await ref
+        .read(confirmVariableFixedProvider)
+        .call(
+          movement: match.movement,
+          scheduledDate: match.date,
+          amount: amount,
+        );
+    if (!mounted) return;
+    setState(() => _saving = false);
+    if (showResult(
+      context,
+      result,
+      success: '${match.movement.name} quedó pagado',
+    )) {
+      Navigator.of(context).pop();
     }
   }
 

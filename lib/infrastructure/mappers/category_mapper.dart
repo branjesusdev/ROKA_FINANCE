@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart';
 import 'package:finance_app/domain/categories/category.dart';
 import 'package:finance_app/infrastructure/persistence/drift/app_database.dart';
 
@@ -10,6 +11,7 @@ extension CategoryRowMapper on CategoryRow {
     sortOrder: sortOrder,
     isArchived: isArchived,
     countsAsSaving: countsAsSaving,
+    isExtraordinary: isExtraordinary,
   );
 }
 
@@ -22,5 +24,6 @@ extension CategoryCompanionMapper on Category {
     sortOrder: sortOrder,
     isArchived: isArchived,
     countsAsSaving: countsAsSaving,
+    isExtraordinary: Value(isExtraordinary),
   );
 }

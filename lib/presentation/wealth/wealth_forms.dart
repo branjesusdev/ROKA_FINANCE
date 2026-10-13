@@ -6,6 +6,7 @@ import 'package:finance_app/domain/investments/investment.dart';
 import 'package:finance_app/domain/shared/money.dart';
 import 'package:finance_app/domain/shared/percentage.dart';
 import 'package:finance_app/domain/wealth/asset.dart';
+import 'package:finance_app/presentation/shared/data_providers.dart';
 import 'package:finance_app/presentation/shared/form_widgets.dart';
 import 'package:finance_app/presentation/shared/labels.dart';
 import 'package:flutter/material.dart';
@@ -27,13 +28,26 @@ class _AssetFormSheetState extends ConsumerState<AssetFormSheet> {
     text: MoneyField.initial(widget.asset?.currentValue),
   );
   late final _notes = TextEditingController(text: widget.asset?.notes);
+  late final _cost = TextEditingController(
+    text: _initialOrEmpty(widget.asset?.monthlyCost),
+  );
+  late final _income = TextEditingController(
+    text: _initialOrEmpty(widget.asset?.monthlyIncome),
+  );
   late AssetType _type = widget.asset?.type ?? AssetType.bankAccount;
+  late Liquidity? _liquidity = widget.asset?.liquidity;
+  late String? _debtId = widget.asset?.linkedDebtId;
+
+  static String _initialOrEmpty(Money? money) =>
+      money == null || money.isZero ? '' : MoneyField.initial(money);
 
   @override
   void dispose() {
     _name.dispose();
     _value.dispose();
     _notes.dispose();
+    _cost.dispose();
+    _income.dispose();
     super.dispose();
   }
 
@@ -78,7 +92,61 @@ class _AssetFormSheetState extends ConsumerState<AssetFormSheet> {
             border: OutlineInputBorder(),
           ),
         ),
-        MoneyField(controller: _value, label: 'Valor actual'),
+        MoneyField(
+          controller: _value,
+          label: 'Valor estimado hoy',
+          helperText: 'Lo que te darían si lo vendieras hoy (sin la deuda).',
+        ),
+        MoneyField(
+          controller: _cost,
+          label: 'Cuánto te cuesta al mes (opcional)',
+          helperText: 'Seguro, impuestos, mantenimiento, administración…',
+        ),
+        MoneyField(
+          controller: _income,
+          label: 'Cuánto te produce al mes (opcional)',
+          helperText: 'Arriendo, utilidades, intereses…',
+        ),
+        DropdownButtonFormField<Liquidity?>(
+          initialValue: _liquidity,
+          decoration: const InputDecoration(
+            labelText: '¿Qué tan rápido lo vuelves dinero?',
+            border: OutlineInputBorder(),
+          ),
+          items: const [
+            DropdownMenuItem(child: Text('Según el tipo')),
+            DropdownMenuItem(
+              value: Liquidity.high,
+              child: Text('Hoy mismo (alta)'),
+            ),
+            DropdownMenuItem(
+              value: Liquidity.medium,
+              child: Text('En semanas (media)'),
+            ),
+            DropdownMenuItem(
+              value: Liquidity.low,
+              child: Text('En meses (baja)'),
+            ),
+          ],
+          onChanged: (value) => setState(() => _liquidity = value),
+        ),
+        if (ref.watch(debtsProvider).value case final debts?
+            when debts.isNotEmpty)
+          DropdownButtonFormField<String?>(
+            initialValue: debts.any((d) => d.id == _debtId) ? _debtId : null,
+            decoration: const InputDecoration(
+              labelText: '¿Lo financiaste con un crédito? (opcional)',
+              helperText:
+                  'El saldo ya cuenta como deuda: no se resta dos veces.',
+              border: OutlineInputBorder(),
+            ),
+            items: [
+              const DropdownMenuItem(child: Text('No')),
+              for (final debt in debts)
+                DropdownMenuItem(value: debt.id, child: Text(debt.name)),
+            ],
+            onChanged: (value) => setState(() => _debtId = value),
+          ),
         TextField(
           controller: _notes,
           decoration: const InputDecoration(
@@ -99,6 +167,10 @@ class _AssetFormSheetState extends ConsumerState<AssetFormSheet> {
           type: _type,
           value: MoneyField.read(_value) ?? Money.zero,
           notes: _notes.text,
+          monthlyCost: MoneyField.read(_cost) ?? Money.zero,
+          monthlyIncome: MoneyField.read(_income) ?? Money.zero,
+          liquidity: _liquidity,
+          linkedDebtId: _debtId,
         );
     if (mounted && showResult(context, result, success: 'Activo guardado')) {
       Navigator.pop(context);

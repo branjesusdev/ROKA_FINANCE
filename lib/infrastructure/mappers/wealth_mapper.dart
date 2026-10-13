@@ -12,6 +12,10 @@ extension AssetRowMapper on AssetRow {
     currentValue: Money(currentValueCents),
     valuedAt: valuedAt,
     notes: notes,
+    monthlyCost: Money(monthlyCostCents),
+    monthlyIncome: Money(monthlyIncomeCents),
+    liquidity: liquidity,
+    linkedDebtId: linkedDebtId,
   );
 }
 
@@ -23,6 +27,10 @@ extension AssetCompanionMapper on Asset {
     currentValueCents: currentValue.cents,
     valuedAt: valuedAt,
     notes: Value(notes),
+    monthlyCostCents: Value(monthlyCost.cents),
+    monthlyIncomeCents: Value(monthlyIncome.cents),
+    liquidity: Value(liquidity),
+    linkedDebtId: Value(linkedDebtId),
   );
 }
 

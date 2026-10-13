@@ -1,0 +1,392 @@
+{
+  "app": "finance_app",
+  "format": 1,
+  "schemaVersion": 8,
+  "exportedAt": "2026-10-12T00:00:00.000",
+  "data": {
+    "categories": [
+      {
+        "id": "seed-expense-food",
+        "name": "Alimentación",
+        "kind": "expense",
+        "iconKey": "food",
+        "sortOrder": 0,
+        "isArchived": false,
+        "countsAsSaving": false
+      },
+      {
+        "id": "seed-expense-housing",
+        "name": "Vivienda",
+        "kind": "expense",
+        "iconKey": "housing",
+        "sortOrder": 1,
+        "isArchived": false,
+        "countsAsSaving": false
+      },
+      {
+        "id": "seed-expense-transport",
+        "name": "Transporte",
+        "kind": "expense",
+        "iconKey": "transport",
+        "sortOrder": 2,
+        "isArchived": false,
+        "countsAsSaving": false
+      },
+      {
+        "id": "seed-expense-education",
+        "name": "Educación",
+        "kind": "expense",
+        "iconKey": "education",
+        "sortOrder": 3,
+        "isArchived": false,
+        "countsAsSaving": false
+      },
+      {
+        "id": "seed-expense-health",
+        "name": "Salud",
+        "kind": "expense",
+        "iconKey": "health",
+        "sortOrder": 4,
+        "isArchived": false,
+        "countsAsSaving": false
+      },
+      {
+        "id": "seed-expense-entertainment",
+        "name": "Entretenimiento",
+        "kind": "expense",
+        "iconKey": "entertainment",
+        "sortOrder": 5,
+        "isArchived": false,
+        "countsAsSaving": false
+      },
+      {
+        "id": "seed-expense-debts",
+        "name": "Deudas",
+        "kind": "expense",
+        "iconKey": "debts",
+        "sortOrder": 6,
+        "isArchived": false,
+        "countsAsSaving": false
+      },
+      {
+        "id": "seed-expense-services",
+        "name": "Servicios",
+        "kind": "expense",
+        "iconKey": "services",
+        "sortOrder": 7,
+        "isArchived": false,
+        "countsAsSaving": false
+      },
+      {
+        "id": "seed-expense-shopping",
+        "name": "Compras",
+        "kind": "expense",
+        "iconKey": "shopping",
+        "sortOrder": 8,
+        "isArchived": false,
+        "countsAsSaving": false
+      },
+      {
+        "id": "seed-expense-family",
+        "name": "Hijos/Familia",
+        "kind": "expense",
+        "iconKey": "family",
+        "sortOrder": 9,
+        "isArchived": false,
+        "countsAsSaving": false
+      },
+      {
+        "id": "seed-expense-investments",
+        "name": "Inversiones",
+        "kind": "expense",
+        "iconKey": "investments",
+        "sortOrder": 10,
+        "isArchived": false,
+        "countsAsSaving": true
+      },
+      {
+        "id": "seed-expense-other",
+        "name": "Otros",
+        "kind": "expense",
+        "iconKey": "other",
+        "sortOrder": 11,
+        "isArchived": false,
+        "countsAsSaving": false
+      },
+      {
+        "id": "seed-expense-sports",
+        "name": "Deporte",
+        "kind": "expense",
+        "iconKey": "sports",
+        "sortOrder": 12,
+        "isArchived": false,
+        "countsAsSaving": false
+      },
+      {
+        "id": "seed-expense-groceries",
+        "name": "Mercado",
+        "kind": "expense",
+        "iconKey": "groceries",
+        "sortOrder": 13,
+        "isArchived": false,
+        "countsAsSaving": false
+      },
+      {
+        "id": "seed-expense-untracked",
+        "name": "Gastos sin registrar",
+        "kind": "expense",
+        "iconKey": "untracked",
+        "sortOrder": 14,
+        "isArchived": true,
+        "countsAsSaving": false
+      },
+      {
+        "id": "seed-expense-provisions",
+        "name": "Apartados",
+        "kind": "expense",
+        "iconKey": "provisions",
+        "sortOrder": 15,
+        "isArchived": true,
+        "countsAsSaving": true
+      },
+      {
+        "id": "seed-income-salary",
+        "name": "Salario",
+        "kind": "income",
+        "iconKey": "salary",
+        "sortOrder": 0,
+        "isArchived": false,
+        "countsAsSaving": false
+      },
+      {
+        "id": "seed-income-additional",
+        "name": "Ingresos adicionales",
+        "kind": "income",
+        "iconKey": "additional_income",
+        "sortOrder": 1,
+        "isArchived": false,
+        "countsAsSaving": false
+      },
+      {
+        "id": "seed-income-extraordinary",
+        "name": "Ingresos extraordinarios",
+        "kind": "income",
+        "iconKey": "extraordinary_income",
+        "sortOrder": 2,
+        "isArchived": false,
+        "countsAsSaving": false
+      },
+      {
+        "id": "seed-income-other",
+        "name": "Otros",
+        "kind": "income",
+        "iconKey": "other",
+        "sortOrder": 3,
+        "isArchived": false,
+        "countsAsSaving": false
+      },
+      {
+        "id": "seed-income-balance",
+        "name": "Saldo inicial / ajuste",
+        "kind": "income",
+        "iconKey": "balance",
+        "sortOrder": 4,
+        "isArchived": true,
+        "countsAsSaving": false
+      },
+      {
+        "id": "user-cat-pets",
+        "name": "Mascotas",
+        "kind": "expense",
+        "iconKey": "pets",
+        "sortOrder": 30,
+        "isArchived": false,
+        "countsAsSaving": false
+      }
+    ],
+    "accounts": [
+      {
+        "id": "seed-account-cash",
+        "name": "Efectivo",
+        "type": "cash"
+      }
+    ],
+    "debts": [
+      {
+        "id": "debt-card",
+        "name": "Tarjeta",
+        "type": "creditCard",
+        "originalAmountCents": 300000000,
+        "currentBalanceCents": 250000000,
+        "notes": null,
+        "rateBasisPoints": 2800,
+        "rateType": "effectiveAnnual",
+        "monthlyPaymentCents": 15000000,
+        "monthlyFeesCents": null,
+        "totalInstallments": 24,
+        "paidInstallments": 4,
+        "startDate": 1777611600000
+      }
+    ],
+    "savingsGoals": [
+      {
+        "id": "goal-emergency",
+        "name": "Fondo de emergencia",
+        "type": "emergency",
+        "targetAmountCents": 900000000,
+        "targetDate": null,
+        "desiredMonthlyCents": null,
+        "essentialMonthlyCents": 300000000,
+        "emergencyTargetMonths": 3
+      }
+    ],
+    "fixedMovements": [
+      {
+        "id": "fixed-rent",
+        "name": "Arriendo",
+        "kind": "expense",
+        "amountCents": 120000000,
+        "categoryId": "seed-expense-housing",
+        "dayOfMonth": 5,
+        "isActive": true,
+        "isVariable": false,
+        "lastPostedOn": 1788584400000
+      }
+    ],
+    "provisions": [
+      {
+        "id": "prov-soat",
+        "name": "SOAT",
+        "amountCents": 90000000,
+        "everyMonths": 12,
+        "nextDue": 1803877200000,
+        "categoryId": "seed-expense-transport",
+        "isActive": true
+      }
+    ],
+    "transactions": [
+      {
+        "id": "tx-salary",
+        "kind": "income",
+        "amountCents": 450000000,
+        "categoryId": "seed-income-salary",
+        "date": 1789916400000,
+        "createdAt": 1789916400000,
+        "description": "Sueldo",
+        "accountId": null,
+        "nature": null,
+        "notes": null,
+        "debtId": null,
+        "provisionId": null,
+        "fixedMovementId": null
+      },
+      {
+        "id": "tx-rent",
+        "kind": "expense",
+        "amountCents": 120000000,
+        "categoryId": "seed-expense-housing",
+        "date": 1791176400000,
+        "createdAt": 1791176400000,
+        "description": "Arriendo",
+        "accountId": null,
+        "nature": "essential",
+        "notes": null,
+        "debtId": null,
+        "provisionId": null,
+        "fixedMovementId": "fixed-rent"
+      },
+      {
+        "id": "tx-soat",
+        "kind": "expense",
+        "amountCents": 7500000,
+        "categoryId": "seed-expense-provisions",
+        "date": 1789916400000,
+        "createdAt": 1789916400000,
+        "description": null,
+        "accountId": null,
+        "nature": null,
+        "notes": null,
+        "debtId": null,
+        "provisionId": "prov-soat",
+        "fixedMovementId": null
+      },
+      {
+        "id": "tx-pets",
+        "kind": "expense",
+        "amountCents": 4500000,
+        "categoryId": "user-cat-pets",
+        "date": 1789916400000,
+        "createdAt": 1789916400000,
+        "description": null,
+        "accountId": "seed-account-cash",
+        "nature": null,
+        "notes": null,
+        "debtId": "debt-card",
+        "provisionId": null,
+        "fixedMovementId": null
+      }
+    ],
+    "budgetLines": [
+      {
+        "id": "budget-1",
+        "year": 2026,
+        "month": 10,
+        "categoryId": "seed-expense-food",
+        "limitCents": 80000000
+      }
+    ],
+    "assets": [
+      {
+        "id": "asset-car",
+        "name": "Carro",
+        "type": "vehicle",
+        "currentValueCents": 4500000000,
+        "valuedAt": 1789916400000,
+        "notes": null
+      }
+    ],
+    "extraPayments": [
+      {
+        "id": "extra-1",
+        "debtId": "debt-card",
+        "amountCents": 20000000,
+        "date": 1789916400000
+      }
+    ],
+    "goalContributions": [
+      {
+        "id": "contrib-1",
+        "goalId": "goal-emergency",
+        "amountCents": 50000000,
+        "date": 1789916400000
+      }
+    ],
+    "investments": [
+      {
+        "id": "inv-cdt",
+        "name": "CDT",
+        "type": "fund",
+        "investedCents": 100000000,
+        "currentValueCents": 104000000,
+        "date": 1789916400000,
+        "notes": null
+      }
+    ],
+    "settings": {
+      "id": 1,
+      "savingsTargetBasisPoints": 1000,
+      "warningFromBasisPoints": 8000,
+      "criticalAboveBasisPoints": 10000,
+      "smallExpenseThresholdCents": 2000000,
+      "payday": 20,
+      "dailyReminder": true,
+      "reminderHour": 18,
+      "reminderMinute": 0,
+      "smartNotifications": true,
+      "dependents": 0,
+      "soloProvider": false,
+      "kidsMonthlyBufferCents": 0,
+      "appearance": "system"
+    }
+  }
+}

@@ -1,4 +1,5 @@
 import 'package:finance_app/domain/debts/debt.dart';
+import 'package:finance_app/domain/shared/money.dart';
 import 'package:finance_app/domain/shared/percentage.dart';
 import 'package:finance_app/presentation/debts/debt_detail_screen.dart';
 import 'package:finance_app/presentation/home/widgets/net_worth_card.dart';
@@ -8,6 +9,7 @@ import 'package:finance_app/presentation/shared/formatters.dart';
 import 'package:finance_app/presentation/shared/labels.dart';
 import 'package:finance_app/presentation/shared/section_card.dart';
 import 'package:finance_app/presentation/shared/transaction_tile.dart';
+import 'package:finance_app/presentation/wealth/net_worth_history_card.dart';
 import 'package:finance_app/presentation/wealth/wealth_forms.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,9 +30,11 @@ class WealthScreen extends ConsumerWidget {
     final theme = Theme.of(context);
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 160),
       children: [
         if (netWorth != null) NetWorthCard(netWorth: netWorth),
+        _spacing,
+        const NetWorthHistoryCard(),
         _spacing,
         SectionCard(
           title: 'Activos',
@@ -52,7 +56,8 @@ class WealthScreen extends ConsumerWidget {
                         title: Text(asset.name),
                         subtitle: Text(
                           '${Labels.asset(asset.type)} · valorado '
-                          '${Formatters.shortDate(asset.valuedAt)}',
+                          '${Formatters.shortDate(asset.valuedAt)}'
+                          '${_monthlyNet(asset.monthlyNet)}',
                         ),
                         trailing: Text(
                           Formatters.money(asset.currentValue),
@@ -207,6 +212,12 @@ class _DebtTile extends StatelessWidget {
     );
   }
 }
+
+String _monthlyNet(Money net) => net.isZero
+    ? ''
+    : net.isNegative
+    ? ' · cuesta ${Formatters.money(net.abs)}/mes'
+    : ' · deja ${Formatters.money(net)}/mes';
 
 class _AddButton extends StatelessWidget {
   const new({required this.tooltip, required this.onPressed});

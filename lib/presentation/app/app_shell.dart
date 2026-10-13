@@ -1,14 +1,14 @@
 import 'dart:async';
 
-import 'package:finance_app/application/dashboard/cycle_summary.dart';
+import 'package:finance_app/application/advisor/financial_alerts.dart';
 import 'package:finance_app/bootstrap/use_cases.dart';
+import 'package:finance_app/core/result.dart';
 import 'package:finance_app/domain/savings/finance_settings.dart';
 import 'package:finance_app/presentation/app/app_theme.dart';
-import 'package:finance_app/presentation/budgets/budget_screen.dart';
 import 'package:finance_app/presentation/cfo/cfo_screen.dart';
-import 'package:finance_app/presentation/goals/goals_screen.dart';
 import 'package:finance_app/presentation/home/home_screen.dart';
 import 'package:finance_app/presentation/insights/insights_screen.dart';
+import 'package:finance_app/presentation/plan/plan_screen.dart';
 import 'package:finance_app/presentation/quick_entry/quick_entry_sheet.dart';
 import 'package:finance_app/presentation/quick_entry/voice_entry_sheet.dart';
 import 'package:finance_app/presentation/settings/settings_sheet.dart';
@@ -18,8 +18,8 @@ import 'package:finance_app/presentation/wealth/wealth_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Navegación principal: barra inferior solo con iconos. Los botones de voz
-/// y + están en todas las secciones para registrar en segundos.
+/// Navegación principal: 5 destinos con icono y nombre. Los botones de voz y
+/// + están en todas las secciones para registrar en segundos.
 class AppShell extends ConsumerStatefulWidget {
   const new({super.key});
 
@@ -31,19 +31,20 @@ class _AppShellState extends ConsumerState<AppShell>
     with WidgetsBindingObserver {
   static const _homeIndex = 0;
   static const _transactionsIndex = 1;
+  static const _wealthIndex = 3;
+  static const _cfoIndex = 4;
 
   int _index = _homeIndex;
 
   static const _sections = [
     _Section('Inicio', Icons.home_outlined, Icons.home_rounded),
     _Section('Movimientos', Icons.receipt_long_outlined, Icons.receipt_long),
-    _Section('Presupuesto', Icons.pie_chart_outline, Icons.pie_chart),
+    _Section('Plan', Icons.track_changes_outlined, Icons.track_changes),
     _Section(
       'Patrimonio',
       Icons.account_balance_outlined,
       Icons.account_balance,
     ),
-    _Section('Metas', Icons.savings_outlined, Icons.savings),
     _Section('Tu CFO', Icons.auto_awesome_outlined, Icons.auto_awesome),
   ];
 
@@ -64,19 +65,55 @@ class _AppShellState extends ConsumerState<AppShell>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) return;
     unawaited(_postDueFixed());
-    unawaited(_syncReminders(ref.read(cycleSummaryProvider).value));
+    unawaited(_syncReminders());
+    unawaited(_autoReview());
   }
 
   Future<void> _onOpened() async {
     await _postDueFixed();
     // Sin resumen aún: programa al menos el recordatorio diario.
-    await _syncReminders(ref.read(cycleSummaryProvider).value);
+    await _syncReminders();
+    await ref.read(recordNetWorthProvider).call();
+    await _autoReview();
   }
 
-  /// Los avisos con montos (tope del día, fijos, cierre) se recalculan con
-  /// cada cambio de datos.
-  Future<void> _syncReminders(CycleSummary? summary) =>
-      ref.read(syncRemindersProvider).call(summary: summary);
+  /// Los avisos con montos (tope del día, fijos, cierre, alertas) se
+  /// recalculan con cada cambio de datos.
+  Future<void> _syncReminders([List<FinancialAlert>? alerts]) => ref
+      .read(syncRemindersProvider)
+      .call(
+        summary: ref.read(cycleSummaryProvider).value,
+        alerts: alerts ?? ref.read(financialAlertsProvider).value ?? const [],
+      );
+
+  bool _reviewing = false;
+
+  /// Revisión periódica de la IA: solo si el usuario la activó y ya toca
+  /// según la frecuencia elegida. Corre con la app abierta.
+  Future<void> _autoReview() async {
+    final useCase = ref.read(runAiReviewProvider);
+    if (_reviewing || !await useCase.isDue()) return;
+    _reviewing = true;
+    try {
+      final snapshot = await ref.read(financialSnapshotProvider.future);
+      final result = await useCase(snapshot);
+      if (result case Ok(:final value)) {
+        final top = value.top;
+        await ref
+            .read(notifyAiReviewProvider)
+            .call(
+              title: top == null ? 'Tu CFO revisó tus finanzas' : top.title,
+              body: top?.action.isNotEmpty ?? false
+                  ? top!.action
+                  : value.headline,
+            );
+      }
+    } on Exception {
+      // Sin datos o sin red: se reintenta la próxima vez que abras la app.
+    } finally {
+      _reviewing = false;
+    }
+  }
 
   Future<void> _postDueFixed() =>
       ref.read(postDueFixedMovementsProvider).call();
@@ -88,8 +125,8 @@ class _AppShellState extends ConsumerState<AppShell>
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(cycleSummaryProvider, (_, next) {
-      if (next.value case final summary?) unawaited(_syncReminders(summary));
+    ref.listen(financialAlertsProvider, (_, next) {
+      if (next.value case final alerts?) unawaited(_syncReminders(alerts));
     });
     final isHome = _index == _homeIndex;
     // Atrás (gesto o botón) desde otra sección vuelve a Inicio; solo desde
@@ -128,11 +165,12 @@ class _AppShellState extends ConsumerState<AppShell>
           HomeScreen(
             onSeeAllTransactions: () => _select(_transactionsIndex),
             onOpenAnalysis: _openAnalysis,
+            onOpenCfo: () => _select(_cfoIndex),
+            onOpenWealth: () => _select(_wealthIndex),
           ),
           const TransactionsScreen(),
-          const BudgetScreen(),
+          const PlanScreen(),
           const WealthScreen(),
-          const GoalsScreen(),
           const CfoScreen(),
         ],
       ),
@@ -156,7 +194,7 @@ class _AppShellState extends ConsumerState<AppShell>
           ),
         ],
       ),
-      bottomNavigationBar: _IconNavBar(
+      bottomNavigationBar: _LabeledNavBar(
         sections: _sections,
         selected: _index,
         onSelected: _select,
@@ -190,9 +228,9 @@ class _Section {
   final IconData selectedIcon;
 }
 
-/// Barra flotante oscura con solo iconos. El nombre de cada sección queda
-/// en el tooltip y en la semántica (lectores de pantalla).
-class _IconNavBar extends StatelessWidget {
+/// Barra flotante oscura con icono y nombre de cada sección (los iconos
+/// solos no se entienden a la primera). Cada destino mide al menos 48 px.
+class _LabeledNavBar extends StatelessWidget {
   const new({
     required this.sections,
     required this.selected,
@@ -203,20 +241,23 @@ class _IconNavBar extends StatelessWidget {
   final int selected;
   final ValueChanged<int> onSelected;
 
-  static const _height = 64.0;
+  static const _height = 68.0;
+  static const _indicatorWidth = 52.0;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return SafeArea(
-      minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      minimum: const EdgeInsets.fromLTRB(12, 0, 12, 12),
       child: Container(
         height: _height,
         decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.dark
+          color: theme.brightness == Brightness.dark
               ? AppTheme.inkOnDark
               : AppTheme.ink,
           borderRadius: BorderRadius.circular(_height / 2),
         ),
+        padding: const EdgeInsets.symmetric(horizontal: 6),
         child: Row(
           children: [
             for (var i = 0; i < sections.length; i++)
@@ -226,17 +267,51 @@ class _IconNavBar extends StatelessWidget {
                   button: true,
                   label: sections[i].label,
                   excludeSemantics: true,
-                  child: IconButton(
-                    tooltip: sections[i].label,
-                    onPressed: () => onSelected(i),
-                    icon: Icon(
-                      i == selected
-                          ? sections[i].selectedIcon
-                          : sections[i].icon,
-                      color: i == selected
-                          ? AppTheme.accent
-                          : AppTheme.inkMuted,
-                      size: 26,
+                  child: Tooltip(
+                    message: sections[i].label,
+                    excludeFromSemantics: true,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(_height / 2),
+                      onTap: () => onSelected(i),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            width: _indicatorWidth,
+                            height: 30,
+                            decoration: BoxDecoration(
+                              color: i == selected
+                                  ? AppTheme.accent.withValues(alpha: 0.18)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            child: Icon(
+                              i == selected
+                                  ? sections[i].selectedIcon
+                                  : sections[i].icon,
+                              color: i == selected
+                                  ? AppTheme.accent
+                                  : AppTheme.inkMuted,
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            sections[i].label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: i == selected
+                                  ? AppTheme.accent
+                                  : AppTheme.inkMuted,
+                              fontWeight: i == selected
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

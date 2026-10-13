@@ -23,10 +23,16 @@ final class SaveAsset {
     required Money value,
     String? id,
     String? notes,
+    Money monthlyCost = Money.zero,
+    Money monthlyIncome = Money.zero,
+    Liquidity? liquidity,
+    String? linkedDebtId,
   }) {
     final cleanName = cleanText(name);
     if (cleanName == null) return invalid(ValidationCodes.nameRequired);
-    if (value.isNegative) {
+    if (value.isNegative ||
+        monthlyCost.isNegative ||
+        monthlyIncome.isNegative) {
       return invalid(ValidationCodes.amountMustNotBeNegative);
     }
     final asset = Asset(
@@ -36,6 +42,10 @@ final class SaveAsset {
       currentValue: value,
       valuedAt: _clock.now(),
       notes: cleanText(notes),
+      monthlyCost: monthlyCost,
+      monthlyIncome: monthlyIncome,
+      liquidity: liquidity,
+      linkedDebtId: linkedDebtId,
     );
     return guardUseCase(() async {
       await _assets.save(asset);

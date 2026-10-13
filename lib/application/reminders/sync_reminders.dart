@@ -1,3 +1,4 @@
+import 'package:finance_app/application/advisor/financial_alerts.dart';
 import 'package:finance_app/application/dashboard/cycle_summary.dart';
 import 'package:finance_app/application/reminders/reminder_planner.dart';
 import 'package:finance_app/application/reminders/reminder_scheduler.dart';
@@ -19,13 +20,17 @@ final class SyncReminders {
 
   /// `false` si el sistema no permitió notificar. Nunca lanza: un fallo de
   /// los avisos no debe impedir usar la app.
-  Future<bool> call({CycleSummary? summary}) async {
+  Future<bool> call({
+    CycleSummary? summary,
+    List<FinancialAlert> alerts = const [],
+  }) async {
     try {
       final settings = await _settings.get();
       final reminders = const ReminderPlanner().plan(
         settings: settings,
         now: _clock.now(),
         summary: summary,
+        alerts: alerts,
       );
       // Sin permiso el sistema simplemente no muestra los avisos.
       final granted = reminders.isEmpty || await _scheduler.requestPermission();
@@ -70,6 +75,26 @@ final class TestReminder {
       return true;
     } on Exception {
       return false;
+    }
+  }
+}
+
+/// Muestra ya el resultado de la revisión periódica de la IA (con la app
+/// abierta: Android no deja correrla en segundo plano de forma confiable).
+final class NotifyAiReview {
+  const new(this._scheduler);
+
+  final ReminderScheduler _scheduler;
+
+  static const id = 54;
+
+  Future<void> call({required String title, required String body}) async {
+    try {
+      await _scheduler.showNow(
+        Reminder(id: id, at: DateTime(0), title: title, body: body),
+      );
+    } on Exception {
+      // Un aviso que no sale no debe interrumpir la app.
     }
   }
 }

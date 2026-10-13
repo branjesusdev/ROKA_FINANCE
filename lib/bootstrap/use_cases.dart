@@ -1,3 +1,5 @@
+import 'package:finance_app/application/advisor/ai_cfo.dart';
+import 'package:finance_app/application/advisor/windfall_plan.dart';
 import 'package:finance_app/application/backup/backup_use_cases.dart';
 import 'package:finance_app/application/budgets/budget_use_cases.dart';
 import 'package:finance_app/application/categories/category_use_cases.dart';
@@ -14,6 +16,7 @@ import 'package:finance_app/application/transactions/delete_transaction.dart';
 import 'package:finance_app/application/transactions/register_transaction.dart';
 import 'package:finance_app/application/transactions/reset_cycle_movements.dart';
 import 'package:finance_app/application/transactions/update_transaction.dart';
+import 'package:finance_app/application/wealth/record_net_worth.dart';
 import 'package:finance_app/application/wealth/wealth_use_cases.dart';
 import 'package:finance_app/bootstrap/providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -275,4 +278,56 @@ final createCategoryProvider = Provider(
 
 final updateCategoryProvider = Provider(
   (ref) => UpdateCategory(ref.watch(categoryRepositoryProvider)),
+);
+
+final recordNetWorthProvider = Provider(
+  (ref) => RecordNetWorth(
+    assets: ref.watch(assetRepositoryProvider),
+    investments: ref.watch(investmentRepositoryProvider),
+    debts: ref.watch(debtRepositoryProvider),
+    history: ref.watch(netWorthHistoryRepositoryProvider),
+    clock: ref.watch(clockProvider),
+    ids: ref.watch(idGeneratorProvider),
+  ),
+);
+
+final runAiReviewProvider = Provider(
+  (ref) => RunAiReview(
+    advisor: ref.watch(aiAdvisorProvider),
+    keys: ref.watch(aiKeyStoreProvider),
+    reviews: ref.watch(aiReviewRepositoryProvider),
+    settings: ref.watch(settingsRepositoryProvider),
+    clock: ref.watch(clockProvider),
+    ids: ref.watch(idGeneratorProvider),
+  ),
+);
+
+final askCfoProvider = Provider(
+  (ref) => AskCfo(
+    advisor: ref.watch(aiAdvisorProvider),
+    keys: ref.watch(aiKeyStoreProvider),
+    settings: ref.watch(settingsRepositoryProvider),
+  ),
+);
+
+final saveAiKeyProvider = Provider(
+  (ref) => SaveAiKey(ref.watch(aiKeyStoreProvider)),
+);
+
+final updateAiSettingsProvider = Provider(
+  (ref) => UpdateAiSettings(ref.watch(settingsRepositoryProvider)),
+);
+
+final applyWindfallSlicesProvider = Provider(
+  (ref) => ApplyWindfallSlices(
+    goals: ref.watch(savingsGoalRepositoryProvider),
+    debts: ref.watch(debtRepositoryProvider),
+    transactions: ref.watch(transactionRepositoryProvider),
+    clock: ref.watch(clockProvider),
+    ids: ref.watch(idGeneratorProvider),
+  ),
+);
+
+final notifyAiReviewProvider = Provider(
+  (ref) => NotifyAiReview(ref.watch(reminderSchedulerProvider)),
 );

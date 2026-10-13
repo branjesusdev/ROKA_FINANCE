@@ -1,13 +1,18 @@
 import 'package:finance_app/application/advisor/cfo_brief.dart';
+import 'package:finance_app/application/advisor/financial_alerts.dart';
+import 'package:finance_app/application/advisor/financial_snapshot.dart';
+import 'package:finance_app/application/advisor/windfall_plan.dart';
 import 'package:finance_app/application/dashboard/cycle_pulse.dart';
 import 'package:finance_app/application/dashboard/cycle_summary.dart';
 import 'package:finance_app/application/dashboard/daily_spending.dart';
 import 'package:finance_app/application/dashboard/home_summary.dart';
+import 'package:finance_app/application/dashboard/money_overview.dart';
 import 'package:finance_app/application/dashboard/spending_radar.dart';
 import 'package:finance_app/application/insights/financial_health.dart';
 import 'package:finance_app/application/markets/load_watchlist.dart';
 import 'package:finance_app/bootstrap/providers.dart';
 import 'package:finance_app/bootstrap/use_cases.dart';
+import 'package:finance_app/domain/advisor/ai_review.dart';
 import 'package:finance_app/domain/budgets/budget_evaluator.dart';
 import 'package:finance_app/domain/budgets/budget_line.dart';
 import 'package:finance_app/domain/categories/category.dart';
@@ -32,6 +37,7 @@ import 'package:finance_app/domain/shared/year_month.dart';
 import 'package:finance_app/domain/transactions/transaction.dart';
 import 'package:finance_app/domain/wealth/asset.dart';
 import 'package:finance_app/domain/wealth/net_worth_calculator.dart';
+import 'package:finance_app/domain/wealth/net_worth_snapshot.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // Lecturas reactivas: cada provider observa un port y se actualiza solo
@@ -486,3 +492,129 @@ final cycleHistoryProvider = FutureProvider<List<CycleRecord>>((ref) async {
     savingCategoryIds: _savingIds(await categories),
   );
 });
+
+/// Disponible, comprometido, reservado y libre del ciclo (Inicio).
+final moneyOverviewProvider = FutureProvider<MoneyOverview>((ref) async {
+  final summary = ref.watch(cycleSummaryProvider.future);
+  final cycle = await ref.watch(currentCycleProvider.future);
+  final transactions = ref.watch(
+    transactionsInRangeProvider(cycle.range).future,
+  );
+  final categories = ref.watch(categoriesProvider.future);
+  final fixed = ref.watch(fixedMovementsProvider.future);
+  return const MoneyOverviewBuilder().build(
+    summary: await summary,
+    categories: await categories,
+    fixedMovements: await fixed,
+    cycleTransactions: await transactions,
+  );
+});
+
+final netWorthHistoryProvider = StreamProvider<List<NetWorthSnapshot>>(
+  (ref) => ref.watch(netWorthHistoryRepositoryProvider).watchAll(),
+);
+
+/// Alertas por reglas (no dependen de la IA ni de internet).
+final financialAlertsProvider = FutureProvider<List<FinancialAlert>>((
+  ref,
+) async {
+  final month = ref.watch(currentMonthProvider);
+  final summary = ref.watch(cycleSummaryProvider.future);
+  final overview = ref.watch(moneyOverviewProvider.future);
+  final resolver = await ref.watch(payCycleResolverProvider.future);
+  final now = ref.watch(clockProvider).now();
+  final cycle = resolver.containing(now);
+  final current = ref.watch(transactionsInRangeProvider(cycle.range).future);
+  final previous = ref.watch(
+    transactionsInRangeProvider(resolver.previousOf(cycle).range).future,
+  );
+  final categories = ref.watch(categoriesProvider.future);
+  final debts = ref.watch(debtsProvider.future);
+  final assets = ref.watch(assetsProvider.future);
+  final goals = ref.watch(goalProgressListProvider.future);
+  final settings = ref.watch(settingsProvider.future);
+  final budget = ref.watch(monthBudgetProvider(month).future);
+  return const FinancialAlertsBuilder().build(
+    summary: await summary,
+    overview: await overview,
+    categories: await categories,
+    cycleTransactions: await current,
+    previousCycleTransactions: await previous,
+    debts: await debts,
+    assets: await assets,
+    goals: await goals,
+    settings: await settings,
+    budget: await budget,
+  );
+});
+
+/// Lo que se le enviaría a la IA (el usuario lo puede ver antes).
+final financialSnapshotProvider = FutureProvider<FinancialSnapshot>((
+  ref,
+) async {
+  final month = ref.watch(currentMonthProvider);
+  final summary = ref.watch(cycleSummaryProvider.future);
+  final overview = ref.watch(moneyOverviewProvider.future);
+  final alerts = ref.watch(financialAlertsProvider.future);
+  final resolver = await ref.watch(payCycleResolverProvider.future);
+  final now = ref.watch(clockProvider).now();
+  final cycle = resolver.containing(now);
+  final current = ref.watch(transactionsInRangeProvider(cycle.range).future);
+  final previous = ref.watch(
+    transactionsInRangeProvider(resolver.previousOf(cycle).range).future,
+  );
+  final categories = ref.watch(categoriesProvider.future);
+  final debts = ref.watch(debtsProvider.future);
+  final assets = ref.watch(assetsProvider.future);
+  final investments = ref.watch(investmentsProvider.future);
+  final goals = ref.watch(goalProgressListProvider.future);
+  final netWorth = ref.watch(netWorthProvider.future);
+  final history = ref.watch(netWorthHistoryProvider.future);
+  final settings = ref.watch(settingsProvider.future);
+  final budget = ref.watch(monthBudgetProvider(month).future);
+  // Precios solo si el usuario ya los pidió en Tu CFO.
+  final watchlist = ref.watch(watchlistProvider).value ?? const [];
+  return const FinancialSnapshotBuilder().build(
+    summary: await summary,
+    overview: await overview,
+    alerts: await alerts,
+    categories: await categories,
+    cycleTransactions: await current,
+    previousCycleTransactions: await previous,
+    debts: await debts,
+    assets: await assets,
+    investments: await investments,
+    goals: await goals,
+    netWorth: await netWorth,
+    netWorthHistory: await history,
+    settings: await settings,
+    budget: await budget,
+    watchlist: watchlist,
+  );
+});
+
+final latestAiReviewProvider = StreamProvider<AiReview?>(
+  (ref) => ref.watch(aiReviewRepositoryProvider).watchLatest(),
+);
+
+final hasAiKeyProvider = StreamProvider<bool>(
+  (ref) => ref.watch(aiKeyStoreProvider).watchHasKey(),
+);
+
+/// Reparto sugerido para un ingreso extraordinario de este monto.
+final windfallPlanProvider = FutureProvider.autoDispose
+    .family<WindfallPlan, Money>((ref, amount) async {
+      final overview = ref.watch(moneyOverviewProvider.future);
+      final goals = ref.watch(goalProgressListProvider.future);
+      final debts = ref.watch(debtsProvider.future);
+      final essential = ref.watch(essentialExpensesSuggestionProvider.future);
+      final settings = ref.watch(settingsProvider.future);
+      return const WindfallPlanner().plan(
+        amount: amount,
+        overview: await overview,
+        goals: await goals,
+        debts: await debts,
+        essentialMonthly: await essential,
+        settings: await settings,
+      );
+    });

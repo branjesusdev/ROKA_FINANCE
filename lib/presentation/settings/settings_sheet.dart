@@ -6,6 +6,7 @@ import 'package:finance_app/bootstrap/use_cases.dart';
 import 'package:finance_app/domain/cycles/pay_cycle.dart';
 import 'package:finance_app/domain/savings/finance_settings.dart';
 import 'package:finance_app/presentation/categories/categories_screen.dart';
+import 'package:finance_app/presentation/cfo/ai_settings_screen.dart';
 import 'package:finance_app/presentation/fixed/fixed_movements_screen.dart';
 import 'package:finance_app/presentation/home/widgets/reconcile_sheet.dart';
 import 'package:finance_app/presentation/provisions/provisions_screen.dart';
@@ -118,6 +119,28 @@ class SettingsSheet extends ConsumerWidget {
                 _updateReminders(context, ref, smart: enabled),
           ),
           const _ReminderStatus(),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.auto_awesome_outlined),
+            title: const Text('Tu CFO con IA'),
+            subtitle: Text(
+              settings.aiEnabled
+                  ? 'Activo · revisión ${switch (settings.aiReviewFrequency) {
+                      ReviewFrequency.daily => 'diaria',
+                      ReviewFrequency.weekly => 'semanal',
+                      ReviewFrequency.monthly => 'mensual',
+                    }}'
+                  : 'Apagado · opcional, tú decides qué se envía',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context)
+              ..pop()
+              ..push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const AiSettingsScreen(),
+                ),
+              ),
+          ),
           const Divider(),
           HouseholdSection(settings: settings),
           const Divider(),

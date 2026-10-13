@@ -1,6 +1,6 @@
 # Roadmap por fases
 
-Estado 2026-10-08: fases 1–12f implementadas (esquema drift v8, ~220 tests). Pendiente: Fase 13
+Estado 2026-10-12: fases 1–12g implementadas (esquema drift v9, 242 tests). Pendiente: Fase 13
 (revisión, refactor, `/security-review`) y prueba completa en el teléfono. Gráficas con
 `CustomPainter` propio (sin fl_chart).
 
@@ -25,7 +25,12 @@ Cada fase termina con `flutter analyze` limpio + `flutter test` verde + resumen 
 | 12d ✅ | Ciclo marcado por el sueldo real, tope diario, fijos variables (facturas), cuadre con dinero real, reiniciar mes, "Así vas este ciclo", gasto por día (barras) e histórico de ciclos, Tu CFO, "Mi hogar" (personas a cargo), avisos inteligentes, voz con respaldo de Google, modo claro/oscuro | Esquema v6–v8; tests de resolver, tope, cuadre, reinicio y pulso |
 | 12e ✅ | Copia de seguridad: exportar/importar JSON completo vía selector de Android, fusión sin duplicar (id + clave natural + remapeo de vínculos), todo o nada | Tests de `DriftBackupStore` en memoria y de casos de uso |
 | 12f ✅ | Categorías propias (crear, renombrar, icono, ocultar; "+ Nueva" en el registro), lista compacta de categorías con detalle de movimientos al tocar, "Tu huella de gasto" (araña), paleta verde bosque + lima, marca e icono **Roka** | Tests de casos de uso de categorías y de `SpendingRadarBuilder`; `flutter build apk` |
+| 12g ✅ | **Tu CFO con IA** (Groq, opt-in, llave en el teléfono, vista previa de lo enviado, revisión diaria/semanal/mensual al abrir, preguntas libres), **alertas por reglas** con resumen nocturno, **dinero libre** (disponible/comprometido/reservado/libre), **reservas de fijos** (pagado/cubierto/parcial/sin cubrir/vencido), pago anticipado de un fijo sin duplicar, **ingresos extraordinarios** (prima, cesantías…) con reparto propuesto y aplicado solo al confirmar, activos con costo/ingreso/liquidez/crédito, **historial de patrimonio**, lista con HUMN/VST/LITE/COHR/HLIT, rediseño del Home y navegación de 5 destinos con nombre | Esquema v9; backup v8 importa (fixture); tests de cobertura, matcher, alertas, reparto, IA (fakes), repos y UI |
 | 13 | Testing, refactor, `/code-review`, `/security-review` | Sin warnings, sin logs con datos |
+
+Pendiente de 12g: acciones dentro de la notificación (marcar pagado / posponer) — requieren un
+manejador en segundo plano; hoy tocar el aviso abre la app. Revisión de IA con la app cerrada
+(WorkManager) solo si el usuario lo pide: consume batería y Android puede limitarla.
 
 Futuro (fuera de v1): bloqueo con biometría / cifrado de DB (SQLCipher) y de la copia de
 seguridad, recordatorio de hacer copia, exportar movimientos a CSV para hojas de cálculo (solo

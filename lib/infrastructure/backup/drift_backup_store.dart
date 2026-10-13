@@ -20,6 +20,11 @@ import 'package:finance_app/infrastructure/repositories/storage_guard.dart';
 ///
 /// Los equivalentes se cuentan: si ya hay 1 café de $5.000 el mismo día y
 /// la copia trae 2, se agrega solo 1.
+///
+/// Copias de versiones anteriores: las columnas que no traen toman su valor
+/// por defecto (`_Section.defaults`) y los ajustes que no traen conservan el
+/// valor actual del teléfono. Quedan fuera a propósito la llave de IA (es
+/// un secreto) y las revisiones de IA (se pueden volver a pedir).
 final class DriftBackupStore implements BackupStore {
   const new(this._db);
 
@@ -38,6 +43,8 @@ final class DriftBackupStore implements BackupStore {
       table: _db.categories,
       fromJson: CategoryRow.fromJson,
       naturalKey: (r) => _key([r['name'], r['kind']]),
+      // v9.
+      defaults: const {'isExtraordinary': false},
     ),
     _Section<AccountRow>(
       key: 'accounts',
@@ -101,7 +108,10 @@ final class DriftBackupStore implements BackupStore {
       key: 'assets',
       table: _db.assets,
       fromJson: AssetRow.fromJson,
+      refs: const {'linkedDebtId': 'debts'},
       naturalKey: (r) => _key([r['name'], r['type']]),
+      // v9.
+      defaults: const {'monthlyCostCents': 0, 'monthlyIncomeCents': 0},
     ),
     _Section<ExtraPaymentRow>(
       key: 'extraPayments',
@@ -122,6 +132,12 @@ final class DriftBackupStore implements BackupStore {
       table: _db.investments,
       fromJson: InvestmentRow.fromJson,
       naturalKey: (r) => _key([r['name'], r['type'], _day(r['date'])]),
+    ),
+    _Section<NetWorthSnapshotRow>(
+      key: 'netWorthSnapshots',
+      table: _db.netWorthSnapshots,
+      fromJson: NetWorthSnapshotRow.fromJson,
+      naturalKey: (r) => _key([r['year'], r['month']]),
     ),
   ];
 
@@ -218,10 +234,12 @@ final class DriftBackupStore implements BackupStore {
       if (section.key == 'transactions') movementsAdded = result.added;
     }
     if (data[_settingsKey] case final Map<String, Object?> settings) {
+      final current = await _db.select(_db.financeSettingsTable).get();
       await _db
           .into(_db.financeSettingsTable)
           .insertOnConflictUpdate(
             SettingsRow.fromJson({
+              ...?current.firstOrNull?.toJson(),
               ...settings,
               'id': FinanceSettingsTable.singletonId,
             }),
@@ -259,7 +277,7 @@ final class DriftBackupStore implements BackupStore {
     var skipped = 0;
     for (final raw in rows) {
       if (raw is! Map<String, Object?>) throw const InvalidBackupException();
-      final row = _remap(raw, section.refs, idMaps);
+      final row = _remap({...section.defaults, ...raw}, section.refs, idMaps);
       final id = row['id'];
       if (id is! String) throw const InvalidBackupException();
       if (existingIds.contains(id)) {
@@ -313,6 +331,7 @@ final class _Section<D extends DataClass> {
     required this.fromJson,
     required this.naturalKey,
     this.refs = const {},
+    this.defaults = const {},
   });
 
   /// Nombre de la lista en el archivo.
@@ -325,4 +344,7 @@ final class _Section<D extends DataClass> {
 
   /// Campo → sección a la que apunta (para seguir los ids emparejados).
   final Map<String, String> refs;
+
+  /// Valores de columnas nuevas (no nulas) que las copias viejas no traen.
+  final Map<String, Object?> defaults;
 }

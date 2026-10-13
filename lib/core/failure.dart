@@ -19,3 +19,8 @@ final class NotFoundFailure extends Failure {
 final class StorageFailure extends Failure {
   const new(super.message);
 }
+
+/// Un servicio externo opcional (IA) no respondió. `message` = motivo.
+final class RemoteFailure extends Failure {
+  const new(super.message);
+}

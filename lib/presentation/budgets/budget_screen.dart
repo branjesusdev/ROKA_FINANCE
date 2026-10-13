@@ -45,7 +45,7 @@ class BudgetScreen extends ConsumerWidget {
             .toList();
 
         return ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 160),
           children: [
             _TotalCard(month: month, budget: budget),
             const SizedBox(height: 12),

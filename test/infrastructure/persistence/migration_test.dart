@@ -9,7 +9,9 @@ import 'package:finance_app/domain/savings/finance_settings.dart';
 import 'package:finance_app/domain/shared/money.dart';
 import 'package:finance_app/domain/shared/percentage.dart';
 import 'package:finance_app/domain/transactions/transaction.dart';
+import 'package:finance_app/domain/wealth/asset.dart';
 import 'package:finance_app/infrastructure/persistence/drift/app_database.dart';
+import 'package:finance_app/infrastructure/repositories/drift_asset_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_category_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_fixed_movement_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_provision_repository.dart';
@@ -31,8 +33,38 @@ void main() {
 
   AppDatabase open(File file) => AppDatabase(NativeDatabase(file));
 
-  /// Quita lo que agregó v8 a una base recién creada.
+  /// Quita lo que agregó v9 a una base recién creada.
+  Future<void> downgradeToV8(AppDatabase db) async {
+    await db.customStatement(
+      'ALTER TABLE categories DROP COLUMN is_extraordinary',
+    );
+    for (final column in [
+      'monthly_cost_cents',
+      'monthly_income_cents',
+      'liquidity',
+      'linked_debt_id',
+    ]) {
+      await db.customStatement('ALTER TABLE assets DROP COLUMN $column');
+    }
+    for (final column in ['ai_enabled', 'ai_review_frequency']) {
+      await db.customStatement(
+        'ALTER TABLE finance_settings DROP COLUMN $column',
+      );
+    }
+    for (final table in ['net_worth_snapshots', 'ai_reviews', 'ai_secrets']) {
+      await db.customStatement('DROP TABLE $table');
+    }
+    for (final category in DefaultCategories.extraordinaryIncomes) {
+      await db.customStatement(
+        "DELETE FROM categories WHERE id = '${category.id}'",
+      );
+    }
+    await db.customStatement('PRAGMA user_version = 8');
+  }
+
+  /// Quita lo que agregaron v8 y v9.
   Future<void> downgradeToV7(AppDatabase db) async {
+    await downgradeToV8(db);
     await db.customStatement(
       'ALTER TABLE finance_settings DROP COLUMN appearance',
     );
@@ -106,6 +138,48 @@ void main() {
     );
     await db.customStatement('PRAGMA user_version = 2');
   }
+
+  test(
+    'v8 → v9 conserva datos y agrega ingresos extraordinarios e IA',
+    () async {
+      final file = File('${dir.path}/db.sqlite');
+      final v8 = open(file);
+      await DriftSettingsRepository(v8)
+          .save(const FinanceSettings(payday: 15, appearance: Appearance.dark));
+      await v8
+          .into(v8.assets)
+          .insert(
+            AssetsCompanion.insert(
+              id: 'car',
+              name: 'Carro',
+              type: AssetType.vehicle,
+              currentValueCents: 100,
+              valuedAt: DateTime(2026, 10),
+            ),
+          );
+      await downgradeToV8(v8);
+      await v8.close();
+
+      final v9 = open(file);
+      addTearDown(v9.close);
+      final settings = await DriftSettingsRepository(v9).get();
+      expect(settings.payday, 15);
+      expect(settings.appearance, Appearance.dark);
+      expect(settings.aiEnabled, isFalse);
+      expect(settings.aiReviewFrequency, ReviewFrequency.weekly);
+      final categories = await DriftCategoryRepository(v9)
+          .getAll(includeArchived: true);
+      final byId = {for (final c in categories) c.id: c};
+      expect(byId[DefaultCategories.extraordinaryId]!.isExtraordinary, isTrue);
+      for (final category in DefaultCategories.extraordinaryIncomes) {
+        expect(byId[category.id]?.isExtraordinary, isTrue);
+      }
+      expect(byId[DefaultCategories.salaryId]!.isExtraordinary, isFalse);
+      final asset = (await DriftAssetRepository(v9).getAll()).single;
+      expect(asset.monthlyCost, Money.zero);
+      expect(asset.effectiveLiquidity, Liquidity.low);
+    },
+  );
 
   test('v7 → v8 conserva ajustes y agrega apariencia', () async {
     final file = File('${dir.path}/db.sqlite');

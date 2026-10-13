@@ -55,10 +55,7 @@ void main() {
         expense(2000, date: previous.start),
         expense(3000, category: 'transport', date: previous.start),
         // Día 10 del ciclo pasado: fuera de la comparación.
-        expense(
-          9000,
-          date: previous.start.add(const Duration(days: 9)),
-        ),
+        expense(9000, date: previous.start.add(const Duration(days: 9))),
       ],
     );
 

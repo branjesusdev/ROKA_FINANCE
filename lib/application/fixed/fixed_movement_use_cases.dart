@@ -87,8 +87,10 @@ final class DeleteFixedMovement {
   Future<Result<void>> call(String id) => guardUseCase(() => _fixed.delete(id));
 }
 
-/// Registra el valor real de una factura de un fijo variable (luz, agua…)
-/// y actualiza su estimado con el promedio de las últimas facturas.
+/// Registra el pago de un fijo del ciclo: el valor real de una factura
+/// variable (luz, agua…), o un fijo pagado antes de su día. Lo marca como
+/// registrado para que no se duplique. En los variables actualiza el
+/// estimado con el promedio de las últimas facturas.
 final class ConfirmVariableFixed {
   const new({
     required this._fixed,
@@ -127,6 +129,10 @@ final class ConfirmVariableFixed {
         fixedMovementId: movement.id,
       );
       await _transactions.save(transaction);
+      if (!movement.isVariable) {
+        await _fixed.save(movement.copyWith(lastPostedOn: scheduledDate));
+        return transaction;
+      }
       final recent = await _transactions.getLinkedToFixed(
         movement.id,
         limit: VariableBillEstimator.lastBills,

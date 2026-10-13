@@ -7,7 +7,7 @@ Sin login, sin backend, sin cloud. Nombre visible: **Roka** (paquete/IDs siguen 
 Prioridad: claridad > features · UX > complejidad · arquitectura mantenible > velocidad.
 
 ## Stack
-Flutter 3.47 / Dart 3.13 · drift (SQLite, esquema v8) · flutter_riverpod 3 (estado + DI) · intl ·
+Flutter 3.47 / Dart 3.13 · drift (SQLite, esquema v9) · flutter_riverpod 3 (estado + DI) · intl ·
 flutter_local_notifications · speech_to_text · very_good_analysis. Gráficas con `CustomPainter`
 propio (sin fl_chart). Detalle: `docs/architecture.md` · modelo y conceptos: `docs/domain-model.md` ·
 diseño visual: `docs/design.md` · estado/fases: `docs/roadmap.md` · entorno: `docs/setup.md`.
@@ -39,6 +39,15 @@ diseño visual: `docs/design.md` · estado/fases: `docs/roadmap.md` · entorno: 
 - **Así vas este ciclo** (`CyclePulse`) y **Tu huella de gasto** (`SpendingRadar`, araña: este ciclo vs
   el pasado a la misma altura, por categoría y por día de la semana; solo gasto variable).
 - **Tu CFO** (`CfoBrief`): consejos accionables + precios públicos de acciones (opt-in).
+- **Libre para gastar** (`MoneyOverview`): disponible − fijos que faltan − apartados − ahorro
+  pendiente (+ ingresos fijos por llegar). Nunca confundir con el saldo.
+- **Reservas de fijos** (`FixedCoverageCalculator`): pagado / cubierto / parcial / sin cubrir /
+  vencido. Pago anotado a mano que coincide con un fijo (`FixedPaymentMatcher`) ⇒ preguntar.
+- **Alertas por reglas** (`FinancialAlertsBuilder`): deterministas, sin red; resumen 8 p. m.
+- **Ingresos extraordinarios** (`Category.isExtraordinary`: prima, cesantías…) ⇒ `WindfallPlanner`
+  propone reparto; `ApplyWindfallSlices` solo aplica lo que el usuario marca.
+- **Tu CFO con IA** (`RunAiReview`, `AskCfo`): opt-in; interpreta `FinancialSnapshot`, nunca
+  calcula montos base ni cambia datos.
 - **Copia de seguridad** (`ExportBackup`/`ImportBackup`): JSON completo; importar fusiona sin duplicar.
 
 ## Reglas
@@ -62,7 +71,10 @@ diseño visual: `docs/design.md` · estado/fases: `docs/roadmap.md` · entorno: 
 1. Columna/tabla en `tables.dart` + subir `schemaVersion` + paso en `onUpgrade` (`app_database.dart`).
 2. `dart run build_runner build`. Test en `test/infrastructure/persistence/migration_test.dart`.
 3. Tabla nueva ⇒ añadir sección en `DriftBackupStore._sections` (clave natural + `refs` de ids)
-   o no se exportará. Columna con default ⇒ los backups viejos siguen importando.
+   o no se exportará (excepto secretos y datos derivados: `ai_secrets`, `ai_reviews`).
+   Columna nueva no nula ⇒ su valor en `_Section.defaults` para que los backups viejos importen
+   (test con `test/fixtures/backup_v8.json`). Si un paso viejo de `onUpgrade` inserta filas de
+   esa tabla, agrega la columna antes (ver `isExtraordinary`).
 
 ## Futuro cloud
 Nuevo adapter (`CloudXRepository`) que implemente el mismo port + cambio en `bootstrap/`.
@@ -70,8 +82,14 @@ Dominio y casos de uso no cambian. No añadir dependencias cloud/analytics/ads.
 
 ## Privacidad
 Nunca loguear montos, descripciones ni registros completos. Nada sale del dispositivo.
-Única excepción: precios públicos de acciones ("Tu CFO") vía port `MarketDataSource`
-(Yahoo, gratis, sin clave): solo envía el símbolo y solo cuando el usuario lo pide.
+Excepciones (ambas opt-in):
+1. Precios públicos de acciones ("Tu CFO") vía port `MarketDataSource` (Yahoo, gratis, sin
+   clave): solo envía el símbolo y solo cuando el usuario lo pide.
+2. "Tu CFO con IA" vía port `AiAdvisor` (Groq, `openai/gpt-oss-120b`): solo con
+   `FinanceSettings.aiEnabled` (consentimiento explícito) y solo `FinancialSnapshot` — totales y
+   tipos, sin descripciones, notas, movimientos individuales ni nombres escritos por el usuario.
+   La llave la pega el usuario (`AiKeyStore`, tabla `ai_secrets`): **nunca en el código, el APK,
+   la copia de seguridad ni los logs**.
 Dictado por voz: en el dispositivo por defecto; con internet (reconocedor de Google) solo si
 el usuario lo elige explícitamente porque el teléfono no tiene español sin conexión.
 Notificaciones con montos: `NotificationVisibility.private` (ocultas en pantalla bloqueada).

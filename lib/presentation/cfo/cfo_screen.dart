@@ -3,6 +3,8 @@ import 'package:finance_app/bootstrap/providers.dart';
 import 'package:finance_app/domain/savings/finance_settings.dart';
 import 'package:finance_app/domain/shared/money.dart';
 import 'package:finance_app/domain/wisdom/wealth_wisdom.dart';
+import 'package:finance_app/presentation/cfo/ai_cfo_card.dart';
+import 'package:finance_app/presentation/cfo/alerts_card.dart';
 import 'package:finance_app/presentation/cfo/watchlist_card.dart';
 import 'package:finance_app/presentation/shared/async_view.dart';
 import 'package:finance_app/presentation/shared/data_providers.dart';
@@ -27,12 +29,16 @@ class CfoScreen extends ConsumerWidget {
       builder: (brief) => ListView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 160),
         children: [
-          _QuoteCard(quote: WealthWisdom.quoteFor(today)),
+          const AiCfoCard(),
+          _spacing,
+          const AlertsCard(),
           _spacing,
           _TipsCard(tips: brief.tips),
           if (brief.plan case final plan?) ...[_spacing, _PlanCard(plan: plan)],
           _spacing,
           const WatchlistCard(),
+          _spacing,
+          _QuoteCard(quote: WealthWisdom.quoteFor(today)),
           _spacing,
           const _WisdomCard(),
           _spacing,
@@ -109,7 +115,7 @@ class _TipsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SectionCard(
-      title: 'Qué está pasando',
+      title: 'Consejos del ciclo',
       child: Column(
         children: [
           for (final tip in tips)

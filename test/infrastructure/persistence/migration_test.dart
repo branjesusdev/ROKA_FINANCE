@@ -1,9 +1,10 @@
 import 'dart:io';
 
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' hide isNull;
 import 'package:drift/native.dart';
 import 'package:finance_app/domain/categories/default_categories.dart';
 import 'package:finance_app/domain/fixed/fixed_movement.dart';
+import 'package:finance_app/domain/investments/investment.dart';
 import 'package:finance_app/domain/provisions/provision.dart';
 import 'package:finance_app/domain/savings/finance_settings.dart';
 import 'package:finance_app/domain/shared/money.dart';
@@ -14,6 +15,7 @@ import 'package:finance_app/infrastructure/persistence/drift/app_database.dart';
 import 'package:finance_app/infrastructure/repositories/drift_asset_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_category_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_fixed_movement_repository.dart';
+import 'package:finance_app/infrastructure/repositories/drift_investment_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_provision_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_settings_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_transaction_repository.dart';
@@ -33,8 +35,57 @@ void main() {
 
   AppDatabase open(File file) => AppDatabase(NativeDatabase(file));
 
-  /// Quita lo que agregó v9 a una base recién creada.
+  /// Quita lo que agregó v14 a una base recién creada.
+  Future<void> downgradeToV13(AppDatabase db) async {
+    await db.customStatement(
+      'ALTER TABLE finance_settings DROP COLUMN monthly_salary_cents',
+    );
+    await db.customStatement('PRAGMA user_version = 13');
+  }
+
+  /// Quita lo que agregaron v13 y v14.
+  Future<void> downgradeToV12(AppDatabase db) async {
+    await downgradeToV13(db);
+    await db.customStatement(
+      'ALTER TABLE fixed_movements DROP COLUMN auto_debit',
+    );
+    await db.customStatement('PRAGMA user_version = 12');
+  }
+
+  /// Quita lo que agregaron v12 y v13.
+  Future<void> downgradeToV11(AppDatabase db) async {
+    await downgradeToV12(db);
+    await db.customStatement(
+      'ALTER TABLE fixed_movements DROP COLUMN remind_on',
+    );
+    await db.customStatement('PRAGMA user_version = 11');
+  }
+
+  /// Quita lo que agregaron v11 y v12.
+  Future<void> downgradeToV10(AppDatabase db) async {
+    await downgradeToV11(db);
+    await db.customStatement(
+      'ALTER TABLE transactions DROP COLUMN odometer_km',
+    );
+    await db.customStatement(
+      'ALTER TABLE investments DROP COLUMN invested_usd_cents',
+    );
+    await db.customStatement('ALTER TABLE fixed_movements DROP COLUMN debt_id');
+    await db.customStatement('PRAGMA user_version = 10');
+  }
+
+  /// Quita lo que agregaron v10 y v11.
+  Future<void> downgradeToV9(AppDatabase db) async {
+    await downgradeToV10(db);
+    for (final column in ['symbol', 'units_micros', 'price_updated_at']) {
+      await db.customStatement('ALTER TABLE investments DROP COLUMN $column');
+    }
+    await db.customStatement('PRAGMA user_version = 9');
+  }
+
+  /// Quita lo que agregaron v9 y v10.
   Future<void> downgradeToV8(AppDatabase db) async {
+    await downgradeToV9(db);
     await db.customStatement(
       'ALTER TABLE categories DROP COLUMN is_extraordinary',
     );
@@ -138,6 +189,158 @@ void main() {
     );
     await db.customStatement('PRAGMA user_version = 2');
   }
+
+  test('v13 → v14 conserva ajustes y agrega el sueldo', () async {
+    final file = File('${dir.path}/db.sqlite');
+    final v13 = open(file);
+    await DriftSettingsRepository(v13).save(const FinanceSettings(payday: 15));
+    await downgradeToV13(v13);
+    await v13.close();
+
+    final v14 = open(file);
+    addTearDown(v14.close);
+    final settings = DriftSettingsRepository(v14);
+    expect((await settings.get()).payday, 15);
+    expect((await settings.get()).monthlySalary, Money.zero);
+    await settings.save(
+      const FinanceSettings(payday: 15, monthlySalary: Money.pesos(3400000)),
+    );
+    expect((await settings.get()).monthlySalary, const Money.pesos(3400000));
+  });
+
+  test('v12 → v13: los gastos fijos pasan a pedir "Ya lo pagué"', () async {
+    final file = File('${dir.path}/db.sqlite');
+    final v12 = open(file);
+    const rent = FixedMovement(
+      id: 'rent',
+      name: 'Arriendo',
+      kind: TransactionKind.expense,
+      amount: Money.pesos(900000),
+      categoryId: 'seed-expense-housing',
+      dayOfMonth: 14,
+    );
+    await DriftFixedMovementRepository(v12).save(rent);
+    await downgradeToV12(v12);
+    await v12.close();
+
+    final v13 = open(file);
+    addTearDown(v13.close);
+    final repo = DriftFixedMovementRepository(v13);
+    final migrated = (await repo.getAll()).single;
+    expect(migrated, rent);
+    expect(migrated.needsConfirmation, isTrue);
+    await repo.save(migrated.copyWith(autoDebit: true));
+    expect((await repo.getAll()).single.autoDebit, isTrue);
+  });
+
+  test('v11 → v12 conserva los fijos y agrega "recuérdame"', () async {
+    final file = File('${dir.path}/db.sqlite');
+    final v11 = open(file);
+    const luz = FixedMovement(
+      id: 'luz',
+      name: 'Luz',
+      kind: TransactionKind.expense,
+      amount: Money.pesos(120000),
+      categoryId: 'seed-expense-services',
+      dayOfMonth: 13,
+      isVariable: true,
+    );
+    await DriftFixedMovementRepository(v11).save(luz);
+    await downgradeToV11(v11);
+    await v11.close();
+
+    final v12 = open(file);
+    addTearDown(v12.close);
+    final repo = DriftFixedMovementRepository(v12);
+    expect((await repo.getAll()).single, luz);
+    await repo.save(luz.remindedOn(DateTime(2026, 10, 14)));
+    expect((await repo.getAll()).single.remindOn, DateTime(2026, 10, 14));
+  });
+
+  test('v10 → v11 agrega kilometraje, dólares y crédito del fijo', () async {
+    final file = File('${dir.path}/db.sqlite');
+    final v10 = open(file);
+    await v10
+        .into(v10.transactions)
+        .insert(
+          TransactionsCompanion.insert(
+            id: 'gas',
+            kind: TransactionKind.expense,
+            amountCents: 10000000,
+            categoryId: 'seed-expense-transport',
+            date: DateTime(2026, 10),
+            createdAt: DateTime(2026, 10),
+          ),
+        );
+    await downgradeToV10(v10);
+    await v10.close();
+
+    final v11 = open(file);
+    addTearDown(v11.close);
+    final repo = DriftTransactionRepository(v11);
+    final gas = (await repo.getRecent(limit: 5)).single;
+    expect(gas.odometerKm, isNull);
+    await repo.save(
+      Transaction(
+        id: 'gas2',
+        kind: TransactionKind.expense,
+        amount: const Money.pesos(100000),
+        categoryId: 'seed-expense-transport',
+        date: DateTime(2026, 10, 9),
+        createdAt: DateTime(2026, 10, 9),
+        odometerKm: 45200,
+      ),
+    );
+    expect(
+      (await repo.getById('gas2'))!.odometerKm,
+      45200,
+      reason: 'la columna nueva guarda y lee',
+    );
+  });
+
+  test('v9 → v10 conserva inversiones y agrega símbolo y cantidad', () async {
+    final file = File('${dir.path}/db.sqlite');
+    final v9 = open(file);
+    await v9
+        .into(v9.investments)
+        .insert(
+          InvestmentsCompanion.insert(
+            id: 'fondo',
+            name: 'Fondo',
+            type: InvestmentType.fund,
+            investedCents: 100000,
+            currentValueCents: 120000,
+            date: DateTime(2026),
+          ),
+        );
+    await downgradeToV9(v9);
+    await v9.close();
+
+    final v10 = open(file);
+    addTearDown(v10.close);
+    final repo = DriftInvestmentRepository(v10);
+    final fondo = (await repo.getAll()).single;
+    expect(fondo.currentValue, const Money(120000));
+    expect(fondo.symbol, isNull);
+    expect(fondo.isMarketPriced, isFalse);
+
+    await repo.save(
+      Investment(
+        id: 'nvda',
+        name: 'Nvidia',
+        type: InvestmentType.stocks,
+        investedAmount: const Money.pesos(1000000),
+        currentValue: const Money.pesos(1000000),
+        date: DateTime(2026, 5),
+        symbol: 'NVDA',
+        unitsMicros: 2500000,
+        priceUpdatedAt: DateTime(2026, 10, 12, 9),
+      ),
+    );
+    final nvda = (await repo.getAll()).firstWhere((i) => i.id == 'nvda');
+    expect(nvda.units, 2.5);
+    expect(nvda.priceUpdatedAt, DateTime(2026, 10, 12, 9));
+  });
 
   test(
     'v8 → v9 conserva datos y agrega ingresos extraordinarios e IA',

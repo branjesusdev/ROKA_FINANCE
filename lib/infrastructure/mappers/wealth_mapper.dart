@@ -43,6 +43,10 @@ extension InvestmentRowMapper on InvestmentRow {
     currentValue: Money(currentValueCents),
     date: date,
     notes: notes,
+    symbol: symbol,
+    unitsMicros: unitsMicros,
+    priceUpdatedAt: priceUpdatedAt,
+    investedUsdCents: investedUsdCents,
   );
 }
 
@@ -55,5 +59,9 @@ extension InvestmentCompanionMapper on Investment {
     currentValueCents: currentValue.cents,
     date: date,
     notes: Value(notes),
+    symbol: Value(symbol),
+    unitsMicros: Value(unitsMicros),
+    priceUpdatedAt: Value(priceUpdatedAt),
+    investedUsdCents: Value(investedUsdCents),
   );
 }

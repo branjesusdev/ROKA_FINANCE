@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:finance_app/bootstrap/use_cases.dart';
 import 'package:finance_app/domain/debts/debt.dart';
 import 'package:finance_app/domain/debts/interest_rate.dart';
@@ -5,9 +7,11 @@ import 'package:finance_app/domain/debts/loan_terms.dart';
 import 'package:finance_app/domain/investments/investment.dart';
 import 'package:finance_app/domain/shared/money.dart';
 import 'package:finance_app/domain/shared/percentage.dart';
+import 'package:finance_app/domain/shared/usd_rate.dart';
 import 'package:finance_app/domain/wealth/asset.dart';
 import 'package:finance_app/presentation/shared/data_providers.dart';
 import 'package:finance_app/presentation/shared/form_widgets.dart';
+import 'package:finance_app/presentation/shared/formatters.dart';
 import 'package:finance_app/presentation/shared/labels.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -196,14 +200,71 @@ class _InvestmentFormSheetState extends ConsumerState<InvestmentFormSheet> {
   late final _current = TextEditingController(
     text: MoneyField.initial(widget.investment?.currentValue),
   );
+  late final _symbol = TextEditingController(text: widget.investment?.symbol);
+  late final _units = TextEditingController(
+    text: _unitsText(widget.investment?.units),
+  );
   late InvestmentType _type = widget.investment?.type ?? InvestmentType.fund;
   late DateTime? _date = widget.investment?.date;
+
+  /// Lo pagaste en dólares: se escribe en US$ y se pasa a pesos.
+  late bool _inUsd = widget.investment?.investedUsdCents != null;
+  late final _investedUsd = TextEditingController(
+    text: UsdField.initial(widget.investment?.investedUsdCents),
+  );
+  late final _currentUsd = TextEditingController();
+  late final _rate = TextEditingController(text: _initialRate());
+
+  /// El dólar de hoy llegó de internet (para explicarlo en el campo).
+  bool _rateFromMarket = false;
+  bool _loadingRate = false;
+
+  /// Dólar con el que se guardó (pesos invertidos / dólares invertidos).
+  String _initialRate() {
+    final investment = widget.investment;
+    final usd = investment?.investedUsdCents;
+    if (investment == null || usd == null || usd <= 0) return '';
+    return Formatters.pesos((investment.investedAmount.cents / usd).round());
+  }
+
+  UsdRate? get _usdRate {
+    final pesos = MoneyField.read(_rate);
+    return pesos == null ? null : UsdRate(pesos);
+  }
+
+  /// Tipos que suelen tener precio público.
+  static const _marketTypes = {
+    InvestmentType.stocks,
+    InvestmentType.fund,
+    InvestmentType.crypto,
+  };
+
+  static String _unitsText(double? units) {
+    if (units == null) return '';
+    final text = units.toStringAsFixed(6);
+    return text
+        .replaceFirst(RegExp(r'0+$'), '')
+        .replaceFirst(RegExp(r'\.$'), '')
+        .replaceAll('.', ',');
+  }
+
+  /// "2,5" o "2.5" → millonésimas. `null` si está vacío o no es número.
+  static int? _readUnits(String text) {
+    final value = double.tryParse(text.trim().replaceAll(',', '.'));
+    if (value == null || value <= 0) return null;
+    return (value * Investment.microsPerUnit).round();
+  }
 
   @override
   void dispose() {
     _name.dispose();
     _invested.dispose();
     _current.dispose();
+    _symbol.dispose();
+    _units.dispose();
+    _investedUsd.dispose();
+    _currentUsd.dispose();
+    _rate.dispose();
     super.dispose();
   }
 
@@ -249,12 +310,85 @@ class _InvestmentFormSheetState extends ConsumerState<InvestmentFormSheet> {
             border: OutlineInputBorder(),
           ),
         ),
-        MoneyField(controller: _invested, label: 'Valor invertido'),
-        MoneyField(
-          controller: _current,
-          label: 'Valor actual',
-          helperText: 'Actualízalo cuando revises tu extracto.',
+        if (_marketTypes.contains(_type)) ...[
+          TextField(
+            controller: _symbol,
+            textCapitalization: TextCapitalization.characters,
+            onChanged: (_) => setState(() {}),
+            decoration: const InputDecoration(
+              labelText: 'Símbolo en bolsa (opcional)',
+              hintText: 'Ej: NVDA, VOO, BTC-USD',
+              helperText:
+                  'Con el símbolo y la cantidad, el valor se actualiza con '
+                  'el precio real. Solo se consulta el símbolo.',
+              helperMaxLines: 3,
+              border: OutlineInputBorder(),
+            ),
+          ),
+          TextField(
+            controller: _units,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              labelText: 'Cantidad de acciones o unidades',
+              hintText: 'Ej: 2,5',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ],
+        SegmentedButton<bool>(
+          segments: const [
+            ButtonSegment(value: false, label: Text('En pesos')),
+            ButtonSegment(value: true, label: Text('En dólares')),
+          ],
+          selected: {_inUsd},
+          onSelectionChanged: (selection) {
+            setState(() => _inUsd = selection.first);
+            if (_inUsd && _rate.text.isEmpty) unawaited(_loadRate());
+          },
         ),
+        if (_inUsd) ...[
+          UsdField(
+            controller: _investedUsd,
+            label: 'Valor invertido en dólares',
+            helperText:
+                _pesosHint(UsdField.read(_investedUsd)) ??
+                'Lo que pagaste, con comisiones. Ej: 253,70',
+            onChanged: (_) => setState(() {}),
+          ),
+          MoneyField(
+            controller: _rate,
+            label: 'Precio del dólar (en pesos)',
+            helperText: _loadingRate
+                ? 'Consultando el dólar de hoy…'
+                : _rateFromMarket
+                ? 'Dólar de hoy (Yahoo). Si lo compraste a otro precio, '
+                      'cámbialo.'
+                : 'A cuánto compraste los dólares.',
+            onChanged: (_) => setState(() {}),
+          ),
+          if (!_hasSymbol)
+            UsdField(
+              controller: _currentUsd,
+              label: 'Valor actual en dólares (opcional)',
+              helperText:
+                  _pesosHint(UsdField.read(_currentUsd)) ??
+                  'Si lo dejas vacío, se conserva el valor que tenía.',
+              onChanged: (_) => setState(() {}),
+            ),
+        ] else ...[
+          MoneyField(
+            controller: _invested,
+            label: 'Valor invertido',
+            helperText: 'Lo que pagaste en pesos, con comisiones.',
+          ),
+          MoneyField(
+            controller: _current,
+            label: 'Valor actual',
+            helperText:
+                'Con símbolo se calcula solo; si no, actualízalo con '
+                'tu extracto.',
+          ),
+        ],
         DateTile(
           label: 'Fecha de inversión',
           value: _date,
@@ -265,20 +399,74 @@ class _InvestmentFormSheetState extends ConsumerState<InvestmentFormSheet> {
     );
   }
 
+  bool get _hasSymbol =>
+      _marketTypes.contains(_type) && _symbol.text.trim().isNotEmpty;
+
+  /// "≈ $1.040.000 pesos" con el dólar escrito.
+  String? _pesosHint(int? usdCents) {
+    final rate = _usdRate;
+    if (usdCents == null || rate == null || !rate.isValid) return null;
+    return '≈ ${Formatters.money(rate.toPesos(usdCents))} pesos';
+  }
+
+  Future<void> _loadRate() async {
+    setState(() => _loadingRate = true);
+    final rate = await ref.read(usdRateProvider.future);
+    if (!mounted) return;
+    setState(() {
+      _loadingRate = false;
+      if (rate != null && _rate.text.isEmpty) {
+        _rate.text = Formatters.pesos(
+          rate.pesosPerDollar.cents ~/ Money.centsPerPeso,
+        );
+        _rateFromMarket = true;
+      }
+    });
+  }
+
   Future<void> _save() async {
-    final invested = MoneyField.read(_invested) ?? Money.zero;
+    final previous = widget.investment;
+    final investedUsd = _inUsd ? UsdField.read(_investedUsd) ?? 0 : null;
+    final currentUsd = _inUsd && !_hasSymbol
+        ? UsdField.read(_currentUsd)
+        : null;
+    final invested = _inUsd
+        ? previous?.investedAmount ?? Money.zero
+        : MoneyField.read(_invested) ?? Money.zero;
+    final current = _inUsd
+        ? previous?.currentValue ??
+              (_usdRate?.isValid ?? false
+                  ? _usdRate!.toPesos(investedUsd!)
+                  : Money.zero)
+        : MoneyField.read(_current) ?? invested;
+    final market = _marketTypes.contains(_type);
     final result = await ref
         .read(saveInvestmentProvider)
         .call(
-          id: widget.investment?.id,
+          id: previous?.id,
           name: _name.text,
           type: _type,
           invested: invested,
-          currentValue: MoneyField.read(_current) ?? invested,
+          currentValue: current,
           date: _date,
-          notes: widget.investment?.notes,
+          notes: previous?.notes,
+          symbol: market ? _symbol.text : null,
+          unitsMicros: market ? _readUnits(_units.text) : null,
+          // Si escribiste otro valor a mano, ya no es el precio de mercado.
+          priceUpdatedAt:
+              current == previous?.currentValue && currentUsd == null
+              ? previous?.priceUpdatedAt
+              : null,
+          investedUsdCents: investedUsd,
+          currentUsdCents: currentUsd,
+          usdRate: _inUsd ? _usdRate : null,
         );
-    if (mounted && showResult(context, result, success: 'Inversión guardada')) {
+    if (!mounted) return;
+    if (showResult(context, result, success: 'Inversión guardada')) {
+      // Con símbolo, se valora de una vez con el precio real.
+      if (_hasSymbol) {
+        ref.read(investmentPricesRequestProvider.notifier).refresh();
+      }
       Navigator.pop(context);
     }
   }

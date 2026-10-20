@@ -1,4 +1,5 @@
 import 'package:finance_app/domain/provisions/provision_planner.dart';
+import 'package:finance_app/presentation/home/widgets/set_aside_sheet.dart';
 import 'package:finance_app/presentation/provisions/provisions_screen.dart';
 import 'package:finance_app/presentation/shared/formatters.dart';
 import 'package:finance_app/presentation/shared/section_card.dart';
@@ -84,6 +85,21 @@ class ProvisionsCard extends StatelessWidget {
                     ),
                   ),
                 ],
+              ),
+            ],
+            if (plan.saved.isPositive) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Llevas apartado ${Formatters.money(plan.saved)} en total: '
+                'esa plata ya no cuenta como disponible.',
+              ),
+            ],
+            if (today != null) ...[
+              const SizedBox(height: 8),
+              FilledButton.tonalIcon(
+                icon: const Icon(Icons.savings_outlined),
+                label: Text('Apartar ${Formatters.money(today)} ahora'),
+                onPressed: () => showSetAsideSheet(context),
               ),
             ],
             if (next != null) ...[

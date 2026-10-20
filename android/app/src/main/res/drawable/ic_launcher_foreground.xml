@@ -1,31 +1,60 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Roka: roca facetada (solidez) con una línea que sube (crecimiento).
-     Lienzo 108x108; todo dentro de la zona segura central de 66. -->
+<!-- Roka estilo iOS: una roca lima con volumen (degradados), sombra suave
+     y una línea que sube. Lienzo 108x108; todo dentro de la zona segura
+     central de 66 (21..87). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Cara izquierda (luz) -->
+    <!-- Sombra en el piso -->
+    <path android:pathData="M30,80a24,4.5 0,1 0,48 0a24,4.5 0,1 0,-48 0z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="radial"
+                android:centerX="54"
+                android:centerY="80"
+                android:gradientRadius="24">
+                <item android:offset="0" android:color="#66000000" />
+                <item android:offset="1" android:color="#00000000" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- Cuerpo de la roca, esquinas redondeadas -->
+    <path android:pathData="M51,27.5 Q54,26 57,27.5 L77,38 Q80,39.6 80.5,43 L83,63 Q83.4,66.4 80.8,68.6 L66.5,79.5 Q64,81.4 60.8,81.3 L39,80.4 Q35.8,80.3 33.8,77.8 L25.4,62.6 Q23.8,59.6 25,56.5 L31.5,40.6 Q32.8,37.6 35.8,36.1 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="40"
+                android:startY="27"
+                android:endX="68"
+                android:endY="82">
+                <item android:offset="0" android:color="#FFE6F8B0" />
+                <item android:offset="0.45" android:color="#FFB3DD62" />
+                <item android:offset="1" android:color="#FF7FB236" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- Cara iluminada (faceta izquierda) -->
     <path
-        android:fillColor="#D4F08F"
-        android:pathData="M34,38 L54,28 L50,54 L26,58 Z" />
-    <!-- Cara derecha -->
+        android:fillColor="#33FFFFFF"
+        android:pathData="M51,27.5 Q54,26 57,27.5 L54,30 L50,55 L26.5,58.5 Q25,57.5 25,56.5 L31.5,40.6 Q32.8,37.6 35.8,36.1 Z" />
+    <!-- Base en sombra -->
     <path
-        android:fillColor="#B3DD62"
-        android:pathData="M54,28 L78,40 L82,66 L50,54 Z" />
-    <!-- Base (sombra) -->
+        android:fillColor="#26102521"
+        android:pathData="M26.5,61 L50,57 L82.8,66.5 Q82.5,67.8 80.8,68.6 L66.5,79.5 Q64,81.4 60.8,81.3 L39,80.4 Q35.8,80.3 33.8,77.8 Z" />
+    <!-- Tendencia que sube -->
     <path
-        android:fillColor="#8CBF3F"
-        android:pathData="M26,58 L50,54 L82,66 L64,82 L36,80 Z" />
-    <!-- Tendencia que sube, tallada en la roca -->
-    <path
-        android:strokeColor="#102521"
-        android:strokeWidth="5"
+        android:strokeColor="#FF102521"
+        android:strokeWidth="5.5"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:pathData="M35,70 L46,60 L56,66 L70,52" />
+        android:pathData="M36,68 L46.5,58.5 L55.5,64 L67,52.5" />
     <path
-        android:fillColor="#102521"
-        android:pathData="M76,46 L64,48 L74,58 Z" />
+        android:fillColor="#FF102521"
+        android:strokeColor="#FF102521"
+        android:strokeWidth="1.5"
+        android:strokeLineJoin="round"
+        android:pathData="M73.5,46 L62.5,48 L71.5,57 Z" />
 </vector>

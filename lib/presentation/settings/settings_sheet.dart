@@ -13,6 +13,7 @@ import 'package:finance_app/presentation/provisions/provisions_screen.dart';
 import 'package:finance_app/presentation/settings/backup_section.dart';
 import 'package:finance_app/presentation/settings/household_section.dart';
 import 'package:finance_app/presentation/settings/reset_cycle_tile.dart';
+import 'package:finance_app/presentation/settings/salary_section.dart';
 import 'package:finance_app/presentation/shared/data_providers.dart';
 import 'package:finance_app/presentation/shared/form_widgets.dart';
 import 'package:flutter/material.dart';
@@ -141,6 +142,8 @@ class SettingsSheet extends ConsumerWidget {
                 ),
               ),
           ),
+          const Divider(),
+          SalarySection(settings: settings),
           const Divider(),
           HouseholdSection(settings: settings),
           const Divider(),

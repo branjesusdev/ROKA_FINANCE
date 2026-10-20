@@ -25,6 +25,7 @@ extension SettingsRowMapper on SettingsRow {
     appearance: appearance,
     aiEnabled: aiEnabled,
     aiReviewFrequency: aiReviewFrequency,
+    monthlySalary: Money(monthlySalaryCents),
   );
 }
 
@@ -47,5 +48,6 @@ extension SettingsCompanionMapper on FinanceSettings {
         appearance: Value(appearance),
         aiEnabled: Value(aiEnabled),
         aiReviewFrequency: Value(aiReviewFrequency),
+        monthlySalaryCents: Value(monthlySalary.cents),
       );
 }

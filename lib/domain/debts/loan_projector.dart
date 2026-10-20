@@ -1,6 +1,9 @@
+import 'dart:math' as math;
+
 import 'package:finance_app/domain/debts/loan_terms.dart';
 import 'package:finance_app/domain/shared/money.dart';
 import 'package:finance_app/domain/shared/year_month.dart';
+import 'package:meta/meta.dart';
 
 final class LoanProjection {
   const new _({
@@ -45,6 +48,31 @@ final class LoanProjection {
   final YearMonth? payoffMonth;
 }
 
+/// Una fila de la tabla de pagos: lo que abona a capital y a intereses.
+@immutable
+final class LoanInstallment {
+  const new({
+    required this.month,
+    required this.payment,
+    required this.principal,
+    required this.interest,
+    required this.balance,
+    this.number,
+  });
+
+  /// Número de la cuota en el crédito (`null` si no se sabe cuántas van).
+  final int? number;
+  final YearMonth month;
+
+  /// Capital + intereses, sin seguros (la última suele ser menor).
+  final Money payment;
+  final Money principal;
+  final Money interest;
+
+  /// Saldo de capital después de esta cuota.
+  final Money balance;
+}
+
 final class LoanComparison {
   const new({required this.base, required this.withExtra});
 
@@ -77,28 +105,55 @@ final class LoanProjector {
     required YearMonth firstPaymentMonth,
     Money extraMonthly = Money.zero,
   }) {
-    final rate = terms.rate.monthlyEffective;
-    final capacity = terms.paymentWithoutFees + extraMonthly;
-    var remaining = balance;
-    var months = 0;
-    var interest = Money.zero;
-
-    while (remaining.isPositive) {
-      if (months == maxMonths) return const LoanProjection.unpayable();
-      final monthInterest = remaining.times(rate);
-      final principal = capacity - monthInterest;
-      if (!principal.isPositive) return const LoanProjection.unpayable();
-      interest += monthInterest;
-      remaining -= principal.min(remaining);
-      months++;
-    }
-
+    final rows = schedule(
+      balance: balance,
+      terms: terms,
+      firstPaymentMonth: firstPaymentMonth,
+      extraMonthly: extraMonthly,
+    );
+    if (rows == null) return const LoanProjection.unpayable();
+    final months = rows.length;
     return LoanProjection.payable(
       months: months,
-      totalInterest: interest,
+      totalInterest: Money.sum(rows.map((r) => r.interest)),
       totalFees: terms.monthlyFees.times(months),
-      payoffMonth: firstPaymentMonth.addMonths(months > 0 ? months - 1 : 0),
+      payoffMonth: rows.isEmpty ? firstPaymentMonth : rows.last.month,
     );
+  }
+
+  /// Tabla de pagos cuota a cuota desde [balance] (como la proyección del
+  /// banco). [firstNumber] numera la primera fila. `null` si la cuota no
+  /// alcanza a cubrir los intereses.
+  List<LoanInstallment>? schedule({
+    required Money balance,
+    required LoanTerms terms,
+    required YearMonth firstPaymentMonth,
+    Money extraMonthly = Money.zero,
+    int? firstNumber,
+  }) {
+    final rate = terms.rate.monthlyEffective;
+    final capacity = terms.paymentWithoutFees + extraMonthly;
+    final rows = <LoanInstallment>[];
+    var remaining = balance;
+    while (remaining.isPositive) {
+      if (rows.length == maxMonths) return null;
+      final interest = remaining.times(rate);
+      final available = capacity - interest;
+      if (!available.isPositive) return null;
+      final principal = available.min(remaining);
+      remaining -= principal;
+      rows.add(
+        LoanInstallment(
+          number: firstNumber == null ? null : firstNumber + rows.length,
+          month: firstPaymentMonth.addMonths(rows.length),
+          payment: principal + interest,
+          principal: principal,
+          interest: interest,
+          balance: remaining,
+        ),
+      );
+    }
+    return rows;
   }
 
   /// Simula pagar [extraMonthly] adicional cada mes. No modifica nada.
@@ -120,6 +175,33 @@ final class LoanProjector {
       extraMonthly: extraMonthly,
     ),
   );
+
+  /// Tasa efectiva mensual (fracción) con la que [balance] se paga justo en
+  /// [months] cuotas de [payment] (sin seguros). Sirve para comparar con el
+  /// extracto. `null` si no hay intereses implícitos (cuota × meses ≤ saldo).
+  double? impliedMonthlyRate({
+    required Money balance,
+    required Money payment,
+    required int months,
+  }) {
+    if (months <= 0 || !payment.isPositive || !balance.isPositive) return null;
+    if (payment.cents * months <= balance.cents) return null;
+    var low = 0.0;
+    var high = 1.0;
+    for (var i = 0; i < _searchSteps; i++) {
+      final mid = (low + high) / 2;
+      final installment =
+          mid * balance.cents / (1 - math.pow(1 + mid, -months));
+      if (installment > payment.cents) {
+        high = mid;
+      } else {
+        low = mid;
+      }
+    }
+    return (low + high) / 2;
+  }
+
+  static const _searchSteps = 60;
 
   /// Parte de un pago que reduce el saldo (descontando cargos e interés).
   Money principalPortion({

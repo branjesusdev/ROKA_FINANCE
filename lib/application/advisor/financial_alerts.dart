@@ -125,8 +125,8 @@ final class FinancialAlertsBuilder {
           : 'Lo reservado supera tu dinero por ${_m(shortfall)}',
       detail:
           'Tienes ${_m(overview.available)} y debes reservar '
-          '${_m(overview.reserved)} (fijos, apartados y ahorro) en los '
-          '${overview.daysLeft} días que quedan del ciclo.',
+          '${_m(overview.reserved)} (fijos, apartados, ahorro y '
+          'presupuesto) en los ${overview.daysLeft} días que quedan del ciclo.',
       action: fixedGap.isPositive
           ? 'Pausa lo que no sea esencial y prioriza arriendo, servicios y '
                 'comida hasta el sueldo.'
@@ -160,23 +160,29 @@ final class FinancialAlertsBuilder {
           item.state == ObligationState.partial ||
           item.state == ObligationState.uncovered;
       if (!overdue && !(short && !item.date.isAfter(horizon))) continue;
+      // "Recuérdame mañana": no insiste hasta ese día.
+      if (overdue && item.movement.isSnoozedOn(day)) continue;
       final days = item.date.difference(day).inDays;
       yield FinancialAlert(
         key: 'fixed-${item.movement.id}-${item.date.toIso8601String()}',
         kind: AlertKind.fixedNotCovered,
         severity: overdue ? AlertSeverity.warning : AlertSeverity.critical,
         title: overdue
-            ? '${item.movement.name}: falta el valor real'
+            ? item.movement.isVariable
+                  ? '${item.movement.name}: falta el valor real'
+                  : '¿Ya pagaste ${item.movement.name}?'
             : '${item.movement.name} vence '
                   '${days <= 0 ? 'hoy' : 'en $days días'} y faltan '
                   '${_m(item.missing)}',
         detail: overdue
-            ? 'Su día ya pasó. Mientras no lo confirmes se reserva el '
-                  'estimado de ${_m(item.amount)}.'
+            ? '${days == 0 ? 'Vence hoy' : 'Su día ya pasó'}. Mientras no '
+                  'lo confirmes se reservan ${_m(item.amount)}.'
             : 'Cuesta ${_m(item.amount)} y con lo que tienes alcanzas a '
                   'cubrir ${_m(item.reserved)}.',
         action: overdue
-            ? 'Escribe el valor de la factura en Inicio.'
+            ? item.movement.isVariable
+                  ? 'Escribe el valor de la factura en Inicio.'
+                  : 'Toca "Ya lo pagué" en Inicio o pospón el aviso.'
             : 'Separa ${_m(item.missing)} antes del ${item.date.day} o '
                   'recorta gastos variables.',
       );

@@ -7,6 +7,18 @@ enum ReminderChannel {
   smart,
 }
 
+/// Botones de una factura por confirmar dentro de la notificación.
+enum ReminderAction {
+  /// ✓ Ya lo pagué: abre la app para escribir el valor.
+  paid,
+
+  /// Aún no: recuérdame mañana.
+  tomorrow,
+
+  /// Aún no: recuérdame en 2 días.
+  inTwoDays,
+}
+
 /// Aviso local programado. [at] es hora local de pared.
 final class Reminder {
   const new({
@@ -16,6 +28,8 @@ final class Reminder {
     required this.body,
     this.channel = ReminderChannel.smart,
     this.repeatsDaily = false,
+    this.actions = const [],
+    this.payload,
   });
 
   final int id;
@@ -26,6 +40,21 @@ final class Reminder {
 
   /// Se repite todos los días a la misma hora (aunque no abras la app).
   final bool repeatsDaily;
+
+  /// Botones del aviso (vacío = solo se toca para abrir la app).
+  final List<ReminderAction> actions;
+
+  /// Dato que vuelve al tocar el aviso (p. ej. el id del fijo).
+  final String? payload;
+}
+
+/// El usuario tocó un aviso o uno de sus botones ([action] `null` = tocó
+/// el aviso).
+final class ReminderResponse {
+  const new({required this.payload, this.action});
+
+  final String? payload;
+  final ReminderAction? action;
 }
 
 /// Estado del sistema para explicar por qué no llegan los avisos.
@@ -60,4 +89,7 @@ abstract interface class ReminderScheduler {
   Future<void> showNow(Reminder reminder);
 
   Future<ReminderDiagnostics> diagnostics();
+
+  /// Toques en avisos y en sus botones, incluido el que abrió la app.
+  Stream<ReminderResponse> responses();
 }

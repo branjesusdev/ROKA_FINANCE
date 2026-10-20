@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:finance_app/application/reminders/reminder_scheduler.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
@@ -16,10 +18,13 @@ final class LocalReminderScheduler implements ReminderScheduler {
   static const _icon = 'ic_notification';
 
   final _plugin = FlutterLocalNotificationsPlugin();
-  bool _ready = false;
+  final _responses = StreamController<ReminderResponse>.broadcast();
+  Future<void>? _initializing;
 
-  Future<void> _init() async {
-    if (_ready) return;
+  /// Una sola vez, aunque la pidan varios a la vez.
+  Future<void> _init() => _initializing ??= _initialize();
+
+  Future<void> _initialize() async {
     tz_data.initializeTimeZones();
     try {
       final zone = await FlutterTimezone.getLocalTimezone();
@@ -31,8 +36,31 @@ final class LocalReminderScheduler implements ReminderScheduler {
       settings: const InitializationSettings(
         android: AndroidInitializationSettings(_icon),
       ),
+      onDidReceiveNotificationResponse: (response) =>
+          _responses.add(_toResponse(response)),
     );
-    _ready = true;
+    // El aviso (o botón) que abrió la app con ella cerrada.
+    final launch = await _plugin.getNotificationAppLaunchDetails();
+    final response = launch?.notificationResponse;
+    if ((launch?.didNotificationLaunchApp ?? false) && response != null) {
+      _responses.add(_toResponse(response));
+    }
+  }
+
+  static ReminderResponse _toResponse(NotificationResponse response) =>
+      ReminderResponse(
+        payload: response.payload,
+        action: ReminderAction.values
+            .where((a) => a.name == response.actionId)
+            .firstOrNull,
+      );
+
+  @override
+  Stream<ReminderResponse> responses() async* {
+    // Suscribirse antes de iniciar para no perder el aviso que abrió la app.
+    final stream = _responses.stream;
+    unawaited(_init());
+    yield* stream;
   }
 
   AndroidFlutterLocalNotificationsPlugin? get _android => _plugin
@@ -73,6 +101,7 @@ final class LocalReminderScheduler implements ReminderScheduler {
       title: reminder.title,
       body: reminder.body,
       notificationDetails: _details(reminder),
+      payload: reminder.payload,
     );
   }
 
@@ -99,6 +128,7 @@ final class LocalReminderScheduler implements ReminderScheduler {
         body: reminder.body,
         scheduledDate: _toZoned(reminder.at),
         notificationDetails: _details(reminder),
+        payload: reminder.payload,
         androidScheduleMode: mode,
         matchDateTimeComponents: reminder.repeatsDaily
             ? DateTimeComponents.time
@@ -137,7 +167,23 @@ final class LocalReminderScheduler implements ReminderScheduler {
         visibility: NotificationVisibility.private,
         styleInformation: BigTextStyleInformation(reminder.body),
         category: AndroidNotificationCategory.reminder,
+        // Abren la app: allí se registra el valor o se pospone (sin
+        // procesos en segundo plano).
+        actions: [
+          for (final action in reminder.actions)
+            AndroidNotificationAction(
+              action.name,
+              _actionLabel(action),
+              showsUserInterface: true,
+            ),
+        ],
       ),
     );
   }
+
+  static String _actionLabel(ReminderAction action) => switch (action) {
+    ReminderAction.paid => '✓ Ya lo pagué',
+    ReminderAction.tomorrow => 'Mañana',
+    ReminderAction.inTwoDays => 'En 2 días',
+  };
 }

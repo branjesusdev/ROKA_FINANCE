@@ -1,10 +1,14 @@
 import 'package:finance_app/application/dashboard/money_overview.dart';
+import 'package:finance_app/bootstrap/providers.dart';
 import 'package:finance_app/domain/fixed/fixed_coverage.dart';
+import 'package:finance_app/domain/fixed/fixed_movement_scheduler.dart';
+import 'package:finance_app/presentation/fixed/bill_actions.dart';
 import 'package:finance_app/presentation/fixed/fixed_movements_screen.dart';
 import 'package:finance_app/presentation/shared/formatters.dart';
 import 'package:finance_app/presentation/shared/section_card.dart';
 import 'package:finance_app/presentation/shared/status_style.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Próximos pagos del ciclo con el avance de su reserva: pagado, cubierto,
 /// cubierto en parte, sin cubrir o vencido.
@@ -76,16 +80,21 @@ class ObligationsCard extends StatelessWidget {
   }
 }
 
-class _ObligationRow extends StatelessWidget {
+class _ObligationRow extends ConsumerWidget {
   const new({required this.item});
 
   final ObligationCoverage item;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final color = ObligationStyle.color(item.state, theme.colorScheme);
     final paid = item.state == ObligationState.paid;
+    // Factura variable cuyo día llegó: ¿ya la pagaste?
+    final bill = item.state == ObligationState.overdue
+        ? ScheduledFixed(movement: item.movement, date: item.date)
+        : null;
+    final now = ref.watch(clockProvider).now();
     final missing = item.missing.isPositive
         ? ' · faltan ${Formatters.money(item.missing)}'
         : '';
@@ -115,24 +124,34 @@ class _ObligationRow extends StatelessWidget {
           const SizedBox(height: 4),
           Row(
             children: [
-              StatusChip(
-                icon: ObligationStyle.icon(item.state),
-                label: ObligationStyle.label(item.state),
-                color: color,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  paid
-                      ? Formatters.shortDate(item.date)
-                      : 'Vence ${Formatters.shortDate(item.date)}$missing',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+              Flexible(
+                child: StatusChip(
+                  icon: ObligationStyle.icon(item.state),
+                  label: bill == null
+                      ? ObligationStyle.label(item.state)
+                      : billStateLabel(bill, now),
+                  color: color,
                 ),
               ),
+              if (bill == null) ...[
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    paid
+                        ? Formatters.shortDate(item.date)
+                        : 'Vence ${Formatters.shortDate(item.date)}$missing',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
+          if (bill != null) ...[
+            const SizedBox(height: 6),
+            BillActions(bill: bill),
+          ],
           if (!paid) ...[
             const SizedBox(height: 6),
             LinearProgressIndicator(

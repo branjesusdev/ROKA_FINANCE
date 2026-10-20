@@ -2,16 +2,24 @@ import 'package:finance_app/application/advisor/cfo_brief.dart';
 import 'package:finance_app/application/advisor/financial_alerts.dart';
 import 'package:finance_app/application/advisor/financial_snapshot.dart';
 import 'package:finance_app/application/advisor/windfall_plan.dart';
+import 'package:finance_app/application/cashflow/cashflow_statement.dart';
 import 'package:finance_app/application/dashboard/cycle_pulse.dart';
 import 'package:finance_app/application/dashboard/cycle_summary.dart';
 import 'package:finance_app/application/dashboard/daily_spending.dart';
 import 'package:finance_app/application/dashboard/home_summary.dart';
 import 'package:finance_app/application/dashboard/money_overview.dart';
+import 'package:finance_app/application/dashboard/salary_forecast.dart';
+import 'package:finance_app/application/dashboard/set_aside_plan.dart';
 import 'package:finance_app/application/dashboard/spending_radar.dart';
+import 'package:finance_app/application/fixed/fixed_cycle_status.dart';
+import 'package:finance_app/application/insights/category_report.dart';
 import 'package:finance_app/application/insights/financial_health.dart';
 import 'package:finance_app/application/markets/load_watchlist.dart';
+import 'package:finance_app/application/markets/value_investments.dart';
+import 'package:finance_app/application/reminders/reminder_scheduler.dart';
 import 'package:finance_app/bootstrap/providers.dart';
 import 'package:finance_app/bootstrap/use_cases.dart';
+import 'package:finance_app/core/result.dart';
 import 'package:finance_app/domain/advisor/ai_review.dart';
 import 'package:finance_app/domain/budgets/budget_evaluator.dart';
 import 'package:finance_app/domain/budgets/budget_line.dart';
@@ -158,6 +166,11 @@ final fixedMovementsProvider = StreamProvider<List<FixedMovement>>(
   (ref) => ref.watch(fixedMovementRepositoryProvider).watchAll(),
 );
 
+/// Toques en avisos y sus botones (p. ej. "Ya lo pagué" de una factura).
+final reminderResponsesProvider = Provider<Stream<ReminderResponse>>(
+  (ref) => ref.watch(reminderSchedulerProvider).responses(),
+);
+
 final provisionsProvider = StreamProvider<List<Provision>>(
   (ref) => ref.watch(provisionRepositoryProvider).watchAll(),
 );
@@ -248,6 +261,60 @@ final watchlistRequestProvider = NotifierProvider<WatchlistRequest, int>(
 final watchlistProvider = FutureProvider<List<WatchQuote>>((ref) {
   if (ref.watch(watchlistRequestProvider) == 0) return const [];
   return ref.watch(loadWatchlistProvider).call(TechWatchlist.items);
+});
+
+/// Cuántas veces se pidieron los precios de tus inversiones. En 0 no se
+/// consulta internet.
+final class InvestmentPricesRequest extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void refresh() => state++;
+}
+
+final investmentPricesRequestProvider =
+    NotifierProvider<InvestmentPricesRequest, int>(InvestmentPricesRequest.new);
+
+/// Tus inversiones con símbolo valoradas al precio real, con su lectura a 3
+/// meses. Al consultar, el valor queda guardado (patrimonio actualizado).
+final investmentMarketProvider = FutureProvider<List<InvestmentMarketView>>((
+  ref,
+) async {
+  if (ref.watch(investmentPricesRequestProvider) == 0) return const [];
+  final result = await ref.watch(refreshInvestmentPricesProvider).call();
+  return switch (result) {
+    Ok(:final value) => value,
+    Err() => const [],
+  };
+});
+
+/// Precio del dólar de hoy. Solo se consulta cuando el usuario elige
+/// "Dólares" en una inversión (envía únicamente `COP=X`).
+final usdRateProvider = FutureProvider.autoDispose(
+  (ref) => ref.watch(loadUsdRateProvider).call(),
+);
+
+/// Movimientos de los últimos 12 meses (análisis por categoría,
+/// sugerencias al escribir y kilometraje).
+final lastYearTransactionsProvider = StreamProvider<List<Transaction>>((ref) {
+  final range = CategoryReportBuilder.rangeFor(ref.watch(clockProvider).now());
+  return ref.watch(transactionRepositoryProvider).watchByPeriod(range);
+});
+
+/// Análisis de una categoría: meses, cosas que más compras y gasolina.
+final categoryReportProvider = FutureProvider.family<CategoryReport?, String>((
+  ref,
+  categoryId,
+) async {
+  final categories = await ref.watch(categoriesProvider.future);
+  final category = categories.where((c) => c.id == categoryId).firstOrNull;
+  if (category == null) return null;
+  final transactions = await ref.watch(lastYearTransactionsProvider.future);
+  return const CategoryReportBuilder().build(
+    category: category,
+    transactions: transactions,
+    today: ref.watch(clockProvider).now(),
+  );
 });
 
 /// Informe de "Tu CFO": consejos y plan para el dinero que sobra.
@@ -493,6 +560,81 @@ final cycleHistoryProvider = FutureProvider<List<CycleRecord>>((ref) async {
   );
 });
 
+/// Tu tablero de Cashflow (Padre Rico): ingresos, gastos, activos y pasivos.
+final cashflowStatementProvider = FutureProvider<CashflowStatement>((
+  ref,
+) async {
+  final now = ref.watch(clockProvider).now();
+  final today = DateTime(now.year, now.month, now.day);
+  final range = DateRange(
+    DateTime(
+      today.year,
+      today.month,
+      today.day - CycleHistoryBuilder.lookbackDays,
+    ),
+    DateTime(
+      today.year,
+      today.month,
+      today.day + PayCycleResolver.lookaheadDays,
+    ),
+  );
+  final transactions = ref.watch(transactionsInRangeProvider(range).future);
+  final categories = ref.watch(categoriesProvider.future);
+  final assets = ref.watch(assetsProvider.future);
+  final debts = ref.watch(debtsProvider.future);
+  final investments = ref.watch(investmentsProvider.future);
+  final fixed = ref.watch(fixedMovementsProvider.future);
+  final settings = await ref.watch(settingsProvider.future);
+  final all = await transactions;
+  final allCategories = await categories;
+  return const CashflowStatementBuilder().build(
+    resolver: PayCycleResolver.fromTransactions(
+      payday: settings.payday,
+      transactions: all,
+    ),
+    today: now,
+    transactions: all,
+    savingCategoryIds: _savingIds(allCategories),
+    extraordinaryCategoryIds: {
+      for (final c in allCategories)
+        if (c.isExtraordinary) c.id,
+    },
+    assets: await assets,
+    debts: await debts,
+    investments: await investments,
+    monthlyFixedExpenses: Money.sum(
+      (await fixed)
+          .where((m) => m.isActive && m.isExpense)
+          .map((m) => m.amount),
+    ),
+  );
+});
+
+/// Próximos meses con tu sueldo, tus fijos y tu ritmo de gasto
+/// ("¿Estaré corto?").
+final salaryForecastProvider = FutureProvider<SalaryForecast>((ref) async {
+  final summary = ref.watch(cycleSummaryProvider.future);
+  final statement = ref.watch(cashflowStatementProvider.future);
+  final settings = ref.watch(settingsProvider.future);
+  final fixed = ref.watch(fixedMovementsProvider.future);
+  final debts = ref.watch(debtsProvider.future);
+  final history = await statement;
+  final movements = await fixed;
+  final monthlyFixed = Money.sum(
+    movements.where((m) => m.isActive && m.isExpense).map((m) => m.amount),
+  );
+  return const SalaryForecastBuilder().build(
+    summary: await summary,
+    settings: await settings,
+    fixedMovements: movements,
+    debts: await debts,
+    historySalary: history.isEstimate ? Money.zero : history.salary,
+    historyDayToDay: history.isEstimate
+        ? null
+        : (history.expenses - monthlyFixed).max(Money.zero),
+  );
+});
+
 /// Disponible, comprometido, reservado y libre del ciclo (Inicio).
 final moneyOverviewProvider = FutureProvider<MoneyOverview>((ref) async {
   final summary = ref.watch(cycleSummaryProvider.future);
@@ -506,6 +648,37 @@ final moneyOverviewProvider = FutureProvider<MoneyOverview>((ref) async {
     summary: await summary,
     categories: await categories,
     fixedMovements: await fixed,
+    cycleTransactions: await transactions,
+  );
+});
+
+/// A dónde apartar lo que sobra (pagos del año y metas).
+final setAsidePlanProvider = FutureProvider<SetAsidePlan>((ref) async {
+  final summary = ref.watch(cycleSummaryProvider.future);
+  final overview = ref.watch(moneyOverviewProvider.future);
+  final goals = ref.watch(goalProgressListProvider.future);
+  return const SetAsidePlanner().plan(
+    overview: await overview,
+    provisions: (await summary).provisionPlan,
+    goals: await goals,
+  );
+});
+
+/// Cada fijo con su estado en el ciclo: pagado, por pagar, vencido…
+final fixedCycleStatusProvider = FutureProvider<List<FixedCycleStatus>>((
+  ref,
+) async {
+  final summary = ref.watch(cycleSummaryProvider.future);
+  final overview = ref.watch(moneyOverviewProvider.future);
+  final cycle = await ref.watch(currentCycleProvider.future);
+  final transactions = ref.watch(
+    transactionsInRangeProvider(cycle.range).future,
+  );
+  final fixed = ref.watch(fixedMovementsProvider.future);
+  return const FixedCycleStatusBuilder().build(
+    movements: await fixed,
+    schedule: (await summary).upcomingFixed,
+    coverage: (await overview).coverage,
     cycleTransactions: await transactions,
   );
 });
@@ -600,6 +773,12 @@ final latestAiReviewProvider = StreamProvider<AiReview?>(
 final hasAiKeyProvider = StreamProvider<bool>(
   (ref) => ref.watch(aiKeyStoreProvider).watchHasKey(),
 );
+
+/// La llave guardada (solo para mostrarla enmascarada en Ajustes).
+final aiKeyProvider = FutureProvider.autoDispose<String?>((ref) {
+  ref.watch(hasAiKeyProvider);
+  return ref.watch(aiKeyStoreProvider).read();
+});
 
 /// Reparto sugerido para un ingreso extraordinario de este monto.
 final windfallPlanProvider = FutureProvider.autoDispose

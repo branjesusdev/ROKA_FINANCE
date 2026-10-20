@@ -16,6 +16,11 @@ abstract final class ValidationCodes {
   static const categoryExists = 'category_exists';
   static const backupInvalid = 'backup_invalid';
   static const backupFromNewerVersion = 'backup_from_newer_version';
+  static const invalidSymbol = 'invalid_symbol';
+  static const unitsRequired = 'units_required';
+  static const invalidOdometer = 'invalid_odometer';
+  static const usdRateRequired = 'usd_rate_required';
+  static const linkedToDebt = 'linked_to_debt';
 }
 
 Future<Result<T>> invalid<T>(String code) =>

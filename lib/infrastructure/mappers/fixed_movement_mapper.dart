@@ -13,7 +13,10 @@ extension FixedMovementRowMapper on FixedMovementRow {
     dayOfMonth: dayOfMonth,
     isActive: isActive,
     isVariable: isVariable,
+    autoDebit: autoDebit,
     lastPostedOn: lastPostedOn,
+    debtId: debtId,
+    remindOn: remindOn,
   );
 }
 
@@ -27,6 +30,9 @@ extension FixedMovementCompanionMapper on FixedMovement {
     dayOfMonth: dayOfMonth,
     isActive: isActive,
     isVariable: Value(isVariable),
+    autoDebit: Value(autoDebit),
     lastPostedOn: Value(lastPostedOn),
+    debtId: Value(debtId),
+    remindOn: Value(remindOn),
   );
 }

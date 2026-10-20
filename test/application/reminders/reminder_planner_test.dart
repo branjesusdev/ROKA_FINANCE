@@ -98,7 +98,14 @@ void main() {
     expect(morning.at, DateTime(2026, 10, 4, 7));
     // Mañana quedan 16 días: (3.400.000 − 1.000.000 − 340.000 de ahorro)/16.
     expect(morning.title, r'Hoy puedes gastar hasta $ 128.750');
-    expect(morning.body, contains('—'), reason: 'incluye una frase');
+    expect(morning.body, contains('¿Puedo gastar'));
+
+    final wisdom = byId(reminders, ReminderPlanner.wisdomFirstId);
+    expect(wisdom.at, DateTime(2026, 10, 4, 6, 30));
+    expect(wisdom.title, 'Frase del día: escríbela');
+    expect(wisdom.body, contains('—'), reason: 'incluye la fuente');
+    expect(wisdom.body, contains('Hoy: '));
+    expect(wisdom.body, endsWith(ReminderPlanner.writeItDown));
 
     final rent = byId(reminders, ReminderPlanner.fixedFirstId);
     expect(rent.at, DateTime(2026, 10, 4, 19));
@@ -118,8 +125,69 @@ void main() {
             r.id >= ReminderPlanner.morningFirstId &&
             r.id < ReminderPlanner.fixedFirstId,
       ),
-      hasLength(ReminderPlanner.morningDays),
+      hasLength(ReminderPlanner.morningDays * 2),
+      reason: 'resumen de la mañana y frase del día, una semana',
     );
+  });
+
+  group('avisos de fijos con la lista completa', () {
+    const quota = FixedMovement(
+      id: 'quota',
+      name: 'Cuota carro',
+      kind: TransactionKind.expense,
+      amount: Money.pesos(1288000),
+      categoryId: 'seed-expense-debts',
+      dayOfMonth: 20,
+    );
+
+    List<Reminder> fixedNotices(List<FixedMovement> fixed, DateTime at) =>
+        planner
+            .plan(
+              settings: const FinanceSettings(),
+              now: at,
+              fixedMovements: fixed,
+            )
+            .where(
+              (r) =>
+                  r.id >= ReminderPlanner.fixedFirstId &&
+                  r.id < ReminderPlanner.paydayId,
+            )
+            .toList();
+
+    test('avisa aunque el pago caiga en el próximo ciclo y sin resumen', () {
+      // Ciclo del 20 sep al 19 oct: la cuota del 20 oct es del siguiente.
+      final notices = fixedNotices([quota], now);
+      expect(notices.map((r) => r.at), [
+        DateTime(2026, 10, 19, 19),
+        DateTime(2026, 10, 20, 8),
+      ]);
+      expect(notices.last.title, 'Hoy toca pagar: Cuota carro');
+    });
+
+    test('débito automático: el día del pago avisa aunque ya se haya '
+        'registrado solo', () {
+      final morning = DateTime(2026, 10, 20, 6);
+      final posted = quota.copyWith(
+        autoDebit: true,
+        lastPostedOn: DateTime(2026, 10, 20),
+      );
+      final notices = fixedNotices([posted], morning);
+      expect(notices.first.at, DateTime(2026, 10, 20, 8));
+      expect(notices.first.title, 'Hoy toca pagar: Cuota carro');
+      // Y sigue con el del mes siguiente.
+      expect(notices.last.at, DateTime(2026, 11, 20, 8));
+    });
+
+    test('ya confirmado ("Ya lo pagué") no vuelve a avisar ese día', () {
+      final morning = DateTime(2026, 10, 20, 6);
+      final paid = quota.copyWith(lastPostedOn: DateTime(2026, 10, 20));
+      final notices = fixedNotices([paid], morning);
+      expect(notices.first.at, DateTime(2026, 11, 19, 19));
+    });
+
+    test('pausado no avisa', () {
+      expect(fixedNotices([quota.copyWith(isActive: false)], now), isEmpty);
+    });
   });
 
   test('sin avisos inteligentes solo queda el recordatorio', () {

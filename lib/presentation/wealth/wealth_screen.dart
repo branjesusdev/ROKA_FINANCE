@@ -1,4 +1,7 @@
+import 'package:finance_app/application/markets/value_investments.dart';
 import 'package:finance_app/domain/debts/debt.dart';
+import 'package:finance_app/domain/investments/investment.dart';
+import 'package:finance_app/domain/markets/market_quote.dart';
 import 'package:finance_app/domain/shared/money.dart';
 import 'package:finance_app/domain/shared/percentage.dart';
 import 'package:finance_app/presentation/debts/debt_detail_screen.dart';
@@ -9,12 +12,16 @@ import 'package:finance_app/presentation/shared/formatters.dart';
 import 'package:finance_app/presentation/shared/labels.dart';
 import 'package:finance_app/presentation/shared/section_card.dart';
 import 'package:finance_app/presentation/shared/transaction_tile.dart';
+import 'package:finance_app/presentation/wealth/investment_detail_sheet.dart';
 import 'package:finance_app/presentation/wealth/net_worth_history_card.dart';
 import 'package:finance_app/presentation/wealth/wealth_forms.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Patrimonio: activos, inversiones y deudas. Patrimonio = activos − pasivos.
+///
+/// Las inversiones con símbolo se valoran con el precio real al abrir esta
+/// pantalla (una vez por sesión; escribir el símbolo es la autorización).
 class WealthScreen extends ConsumerWidget {
   const new({super.key});
 
@@ -28,6 +35,19 @@ class WealthScreen extends ConsumerWidget {
     final portfolio = ref.watch(portfolioProvider).value;
     final debts = ref.watch(debtsProvider).value ?? const [];
     final theme = Theme.of(context);
+    final priced = investments.any((i) => i.isMarketPriced);
+    final market = ref.watch(investmentMarketProvider);
+    final views = {
+      for (final v in market.value ?? const <InvestmentMarketView>[])
+        v.investment.id: v,
+    };
+    void refreshPrices() =>
+        ref.read(investmentPricesRequestProvider.notifier).refresh();
+    if (priced && ref.read(investmentPricesRequestProvider) == 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (ref.read(investmentPricesRequestProvider) == 0) refreshPrices();
+      });
+    }
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 160),
@@ -74,10 +94,21 @@ class WealthScreen extends ConsumerWidget {
         _spacing,
         SectionCard(
           title: 'Inversiones',
-          trailing: _AddButton(
-            tooltip: 'Agregar inversión',
-            onPressed: () =>
-                showFormSheet<void>(context, const InvestmentFormSheet()),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (priced)
+                IconButton(
+                  tooltip: 'Actualizar con el precio real',
+                  icon: const Icon(Icons.refresh),
+                  onPressed: market.isLoading ? null : refreshPrices,
+                ),
+              _AddButton(
+                tooltip: 'Agregar inversión',
+                onPressed: () =>
+                    showFormSheet<void>(context, const InvestmentFormSheet()),
+              ),
+            ],
           ),
           child: investments.isEmpty
               ? const _EmptyHint(
@@ -85,6 +116,13 @@ class WealthScreen extends ConsumerWidget {
                 )
               : Column(
                   children: [
+                    if (market.isLoading)
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 8),
+                        child: LinearProgressIndicator(
+                          semanticsLabel: 'Consultando precios',
+                        ),
+                      ),
                     if (portfolio != null)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 8),
@@ -116,22 +154,16 @@ class WealthScreen extends ConsumerWidget {
                         ),
                       ),
                     for (final investment in investments)
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(Icons.trending_up),
-                        title: Text(investment.name),
-                        subtitle: Text(
-                          '${Labels.investment(investment.type)} · '
-                          '${_returnText(investment.returnRate)}',
-                        ),
-                        trailing: Text(
-                          Formatters.money(investment.currentValue),
-                          style: theme.textTheme.titleSmall,
-                        ),
-                        onTap: () => showFormSheet<void>(
-                          context,
-                          InvestmentFormSheet(investment: investment),
-                        ),
+                      _InvestmentTile(
+                        investment: investment,
+                        view: views[investment.id],
+                      ),
+                    if (!priced)
+                      Text(
+                        '¿Tienes acciones o ETF? Edítalas y escribe el '
+                        'símbolo y la cantidad: el valor se actualizará con '
+                        'el precio real y verás su lectura a 3 meses.',
+                        style: theme.textTheme.bodySmall,
                       ),
                   ],
                 ),
@@ -166,6 +198,55 @@ class WealthScreen extends ConsumerWidget {
     return rate.isNegative
         ? theme.colorScheme.error
         : TransactionTile.incomeColor;
+  }
+}
+
+class _InvestmentTile extends StatelessWidget {
+  const new({required this.investment, required this.view});
+
+  final Investment investment;
+  final InvestmentMarketView? view;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final rate = investment.returnRate;
+    final units = investment.units;
+    final updated = investment.priceUpdatedAt;
+    final level = view?.outlook?.level;
+    final details = investment.isMarketPriced
+        ? [
+            if (units == null)
+              '${investment.symbol}'
+            else
+              '${investment.symbol} · ${formatUnits(units)} u.',
+            if (view?.failed ?? false)
+              'sin precio hoy'
+            else if (updated != null)
+              'precio de ${Formatters.shortDate(updated)}',
+            if (level == VolatilityLevel.high) 'muy volátil',
+          ]
+        : [Labels.investment(investment.type)];
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(
+        investment.isMarketPriced ? Icons.candlestick_chart : Icons.trending_up,
+      ),
+      title: Text(investment.name),
+      subtitle: Text([...details, WealthScreen._returnText(rate)].join(' · ')),
+      trailing: Text(
+        Formatters.money(investment.currentValue),
+        style: theme.textTheme.titleSmall?.copyWith(
+          color: WealthScreen._returnColor(rate, theme),
+        ),
+      ),
+      onTap: () => showFormSheet<void>(
+        context,
+        investment.isMarketPriced
+            ? InvestmentDetailSheet(investmentId: investment.id)
+            : InvestmentFormSheet(investment: investment),
+      ),
+    );
   }
 }
 

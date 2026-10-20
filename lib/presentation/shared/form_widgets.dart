@@ -114,6 +114,46 @@ class MoneyField extends StatelessWidget {
   }
 }
 
+/// Monto en dólares con centavos ("253,70" o "253.70").
+class UsdField extends StatelessWidget {
+  const new({
+    required this.controller,
+    required this.label,
+    this.helperText,
+    this.onChanged,
+    super.key,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final String? helperText;
+  final ValueChanged<String>? onChanged;
+
+  /// Centavos de dólar escritos, o `null` si está vacío.
+  static int? read(TextEditingController controller) =>
+      UsdInput.parse(controller.text);
+
+  static String initial(int? cents) =>
+      cents == null ? '' : Formatters.usdNumber(cents);
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      inputFormatters: [FilteringTextInputFormatter.allow(RegExp('[0-9.,]'))],
+      onChanged: onChanged,
+      decoration: InputDecoration(
+        labelText: label,
+        helperText: helperText,
+        helperMaxLines: 3,
+        prefixText: r'US$ ',
+        border: const OutlineInputBorder(),
+      ),
+    );
+  }
+}
+
 /// Campo de porcentaje con decimales ("18,5").
 class PercentField extends StatelessWidget {
   const new({
@@ -244,6 +284,16 @@ bool showResult(
 
 String failureMessage(Failure failure) => switch (failure) {
   ValidationFailure(:final message) => switch (message) {
+    ValidationCodes.invalidSymbol =>
+      'Ese símbolo no es válido. Escríbelo como en la bolsa (NVDA, VOO).',
+    ValidationCodes.unitsRequired =>
+      'Escribe cuántas acciones o unidades tienes.',
+    ValidationCodes.invalidOdometer =>
+      'El kilometraje debe ser un número mayor que cero.',
+    ValidationCodes.usdRateRequired =>
+      'Escribe a cuánto estaba el dólar para pasarlo a pesos.',
+    ValidationCodes.linkedToDebt =>
+      'Paga un crédito: corrige el saldo desde Deudas y créditos.',
     ValidationCodes.nameRequired => 'Escribe un nombre.',
     ValidationCodes.amountMustBePositive => 'El valor debe ser mayor que cero.',
     ValidationCodes.amountMustNotBeNegative =>

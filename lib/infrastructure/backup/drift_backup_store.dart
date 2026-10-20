@@ -11,12 +11,14 @@ import 'package:finance_app/infrastructure/repositories/storage_guard.dart';
 /// guarda SQLite (montos en centavos, fechas en milisegundos).
 ///
 /// Al importar nada se borra ni se duplica:
-/// 1. Si el id ya existe, se omite.
-/// 2. Si no, se busca un registro equivalente (p. ej. mismo gasto: tipo,
-///    valor, día, categoría y descripción). Si existe, se omite y sus
-///    vínculos (movimientos de un fijo, abonos de una deuda…) apuntan al
-///    registro que ya estaba.
-/// 3. Lo demás se agrega.
+/// 1. Si el id ya existe, o hay un registro equivalente con otro id (p. ej.
+///    mismo gasto: tipo, valor, día, categoría y descripción), se empareja:
+///    sus vínculos (movimientos de un fijo, abonos de una deuda…) apuntan
+///    al registro que ya estaba. Si la copia es al menos tan reciente como
+///    lo último anotado en este teléfono, ese registro se actualiza con los
+///    valores de la copia (nombre de una categoría, saldo de una deuda,
+///    valor de un fijo…); si es más vieja, se deja como está.
+/// 2. Lo demás se agrega.
 ///
 /// Los equivalentes se cuentan: si ya hay 1 café de $5.000 el mismo día y
 /// la copia trae 2, se agrega solo 1.
@@ -68,8 +70,10 @@ final class DriftBackupStore implements BackupStore {
       key: 'fixedMovements',
       table: _db.fixedMovements,
       fromJson: FixedMovementRow.fromJson,
-      refs: const {'categoryId': 'categories'},
+      refs: const {'categoryId': 'categories', 'debtId': 'debts'},
       naturalKey: (r) => _key([r['name'], r['kind'], r['categoryId']]),
+      // v7 y v13.
+      defaults: const {'isVariable': false, 'autoDebit': false},
     ),
     _Section<ProvisionRow>(
       key: 'provisions',
@@ -171,9 +175,9 @@ final class DriftBackupStore implements BackupStore {
 
   @override
   Future<BackupImportReport> import(String content) async {
-    final data = _parse(content);
+    final (data, exportedAt) = _parse(content);
     try {
-      return await _db.transaction(() => _merge(data));
+      return await _db.transaction(() => _merge(data, exportedAt));
     } on InvalidBackupException {
       rethrow;
       // Campos faltantes o con otro tipo: el archivo
@@ -195,7 +199,7 @@ final class DriftBackupStore implements BackupStore {
     }
   }
 
-  Map<String, Object?> _parse(String content) {
+  (Map<String, Object?>, DateTime?) _parse(String content) {
     final Object? decoded;
     try {
       decoded = jsonDecode(content);
@@ -215,23 +219,52 @@ final class DriftBackupStore implements BackupStore {
     if (format > formatVersion || schema > _db.schemaVersion) {
       throw const InvalidBackupException(newerVersion: true);
     }
-    return decoded['data']! as Map<String, Object?>;
+    final exportedAt = decoded['exportedAt'];
+    return (
+      decoded['data']! as Map<String, Object?>,
+      exportedAt is String ? DateTime.tryParse(exportedAt) : null,
+    );
   }
 
-  Future<BackupImportReport> _merge(Map<String, Object?> data) async {
+  /// La copia es al menos tan reciente como lo último anotado aquí (o el
+  /// teléfono no tiene movimientos): sus valores pueden reemplazar a los
+  /// de este teléfono.
+  Future<bool> _isNewerThanLocal(DateTime? exportedAt) async {
+    if (exportedAt == null) return false;
+    final latest = _db.transactions.createdAt.max();
+    final query = _db.selectOnly(_db.transactions)..addColumns([latest]);
+    final last = await query.map((r) => r.read(latest)).getSingleOrNull();
+    return last == null || !last.isAfter(exportedAt);
+  }
+
+  Future<BackupImportReport> _merge(
+    Map<String, Object?> data,
+    DateTime? exportedAt,
+  ) async {
+    final update = await _isNewerThanLocal(exportedAt);
     // Por sección: id en la copia → id con el que queda en este teléfono.
     final idMaps = <String, Map<String, String>>{};
     var added = 0;
+    var updated = 0;
     var skipped = 0;
     var movementsAdded = 0;
     for (final section in _sections) {
       final rows = data[section.key];
       if (rows == null) continue;
       if (rows is! List<Object?>) throw const InvalidBackupException();
-      final result = await _mergeSection(section, rows, idMaps);
+      final result = await _mergeSection(section, rows, idMaps, update: update);
       added += result.added;
+      updated += result.updated;
       skipped += result.skipped;
       if (section.key == 'transactions') movementsAdded = result.added;
+    }
+    if (!update) {
+      return BackupImportReport(
+        added: added,
+        skipped: skipped,
+        movementsAdded: movementsAdded,
+        olderThanLocal: true,
+      );
     }
     if (data[_settingsKey] case final Map<String, Object?> settings) {
       final current = await _db.select(_db.financeSettingsTable).get();
@@ -247,20 +280,24 @@ final class DriftBackupStore implements BackupStore {
     }
     return BackupImportReport(
       added: added,
+      updated: updated,
       skipped: skipped,
       movementsAdded: movementsAdded,
     );
   }
 
-  Future<({int added, int skipped})> _mergeSection<D extends DataClass>(
+  Future<({int added, int updated, int skipped})>
+  _mergeSection<D extends DataClass>(
     _Section<D> section,
     List<Object?> rows,
-    Map<String, Map<String, String>> idMaps,
-  ) async {
+    Map<String, Map<String, String>> idMaps, {
+    required bool update,
+  }) async {
     final existing = [
       for (final row in await _db.select(section.table).get()) row.toJson(),
     ];
-    final existingIds = {for (final r in existing) r['id']};
+    final existingById = {for (final r in existing) r['id']: r};
+    final existingIds = existingById.keys.toSet();
     final backupIds = {
       for (final r in rows)
         if (r is Map<String, Object?>) r['id'],
@@ -274,21 +311,41 @@ final class DriftBackupStore implements BackupStore {
     }
     final idMap = idMaps[section.key] = {};
     var added = 0;
+    var updated = 0;
     var skipped = 0;
+    // Emparejado con [localId]: se actualiza si la copia es más reciente y
+    // trae algo distinto. Lo que la copia no trae conserva el valor local.
+    Future<void> matched(
+      String id,
+      Map<String, Object?> row,
+      String localId,
+    ) async {
+      idMap[id] = localId;
+      final local = existingById[localId]!;
+      final merged = {...local, ...row, 'id': localId};
+      final changed = merged.entries.any((e) => local[e.key] != e.value);
+      if (!update || !changed) {
+        skipped++;
+        return;
+      }
+      await _db
+          .update(section.table)
+          .replace(section.fromJson(merged) as Insertable<D>);
+      updated++;
+    }
+
     for (final raw in rows) {
       if (raw is! Map<String, Object?>) throw const InvalidBackupException();
       final row = _remap({...section.defaults, ...raw}, section.refs, idMaps);
       final id = row['id'];
       if (id is! String) throw const InvalidBackupException();
       if (existingIds.contains(id)) {
-        idMap[id] = id;
-        skipped++;
+        await matched(id, row, id);
         continue;
       }
       final matches = available[section.naturalKey(row)];
       if (matches != null && matches.isNotEmpty) {
-        idMap[id] = matches.removeLast();
-        skipped++;
+        await matched(id, row, matches.removeLast());
         continue;
       }
       final inserted = await _db
@@ -306,7 +363,7 @@ final class DriftBackupStore implements BackupStore {
         added++;
       }
     }
-    return (added: added, skipped: skipped);
+    return (added: added, updated: updated, skipped: skipped);
   }
 
   static Map<String, Object?> _remap(

@@ -15,6 +15,7 @@ final class UpdateTransactionInput {
     required this.date,
     this.description,
     this.nature,
+    this.odometerKm,
   });
 
   final String id;
@@ -24,6 +25,7 @@ final class UpdateTransactionInput {
   final DateTime date;
   final String? description;
   final ExpenseNature? nature;
+  final int? odometerKm;
 }
 
 /// Corrige un movimiento ya registrado. Conserva sus vínculos (fijo, deuda,
@@ -36,6 +38,9 @@ final class UpdateTransaction {
   Future<Result<Transaction>> call(UpdateTransactionInput input) async {
     if (!input.amount.isPositive) {
       return await invalid(ValidationCodes.amountMustBePositive);
+    }
+    if (input.odometerKm case final km? when km <= 0) {
+      return await invalid(ValidationCodes.invalidOdometer);
     }
     final found = await guardUseCase(() => _transactions.getById(input.id));
     final Transaction? current;
@@ -62,6 +67,9 @@ final class UpdateTransaction {
       debtId: current.debtId,
       provisionId: current.provisionId,
       fixedMovementId: current.fixedMovementId,
+      odometerKm: input.kind == TransactionKind.expense
+          ? input.odometerKm
+          : null,
     );
     return await guardUseCase(() async {
       await _transactions.save(updated);

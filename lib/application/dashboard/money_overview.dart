@@ -19,6 +19,9 @@ final class MoneyOverview {
     required this.extraordinaryIncome,
     required this.coverage,
     required this.daysLeft,
+    this.plannedPending = Money.zero,
+    this.provisionsSaved = Money.zero,
+    this.provisionsToday,
   });
 
   /// Dinero del ciclo hoy (ingresos − salidas + saldo cuadrado).
@@ -33,6 +36,17 @@ final class MoneyOverview {
   /// Lo que falta del ahorro de referencia del ciclo.
   final Money savingsPending;
 
+  /// Presupuesto del mes por gastar (mercado, servicios…) y colchón de los
+  /// niños. Es el mismo descuento que usa el tope diario.
+  final Money plannedPending;
+
+  /// Lo que ya está apartado para pagos del año (salió de [available]:
+  /// está guardado, no se puede gastar).
+  final Money provisionsSaved;
+
+  /// Lo que conviene apartar hoy para los pagos del año (`null` si ya está).
+  final Money? provisionsToday;
+
   /// Ingresos fijos que aún faltan en el ciclo (solo los configurados como
   /// fijos: son los únicos con suficiente certeza).
   final Money expectedIncome;
@@ -44,8 +58,9 @@ final class MoneyOverview {
   final CoveragePlan coverage;
   final int daysLeft;
 
-  /// Reservado = fijos + apartados + ahorro pendiente.
-  Money get reserved => committed + provisionsPending + savingsPending;
+  /// Reservado = fijos + apartados + ahorro pendiente + presupuesto del mes.
+  Money get reserved =>
+      committed + provisionsPending + savingsPending + plannedPending;
 
   /// Libre para gastar hasta el próximo sueldo sin tocar lo comprometido.
   /// Negativo = falta dinero.
@@ -90,6 +105,9 @@ final class MoneyOverviewBuilder {
       committed: coverage.committed,
       provisionsPending: summary.provisionPlan.pendingThisCycle,
       savingsPending: (summary.savingsTarget - savedThisCycle).max(Money.zero),
+      plannedPending: summary.plannedReserve,
+      provisionsSaved: summary.provisionPlan.saved.max(Money.zero),
+      provisionsToday: summary.provisionPlan.todaySetAside,
       expectedIncome: summary.upcomingFixed.upcomingIncome,
       extraordinaryIncome: Money.sum(
         cycleTransactions

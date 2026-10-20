@@ -1,14 +1,21 @@
-/// Resultado de importar una copia: cuántos registros se agregaron y cuántos
-/// se omitieron porque ya existían (mismo id o mismos datos).
+/// Resultado de importar una copia: cuántos registros se agregaron, cuántos
+/// se actualizaron con los valores de la copia y cuántos ya estaban igual.
 final class BackupImportReport {
   const new({
     required this.added,
     required this.skipped,
     required this.movementsAdded,
+    this.updated = 0,
+    this.olderThanLocal = false,
   });
 
   final int added;
+  final int updated;
   final int skipped;
+
+  /// La copia es más vieja que lo último anotado en el teléfono: solo se
+  /// agregó lo que faltaba (no se cambió nada, ni los ajustes).
+  final bool olderThanLocal;
 
   /// Ingresos y gastos agregados (parte de [added]).
   final int movementsAdded;
@@ -31,8 +38,9 @@ abstract interface class BackupStore {
   /// patrimonio, presupuestos y ajustes).
   Future<String> export({required DateTime exportedAt});
 
-  /// Agrega lo que no exista; nunca borra ni duplica. Los ajustes se toman
-  /// de la copia. Todo o nada: si falla, no cambia nada.
+  /// Agrega lo que no exista y, si la copia es más reciente que los datos
+  /// del teléfono, actualiza lo que cambió (y los ajustes). Nunca borra ni
+  /// duplica. Todo o nada: si falla, no cambia nada.
   ///
   /// Lanza [InvalidBackupException] si el archivo no sirve.
   Future<BackupImportReport> import(String content);

@@ -1,3 +1,4 @@
+import 'package:finance_app/domain/debts/loan_projector.dart';
 import 'package:finance_app/domain/debts/loan_terms.dart';
 import 'package:finance_app/domain/shared/money.dart';
 import 'package:meta/meta.dart';
@@ -31,6 +32,20 @@ final class Debt {
   bool get isPaidOff => !currentBalance.isPositive;
 
   /// Tras un pago: nuevo saldo y, si se lleva la cuenta, una cuota más.
+  /// Pagó una cuota de [payment]: el saldo baja solo en lo que abona a
+  /// capital (sin intereses ni seguros) y suma una cuota pagada.
+  Debt afterInstallment(Money payment) {
+    final terms = this.terms;
+    final principal = terms == null
+        ? payment.min(currentBalance)
+        : const LoanProjector().principalPortion(
+            balance: currentBalance,
+            terms: terms,
+            payment: payment,
+          );
+    return afterPayment(currentBalance - principal, countsAsInstallment: true);
+  }
+
   Debt afterPayment(Money newBalance, {bool countsAsInstallment = false}) {
     final terms = this.terms;
     return Debt(

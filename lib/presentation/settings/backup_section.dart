@@ -76,14 +76,22 @@ class _BackupSectionState extends ConsumerState<BackupSection> {
       case Ok(value: final report?):
         final movements = report.movementsAdded;
         final movementsLabel = movements == 1 ? 'movimiento' : 'movimientos';
+        final changes = [
+          if (report.added > 0)
+            '${report.added} agregados ($movements $movementsLabel)',
+          if (report.updated > 0) '${report.updated} actualizados',
+          if (report.skipped > 0) '${report.skipped} ya estaban igual',
+        ].join(', ');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
+            duration: const Duration(seconds: 6),
             content: Text(
-              report.added == 0
-                  ? 'Ya tenías todo: no se agregó nada.'
-                  : 'Listo: ${report.added} registros agregados '
-                        '($movements $movementsLabel). '
-                        '${report.skipped} ya existían.',
+              report.added == 0 && report.updated == 0
+                  ? 'Ya tenías todo: no se cambió nada.'
+                  : 'Listo: $changes.'
+                        '${report.olderThanLocal ? ' La copia es más vieja '
+                                  'que tus datos: solo se agregó lo que '
+                                  'faltaba.' : ''}',
             ),
           ),
         );

@@ -7,7 +7,7 @@ Sin login, sin backend, sin cloud. Nombre visible: **Roka** (paquete/IDs siguen 
 Prioridad: claridad > features · UX > complejidad · arquitectura mantenible > velocidad.
 
 ## Stack
-Flutter 3.47 / Dart 3.13 · drift (SQLite, esquema v9) · flutter_riverpod 3 (estado + DI) · intl ·
+Flutter 3.47 / Dart 3.13 · drift (SQLite, esquema v14) · flutter_riverpod 3 (estado + DI) · intl ·
 flutter_local_notifications · speech_to_text · very_good_analysis. Gráficas con `CustomPainter`
 propio (sin fl_chart). Detalle: `docs/architecture.md` · modelo y conceptos: `docs/domain-model.md` ·
 diseño visual: `docs/design.md` · estado/fases: `docs/roadmap.md` · entorno: `docs/setup.md`.
@@ -30,8 +30,12 @@ diseño visual: `docs/design.md` · estado/fases: `docs/roadmap.md` · entorno: 
 - **"Te queda"**: ingresos − gastos − fijos pendientes del ciclo (Home, `CycleSummaryBuilder`).
 - **Día a día** (`CycleSummaryBuilder.isDayToDay`): gasto que no es ahorro ni planeado del mes.
   **Tope diario** (`DailySpendingCap`) reparte lo que queda entre los días que faltan.
-- **Fijos** (`FixedMovement`): se registran solos al vencer (`PostDueFixedMovements` al abrir/reanudar).
-  Variables (agua, luz) esperan el valor real; estimado = `VariableBillEstimator`.
+- **Fijos** (`FixedMovement`): ingresos y gastos con `autoDebit` se registran solos al vencer
+  (`PostDueFixedMovements` al abrir/reanudar). Los demás gastos (`needsConfirmation`) quedan "por
+  confirmar" hasta "Ya lo pagué" (`ConfirmVariableFixed`); `MarkFixedUnpaid` lo deshace. Avisos
+  9/15/20 h hasta confirmar. Variables (agua, luz) esperan el valor real; estimado =
+  `VariableBillEstimator`. "Ya lo pagué" / "Recuérdame mañana o en 2 días" (`SnoozeFixedBill`, `FixedMovement.remindOn`) en la app y en la
+  notificación (`ReminderAction`; los botones abren la app y `AppShell` los aplica).
 - **Apartados / Pagos del año** (`Provision`): SOAT, colegio… se reparte la cuota por ciclo.
 - **Cuadrar con mi dinero real** (`ReconcileBalance`): diferencia → categorías archivadas
   "Gastos sin registrar" / "Saldo inicial / ajuste".
@@ -48,7 +52,49 @@ diseño visual: `docs/design.md` · estado/fases: `docs/roadmap.md` · entorno: 
   propone reparto; `ApplyWindfallSlices` solo aplica lo que el usuario marca.
 - **Tu CFO con IA** (`RunAiReview`, `AskCfo`): opt-in; interpreta `FinancialSnapshot`, nunca
   calcula montos base ni cambia datos.
-- **Copia de seguridad** (`ExportBackup`/`ImportBackup`): JSON completo; importar fusiona sin duplicar.
+- **Fijos por estado** (`FixedCycleStatusBuilder`): pagado/recibido (verde) vs por pagar (ámbar;
+  rojo si no alcanza) vs vencido/pausado. La pantalla de fijos agrupa por estado.
+- **Libre = tope diario**: `CycleSummary.plannedReserve` (presupuesto del mes por gastar + colchón
+  de niños) se descuenta igual en `MoneyOverview.free` y en `DailySpendingCap`. El Home muestra lo
+  ya apartado para pagos del año (`provisionsSaved`) y la cuota de hoy (`provisionsToday`).
+- **Apartar para no gastarlo** (`SetAsidePlanner` → `ApplySetAside`): pagos del año pendientes y
+  metas (máx. 50% de lo libre); solo aplica lo que el usuario marca.
+- **Inversiones con precio real** (`RefreshInvestmentPrices`): `Investment.symbol` + `unitsMicros`
+  ⇒ valor en pesos con precio público y tasa `COP=X`; `QuarterOutlookCalculator` = rango a 3 meses
+  según el último año (estadística, nunca predicción ni recomendación).
+- **Inversión en dólares** (`Investment.investedUsdCents`, `UsdRate`, `LoadUsdRate`): se escribe en
+  US$ con decimales (`UsdInput`), se guarda en pesos con el dólar que confirma el usuario.
+- **Vista previa de movimiento** (`TransactionPreviewSheet`): tocar = ver; Editar abre el formulario.
+- **Autocompletar descripción** (`DescriptionSuggestions`): máx. 5, de lo ya anotado y los fijos;
+  elegir pone su categoría.
+- **Análisis por categoría** (`CategoryReportBuilder`, `CategoryReportScreen`): 12 meses, mes más
+  alto, promedio, cosas que más pesan. IA opcional: la pregunta se ve antes; las descripciones
+  solo van si el usuario marca "Incluir lo que más compras".
+- **Kilometraje** (`Transaction.odometerKm`, `FuelEconomyCalculator`): en Transporte/vehículo;
+  costo por km con el método de tanque lleno.
+- **Crédito enlazado a un fijo** (`FixedMovement.debtId`, `LinkDebtToFixed`, `payLinkedDebt`): al
+  registrarse la cuota baja el saldo y suma la cuota pagada; el aviso dice cuántas faltan.
+  `DebtOverview.recorded` compara tu registro (cuotas) con la proyección y la tasa implícita.
+- **Tabla de pagos** (`LoanProjector.schedule`, `DebtOverview.schedule`/`interestCost`): cuota a cuota
+  como la proyección del banco; intereses ya pagados (aprox. con el plan) + los que faltan.
+- **¿Puedo gastar…?** (`SpendCheckBuilder` + `SpendDecision`): regla definitiva SÍ/NO. NO si toca fijos
+  o lo apartado, si el tope de los días que siguen baja a menos de la mitad, o si un ciclo siguiente
+  cierra en rojo; dice cuándo sí (`ForecastWhen`) y lista los fijos que faltan antes del sueldo.
+  Lo que cabe en el tope de hoy siempre es SÍ. Simulación: no registra nada.
+- **Mi sueldo / ¿Estaré corto?** (`FinanceSettings.monthlySalary`, `SalaryForecastBuilder`): sueldo de
+  Ajustes (o fijo en Salario, promedio de ciclos cerrados, el de este ciclo) − fijos (las cuotas de un
+  crédito enlazado se acaban) − pagos del año − gasto variable promedio, 6 ciclos; `ForecastChart`.
+- **Frase del día** (`WealthWisdom`, `Quote.book`/`today`): libros de dinero con qué hacer hoy; aviso
+  6:30 a. m. "escríbela" (`ReminderPlanner.wisdomFirstId`).
+- **Gastos de hoy** (`CycleSummary.todaySpends`, `TodaySpendKind`): qué baja el tope (día a día) y qué
+  no (fijos/cuotas, categorías del mes, ahorro). Hoja al tocar el tope del Inicio.
+- **Tu Cashflow** (`CashflowStatementBuilder`, Padre Rico): ingreso activo/pasivo (`Asset.monthlyIncome`),
+  gastos promedio de ciclos cerrados, flujo del mes, carrera de la rata; `play(CashflowCard)` simula
+  una oportunidad o un capricho (no registra nada).
+- **Copia de seguridad** (`ExportBackup`/`ImportBackup`): JSON completo; importar fusiona sin duplicar y,
+  si la copia es más reciente que el último movimiento local, actualiza lo emparejado (y los ajustes).
+- **Ideas para invertir** (`WatchScoreCalculator`, `LoadWatchlist.rank`, `InvestmentIdeasQuestion`): lista
+  ordenada por puntaje descriptivo + tipo de riesgo; "¿Cuánto quieres invertir?" arma la pregunta a la IA.
 
 ## Reglas
 - Dinero = `Money` (int en centavos, COP). Nunca `double` para montos (solo para pintar). Tasas: `InterestRate`.
@@ -83,11 +129,17 @@ Dominio y casos de uso no cambian. No añadir dependencias cloud/analytics/ads.
 ## Privacidad
 Nunca loguear montos, descripciones ni registros completos. Nada sale del dispositivo.
 Excepciones (ambas opt-in):
-1. Precios públicos de acciones ("Tu CFO") vía port `MarketDataSource` (Yahoo, gratis, sin
-   clave): solo envía el símbolo y solo cuando el usuario lo pide.
+1. Precios públicos de acciones vía port `MarketDataSource` (Yahoo, gratis, sin clave): solo
+   envía símbolos (y el de la tasa de cambio). Lista de "Tu CFO": cuando el usuario lo pide.
+   Inversiones propias: al abrir Patrimonio (una vez por sesión) solo si el usuario escribió el
+   símbolo — escribirlo es la autorización — y con el botón de actualizar.
+   Dólar de hoy (`COP=X`): solo al elegir "En dólares" en una inversión.
 2. "Tu CFO con IA" vía port `AiAdvisor` (Groq, `openai/gpt-oss-120b`): solo con
    `FinanceSettings.aiEnabled` (consentimiento explícito) y solo `FinancialSnapshot` — totales y
-   tipos, sin descripciones, notas, movimientos individuales ni nombres escritos por el usuario.
+   tipos (y símbolos de bolsa, públicos), sin descripciones, notas, movimientos individuales ni
+   nombres escritos por el usuario.
+   Excepción visible: "Pregúntale a tu CFO" envía la pregunta que el usuario ve y puede editar
+   (análisis por categoría: totales por mes; descripciones solo si marca "Incluir lo que más compras").
    La llave la pega el usuario (`AiKeyStore`, tabla `ai_secrets`): **nunca en el código, el APK,
    la copia de seguridad ni los logs**.
 Dictado por voz: en el dispositivo por defecto; con internet (reconocedor de Google) solo si

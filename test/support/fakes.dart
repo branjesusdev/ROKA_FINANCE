@@ -5,6 +5,7 @@ import 'package:finance_app/application/reminders/reminder_scheduler.dart';
 import 'package:finance_app/application/voice/speech_input.dart';
 import 'package:finance_app/core/storage_exception.dart';
 import 'package:finance_app/domain/advisor/ai_review.dart';
+import 'package:finance_app/domain/markets/market_quote.dart';
 import 'package:finance_app/domain/savings/finance_settings.dart';
 import 'package:finance_app/domain/savings/settings_repository.dart';
 import 'package:finance_app/domain/shared/clock.dart';
@@ -116,6 +117,12 @@ final class FakeReminderScheduler implements ReminderScheduler {
     exactAlarms: true,
     pending: scheduled.length,
   );
+
+  /// Simula toques del usuario en los avisos.
+  final tapped = StreamController<ReminderResponse>.broadcast();
+
+  @override
+  Stream<ReminderResponse> responses() => tapped.stream;
 }
 
 /// Dictado simulado: emite [phrase] como resultado final.
@@ -203,4 +210,16 @@ final class FakeSettingsRepository implements SettingsRepository {
 
   @override
   Stream<FinanceSettings> watch() => Stream.value(value);
+}
+
+/// Precios falsos por símbolo. Sin precio = sin datos (como sin internet).
+final class FakeMarketDataSource implements MarketDataSource {
+  final quotes = <String, MarketQuote>{};
+  final requested = <String>[];
+
+  @override
+  Future<MarketQuote> fetch(String symbol) async {
+    requested.add(symbol);
+    return quotes[symbol] ?? (throw MarketDataException(symbol));
+  }
 }

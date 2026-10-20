@@ -129,15 +129,72 @@ void main() {
         dayOfMonth: 5,
       );
       await DriftFixedMovementRepository(target).save(localRent);
-      await DriftBackupStore(target).import(json);
+      final report = await DriftBackupStore(target).import(json);
 
-      expect(await DriftFixedMovementRepository(target).getAll(), [localRent]);
+      expect(report.updated, 1, reason: 'la copia es más reciente');
+      expect(await DriftFixedMovementRepository(target).getAll(), [
+        const FixedMovement(
+          id: 'local-rent',
+          name: 'Arriendo',
+          kind: TransactionKind.expense,
+          amount: Money.pesos(900000),
+          categoryId: food,
+          dayOfMonth: 5,
+        ),
+      ]);
       expect(
         (await allTransactions(target)).single.fixedMovementId,
         'local-rent',
       );
     },
   );
+
+  test('la copia más reciente actualiza lo que cambió (categoría, fijo, '
+      'deuda); una más vieja solo agrega', () async {
+    final source = createTestDatabase();
+    final categories = DriftCategoryRepository(source);
+    final mercado = (await categories.getById(food))!;
+    await categories.save(mercado.copyWith(name: 'Mercado y comida'));
+    await DriftFixedMovementRepository(source).save(rent);
+    final json = await DriftBackupStore(source).export(exportedAt: exportedAt);
+
+    // Teléfono nuevo: la copia gana.
+    final fresh = createTestDatabase();
+    await DriftFixedMovementRepository(fresh)
+        .save(rent.copyWith(amount: const Money.pesos(800000)));
+    final report = await DriftBackupStore(fresh).import(json);
+    expect(report.olderThanLocal, isFalse);
+    expect(report.updated, 2, reason: 'categoría y arriendo');
+    expect(
+      (await DriftCategoryRepository(fresh).getById(food))!.name,
+      'Mercado y comida',
+    );
+    expect(
+      (await DriftFixedMovementRepository(fresh).getAll()).single.amount,
+      const Money.pesos(900000),
+    );
+
+    // Teléfono con algo anotado después de la copia: no se pisa nada.
+    final newer = createTestDatabase();
+    await DriftTransactionRepository(newer).save(
+      Transaction(
+        id: 'late',
+        kind: TransactionKind.expense,
+        amount: const Money.pesos(1000),
+        categoryId: food,
+        date: DateTime(2026, 10, 9),
+        createdAt: DateTime(2026, 10, 9, 8),
+      ),
+    );
+    final older = await DriftBackupStore(newer).import(json);
+    expect(older.olderThanLocal, isTrue);
+    expect(older.updated, 0);
+    expect(
+      (await DriftCategoryRepository(newer).getById(food))!.name,
+      isNot('Mercado y comida'),
+    );
+    expect(older.added, 1, reason: 'el arriendo que faltaba');
+  });
 
   test('rechaza archivos ajenos y de versiones más nuevas', () async {
     final store = DriftBackupStore(createTestDatabase());

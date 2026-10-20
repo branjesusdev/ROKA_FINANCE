@@ -1,8 +1,10 @@
 import 'package:finance_app/application/debts/debt_overview.dart';
 import 'package:finance_app/bootstrap/use_cases.dart';
 import 'package:finance_app/core/result.dart';
+import 'package:finance_app/domain/categories/default_categories.dart';
 import 'package:finance_app/domain/debts/debt.dart';
 import 'package:finance_app/domain/debts/loan_projector.dart';
+import 'package:finance_app/domain/fixed/fixed_movement.dart';
 import 'package:finance_app/domain/shared/money.dart';
 import 'package:finance_app/domain/shared/percentage.dart';
 import 'package:finance_app/presentation/shared/data_providers.dart';
@@ -10,6 +12,7 @@ import 'package:finance_app/presentation/shared/form_widgets.dart';
 import 'package:finance_app/presentation/shared/formatters.dart';
 import 'package:finance_app/presentation/shared/labels.dart';
 import 'package:finance_app/presentation/shared/section_card.dart';
+import 'package:finance_app/presentation/shared/status_style.dart';
 import 'package:finance_app/presentation/wealth/wealth_forms.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -87,6 +90,18 @@ class _DebtDetailScreenState extends ConsumerState<DebtDetailScreen> {
               ),
             ],
           ),
+          if (overview.interestCost case final cost?) ...[
+            const SizedBox(height: 12),
+            _InterestCostCard(overview: overview, cost: cost),
+          ],
+          if (overview.schedule.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _ScheduleCard(overview: overview),
+          ],
+          if (overview.hasTerms && !debt.isPaidOff) ...[
+            const SizedBox(height: 12),
+            _AutoPayCard(debt: debt),
+          ],
           if (overview.hasTerms && !debt.isPaidOff) ...[
             const SizedBox(height: 12),
             SectionCard(
@@ -186,7 +201,6 @@ class _SummaryCard extends StatelessWidget {
     final terms = debt.terms;
     final projection = overview.projection;
     final paid = Percentage.ratio(debt.paidAmount, debt.originalAmount);
-    final recordedRemaining = terms?.recordedRemainingInstallments;
 
     return SectionCard(
       title: Labels.debt(debt.type),
@@ -218,21 +232,47 @@ class _SummaryCard extends StatelessWidget {
                 ),
               )
             else ...[
-              _Row('Cuotas restantes', '${projection.months}'),
-              if (recordedRemaining != null &&
-                  recordedRemaining != projection.months)
-                Text(
-                  'Según tu registro te faltan $recordedRemaining cuotas; la '
-                  'proyección usa el saldo y la tasa actuales.',
-                  style: theme.textTheme.bodySmall,
-                ),
-              _Row(
-                'Fecha estimada de pago',
-                Formatters.month(projection.payoffMonth!),
+              Text(
+                'Según tu saldo, tasa y cuota',
+                style: theme.textTheme.titleSmall,
               ),
+              _Row('Cuotas que faltan', '${projection.months}'),
+              _Row('Terminarías en', Formatters.month(projection.payoffMonth!)),
+              if (overview.projectedTotal case final total?)
+                _Row('Total por pagar', Formatters.money(total)),
               _Row(
-                'Intereses estimados',
+                '  de eso, intereses',
                 Formatters.money(projection.totalInterest),
+              ),
+              if (projection.totalFees.isPositive)
+                _Row(
+                  '  de eso, seguros/comisiones',
+                  Formatters.money(projection.totalFees),
+                ),
+              if (overview.recorded case final recorded?) ...[
+                const SizedBox(height: 12),
+                Text(
+                  'Según tu registro (${recorded.months} cuotas)',
+                  style: theme.textTheme.titleSmall,
+                ),
+                _Row('Total por pagar', Formatters.money(recorded.totalToPay)),
+                _Row(
+                  '  de eso, intereses',
+                  Formatters.money(recorded.interest),
+                ),
+                if (recorded.fees.isPositive)
+                  _Row(
+                    '  de eso, seguros/comisiones',
+                    Formatters.money(recorded.fees),
+                  ),
+                if (overview.scheduleMismatch)
+                  _MismatchNote(overview: overview, recorded: recorded),
+              ],
+              const SizedBox(height: 8),
+              Text(
+                'Intereses = lo que pagas de más sobre el saldo de hoy (no '
+                'sobre el valor inicial). Lo que ya pagaste no cuenta.',
+                style: theme.textTheme.bodySmall,
               ),
             ],
           ] else
@@ -244,6 +284,373 @@ class _SummaryCard extends StatelessWidget {
                 style: theme.textTheme.bodySmall,
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+/// La cuota como gasto fijo: se registra sola cada mes, baja el saldo y
+/// avisa cuántas cuotas faltan.
+class _AutoPayCard extends ConsumerWidget {
+  const new({required this.debt});
+
+  final Debt debt;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final fixed = ref.watch(fixedMovementsProvider).value ?? const [];
+    final linked = fixed.where((f) => f.debtId == debt.id).firstOrNull;
+    final candidates = fixed
+        .where(
+          (f) =>
+              f.isExpense &&
+              f.debtId == null &&
+              f.categoryId == DefaultCategories.debtsId,
+        )
+        .toList();
+    return SectionCard(
+      title: 'Cuota como gasto fijo',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (linked != null) ...[
+            Row(
+              children: [
+                Icon(
+                  Icons.link,
+                  size: 18,
+                  color: StatusColors.okOf(theme.colorScheme),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Enlazado con «${linked.name}» (día ${linked.dayOfMonth}, '
+                    '${Formatters.money(linked.amount)}).',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Cada mes se registra sola, baja el saldo y suma la cuota '
+              'pagada. Te avisa la víspera cuántas cuotas te quedan. No uses '
+              '"Pagar cuota" o se contaría dos veces.',
+              style: theme.textTheme.bodySmall,
+            ),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                icon: const Icon(Icons.link_off),
+                label: const Text('Quitar enlace'),
+                onPressed: () async {
+                  final result = await ref
+                      .read(linkDebtToFixedProvider)
+                      .unlink(linked);
+                  if (context.mounted) showResult(context, result);
+                },
+              ),
+            ),
+          ] else ...[
+            Text(
+              'Enlázala con tus gastos fijos: cada mes se registra sola, '
+              'baja el saldo y te avisa cuántas cuotas y cuánto te falta.',
+              style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 8),
+            for (final f in candidates)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.event_repeat),
+                title: Text(f.name),
+                subtitle: Text(
+                  'Día ${f.dayOfMonth} · ${Formatters.money(f.amount)}',
+                ),
+                trailing: const Text('Enlazar'),
+                onTap: () async {
+                  final result = await ref
+                      .read(linkDebtToFixedProvider)
+                      .call(debt: debt, fixed: f);
+                  if (context.mounted) {
+                    showResult(context, result, success: 'Cuota enlazada');
+                  }
+                },
+              ),
+            FilledButton.tonalIcon(
+              icon: const Icon(Icons.add),
+              label: Text(
+                'Crear fijo de '
+                '${Formatters.money(debt.terms!.monthlyPayment)} al mes',
+              ),
+              onPressed: () => _create(context, ref),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _create(BuildContext context, WidgetRef ref) async {
+    final day = await showDialog<int>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('¿Qué día pagas la cuota?'),
+        children: [
+          SizedBox(
+            width: double.maxFinite,
+            height: 320,
+            child: GridView.count(
+              crossAxisCount: 7,
+              padding: const EdgeInsets.all(8),
+              children: [
+                for (
+                  var d = FixedMovement.minDay;
+                  d <= FixedMovement.maxDay;
+                  d++
+                )
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(d),
+                    child: Text('$d'),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+    if (day == null || !context.mounted) return;
+    final result = await ref
+        .read(linkDebtToFixedProvider)
+        .call(debt: debt, dayOfMonth: day);
+    if (context.mounted) {
+      showResult(context, result, success: 'Fijo creado y enlazado');
+    }
+  }
+}
+
+/// Explica por qué tu registro y el cálculo no dan las mismas cuotas.
+class _MismatchNote extends StatelessWidget {
+  const new({required this.overview, required this.recorded});
+
+  final DebtOverview overview;
+  final RecordedSchedule recorded;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final projection = overview.projection!;
+    final terms = overview.debt.terms!;
+    final diff = (recorded.months - projection.months).abs();
+    final implied = recorded.impliedAnnualRate;
+    final more = recorded.months > projection.months;
+    return Card(
+      margin: const EdgeInsets.only(top: 8),
+      color: theme.colorScheme.surfaceContainerHighest,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  size: 18,
+                  color: StatusColors.warningOf(theme.colorScheme),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'No cuadran: $diff '
+                    '${diff == 1 ? 'cuota' : 'cuotas'} de diferencia',
+                    style: theme.textTheme.titleSmall,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              more
+                  ? 'Con el saldo, la tasa y la cuota que anotaste el crédito '
+                        'se pagaría en ${projection.months} cuotas, pero tu '
+                        'registro dice ${recorded.months}. Si hiciste abonos '
+                        'extra o pagaste más que la cuota, es normal: vas '
+                        'adelantado y la última cuota sale más pequeña (el '
+                        'extracto sigue contando las cuotas del plazo '
+                        'pactado). Si no, revisa que la tasa, los seguros y '
+                        'el saldo a capital sean los del extracto.'
+                  : 'Tu registro dice ${recorded.months} cuotas, pero con '
+                        'estos datos faltarían ${projection.months}: revisa '
+                        'que el saldo y las cuotas pagadas estén al día.',
+              style: theme.textTheme.bodySmall,
+            ),
+            if (implied != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Para que salgan ${recorded.months} cuotas la tasa tendría '
+                'que ser ≈ ${_annual(implied)} EA; anotaste '
+                '${_annual(terms.rate.annualEffective)} EA. Copia del '
+                'extracto el saldo a capital, la tasa y los seguros '
+                '(Editar) para que coincidan.',
+                style: theme.textTheme.bodySmall,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  static String _annual(double fraction) =>
+      Formatters.percent(Percentage.fromFraction(fraction));
+}
+
+/// Intereses del crédito completo: ya pagados + los que faltan, frente al
+/// plan sin abonos.
+class _InterestCostCard extends StatelessWidget {
+  const new({required this.overview, required this.cost});
+
+  final DebtOverview overview;
+  final LoanInterestCost cost;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final saved = cost.savedVsPlan;
+    final ahead = overview.installmentsAhead;
+    final good = [
+      if (ahead > 0) 'Vas $ahead ${ahead == 1 ? 'cuota' : 'cuotas'} adelantado',
+      if (saved.isPositive)
+        'te ahorras ≈ ${Formatters.money(saved)} en intereses frente al plan',
+    ];
+    return SectionCard(
+      title: 'Lo que te cuesta en intereses',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _Row('Ya pagados (aprox.)', Formatters.money(cost.paidSoFar)),
+          _Row('Faltan por pagar', Formatters.money(cost.remaining)),
+          _Row('Total del crédito', Formatters.money(cost.total)),
+          _Row('Plan sin abonos', Formatters.money(cost.plan)),
+          if (good.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.savings_outlined,
+                  size: 18,
+                  color: StatusColors.okOf(theme.colorScheme),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    '${good.join(' y ')}.',
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 8),
+          Text(
+            'Sin seguros. Los ya pagados se estiman con el plan desde el '
+            'valor inicial: si abonaste de más, pagaste algo menos.',
+            style: theme.textTheme.bodySmall,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tabla de pagos de las cuotas que faltan, como la proyección del banco.
+class _ScheduleCard extends StatefulWidget {
+  const new({required this.overview});
+
+  final DebtOverview overview;
+
+  @override
+  State<_ScheduleCard> createState() => _ScheduleCardState();
+}
+
+class _ScheduleCardState extends State<_ScheduleCard> {
+  /// Filas visibles antes de "Ver todas".
+  static const _preview = 6;
+
+  bool _all = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final rows = widget.overview.schedule;
+    final visible = _all ? rows : rows.take(_preview);
+    final interest = Money.sum(rows.map((r) => r.interest));
+    final principal = Money.sum(rows.map((r) => r.principal));
+    return SectionCard(
+      title: 'Tabla de pagos (${rows.length} cuotas)',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final row in visible) _InstallmentTile(row: row),
+          if (rows.length > _preview)
+            TextButton(
+              onPressed: () => setState(() => _all = !_all),
+              child: Text(_all ? 'Ver menos' : 'Ver las ${rows.length} cuotas'),
+            ),
+          const Divider(height: 16),
+          _Row('Suman a capital', Formatters.money(principal)),
+          _Row('Suman intereses', Formatters.money(interest)),
+          const SizedBox(height: 4),
+          Text(
+            'Cuota sin seguros. Supone que pagas a tiempo y la tasa no '
+            'cambia; compárala con la proyección de tu banco.',
+            style: theme.textTheme.bodySmall,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InstallmentTile extends StatelessWidget {
+  const new({required this.row});
+
+  final LoanInstallment row;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final number = row.number;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${number == null ? '' : 'Cuota $number · '}'
+                  '${Formatters.monthShort(row.month)}',
+                  style: theme.textTheme.bodyMedium,
+                ),
+              ),
+              Text(
+                Formatters.money(row.payment),
+                style: theme.textTheme.titleSmall,
+              ),
+            ],
+          ),
+          Text(
+            'Capital ${Formatters.money(row.principal)} · intereses '
+            '${Formatters.money(row.interest)} · queda '
+            '${Formatters.money(row.balance)}',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
         ],
       ),
     );

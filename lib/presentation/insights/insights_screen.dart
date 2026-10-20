@@ -3,6 +3,7 @@ import 'package:finance_app/domain/categories/category.dart';
 import 'package:finance_app/domain/insights/insight.dart';
 import 'package:finance_app/domain/shared/percentage.dart';
 import 'package:finance_app/domain/shared/traffic_light.dart';
+import 'package:finance_app/presentation/insights/category_report_screen.dart';
 import 'package:finance_app/presentation/shared/async_view.dart';
 import 'package:finance_app/presentation/shared/category_style.dart';
 import 'package:finance_app/presentation/shared/data_providers.dart';
@@ -244,43 +245,47 @@ class _BreakdownCard extends StatelessWidget {
           : Column(
               children: [
                 for (final item in health.breakdown)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            CategoryAvatar(
-                              category: categories[item.categoryId],
-                              size: 28,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                categories[item.categoryId]?.name ??
-                                    'Sin categoría',
+                  InkWell(
+                    onTap: () => openCategoryReport(context, item.categoryId),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              CategoryAvatar(
+                                category: categories[item.categoryId],
+                                size: 28,
                               ),
-                            ),
-                            Text(
-                              '${Formatters.money(item.amount)} · '
-                              '${Formatters.percent(item.share)}',
-                              style: theme.textTheme.labelLarge,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        LinearProgressIndicator(
-                          value: item.share.fraction.clamp(0, 1).toDouble(),
-                          minHeight: 6,
-                          borderRadius: BorderRadius.circular(3),
-                        ),
-                        Text(
-                          '${item.count} '
-                          '${item.count == 1 ? 'movimiento' : 'movimientos'}',
-                          style: theme.textTheme.bodySmall,
-                        ),
-                      ],
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  categories[item.categoryId]?.name ??
+                                      'Sin categoría',
+                                ),
+                              ),
+                              Text(
+                                '${Formatters.money(item.amount)} · '
+                                '${Formatters.percent(item.share)}',
+                                style: theme.textTheme.labelLarge,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          LinearProgressIndicator(
+                            value: item.share.fraction.clamp(0, 1).toDouble(),
+                            minHeight: 6,
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                          Text(
+                            '${item.count} '
+                            '${item.count == 1 ? 'movimiento' : 'movimientos'}'
+                            ' · toca para ver el análisis',
+                            style: theme.textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
               ],

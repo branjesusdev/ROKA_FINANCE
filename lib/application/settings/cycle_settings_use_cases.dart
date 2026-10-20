@@ -106,3 +106,24 @@ final class UpdateAppearance {
     },
   );
 }
+
+/// Sueldo neto mensual. Cero vuelve a deducirlo de lo registrado en
+/// Salario.
+final class UpdateSalary {
+  const new(this._settings);
+
+  final SettingsRepository _settings;
+
+  Future<Result<FinanceSettings>> call(Money monthlySalary) {
+    if (monthlySalary.isNegative) {
+      return invalid(ValidationCodes.amountMustNotBeNegative);
+    }
+    return guardUseCase(() async {
+      final updated = (await _settings.get()).copyWith(
+        monthlySalary: monthlySalary,
+      );
+      await _settings.save(updated);
+      return updated;
+    });
+  }
+}

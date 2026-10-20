@@ -1,6 +1,7 @@
 import 'package:finance_app/application/dashboard/cycle_summary.dart';
 import 'package:finance_app/domain/cycles/pay_cycle.dart';
 import 'package:finance_app/domain/transactions/transaction.dart';
+import 'package:finance_app/presentation/insights/category_report_screen.dart';
 import 'package:finance_app/presentation/shared/async_view.dart';
 import 'package:finance_app/presentation/shared/category_style.dart';
 import 'package:finance_app/presentation/shared/data_providers.dart';
@@ -107,6 +108,12 @@ class CategoryMovementsSheet extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 8),
+            if (category != null)
+              FilledButton.tonalIcon(
+                icon: const Icon(Icons.insights),
+                label: Text('Ver análisis de ${category.name} (12 meses)'),
+                onPressed: () => openCategoryReport(context, category.id),
+              ),
             const Divider(),
             if (items.isEmpty)
               const Padding(

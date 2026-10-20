@@ -212,7 +212,7 @@ final class AskCfo {
   final AiKeyStore _keys;
   final SettingsRepository _settings;
 
-  static const maxQuestionLength = 1000;
+  static const maxQuestionLength = 2500;
 
   Future<Result<String>> call({
     required FinancialSnapshot snapshot,

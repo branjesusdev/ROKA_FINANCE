@@ -40,6 +40,42 @@ void main() {
     provisionTransactions: current.where((t) => t.provisionId != null).toList(),
   );
 
+  test('gastos de hoy: separa lo que baja el tope de lo que ya estaba '
+      'apartado', () {
+    final day = DateTime(2026, 10, 3);
+    final rent = Transaction(
+      id: 'rent',
+      kind: TransactionKind.expense,
+      amount: const Money.pesos(900000),
+      categoryId: food,
+      date: day,
+      createdAt: day,
+      fixedMovementId: 'fixed-rent',
+    );
+    final summary = build(
+      current: [
+        income(3000000, date: DateTime(2026, 9, 20)),
+        expense(10000, category: transport, date: day),
+        expense(250000, category: 'seed-expense-groceries', date: day),
+        expense(100000, category: investments, date: day),
+        rent,
+        expense(40000, category: food, date: DateTime(2026, 10, 2)),
+      ],
+    );
+
+    expect(summary.dailyCap!.spentToday, const Money.pesos(10000));
+    expect(summary.spentTodayOutsideCap, const Money.pesos(1250000));
+    expect(
+      summary.todaySpends.map((s) => (s.transaction.amount.cents, s.kind)),
+      [
+        (const Money.pesos(900000).cents, TodaySpendKind.linked),
+        (const Money.pesos(250000).cents, TodaySpendKind.monthly),
+        (const Money.pesos(100000).cents, TodaySpendKind.saving),
+        (const Money.pesos(10000).cents, TodaySpendKind.dayToDay),
+      ],
+    );
+  });
+
   test('lo que queda = ingresos − todo lo que salió del ciclo', () {
     final summary = build(
       current: [

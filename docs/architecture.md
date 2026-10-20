@@ -128,6 +128,59 @@ periódica de la IA (`RunAiReview.isDue`) y muestra su resultado como notificaci
 - Nada modifica datos sin confirmación: el reparto de un extraordinario se aplica solo con las
   partes que el usuario marca (`ApplyWindfallSlices`).
 
+### Esquema v11 (todo nulo: los backups v8–v10 importan igual)
+- `transactions.odometer_km`: kilometraje al tanquear. `FuelEconomyCalculator` (dominio) ordena
+  por fecha, ignora lecturas que no avanzan y usa tanque lleno: lo pagado en una tanqueada
+  repone lo recorrido desde la anterior ⇒ costo por km, por 100 km y del último tramo.
+- `investments.invested_usd_cents`: lo pagado en dólares; `investedAmount` queda en pesos con el
+  dólar que confirmó el usuario (`UsdRate.toPesos`, enteros). `LoadUsdRate` solo pide `COP=X`
+  cuando el usuario elige "En dólares". `InvestmentMarketView.usdReturn` = rentabilidad en US$.
+- `fixed_movements.debt_id` (sin FK, ref `debts` en el backup): `PostDueFixedMovements` y
+  `ConfirmVariableFixed` marcan el movimiento con `debtId` y llaman `payLinkedDebt`
+  (`Debt.afterInstallment`: baja solo capital, suma cuota). `LinkDebtToFixed` enlaza uno existente
+  o crea "Cuota X" sin registrar el ciclo actual. `ReminderPlanner` recibe las deudas y agrega
+  "te quedan N cuotas y $Y de saldo" al aviso del fijo.
+- `DebtOverview.recorded` (`RecordedSchedule`): cuota × cuotas de tu registro, intereses
+  implícitos y `LoanProjector.impliedMonthlyRate` (bisección) para explicar por qué el cálculo
+  por saldo/tasa no da las mismas cuotas que el extracto.
+
+### Análisis por categoría y autocompletar
+- `CategoryReportBuilder` (application/insights): 12 meses calendario, mes pico, promedio de meses
+  cerrados, ítems agrupados por descripción normalizada (`DescriptionSuggestions.normalize`).
+  Entradas: hoja de categoría en Inicio, Análisis › Gasto por categoría, Categorías, vista previa.
+- `DescriptionSuggestions`: prefijo o palabra, sin tildes; orden prefijo → veces → reciente.
+
+### Inversiones con precio real
+- `Investment.symbol` + `unitsMicros` (millonésimas, permite fracciones) + `priceUpdatedAt`
+  (esquema v10). Sin símbolo, el valor se escribe a mano como antes.
+- `RefreshInvestmentPrices` (application/markets): por cada inversión con símbolo consulta el
+  precio (port `MarketDataSource`, Yahoo) y la tasa a pesos (`COP=X`, `EURCOP=X`…), guarda el
+  valor en pesos (patrimonio con rentabilidad real) y arma `InvestmentMarketView` con
+  `QuoteStats`, `QuarterOutlook` (dominio, puro) y señales (`concentrated`, `volatile`,
+  `farFromHigh`, `downTrend`, `upTrend`).
+- `QuarterOutlookCalculator`: retornos semanales logarítmicos del último año → tendencia típica a
+  13 semanas, rango ±1 desviación ("2 de cada 3") y peor/mejor trimestre. Es estadística del
+  pasado; la UI lo dice así y nunca lo presenta como predicción ni recomendación.
+- Se consulta al abrir Patrimonio (una vez por sesión, `investmentPricesRequestProvider`) solo si
+  hay inversiones con símbolo, y con el botón de actualizar. Solo viajan símbolos.
+
+### Dinero libre, tope diario y apartar
+- `CycleSummary.plannedReserve` (presupuesto del mes por gastar + colchón de los niños) se
+  descuenta igual en `MoneyOverview.free` y en `DailySpendingCap`: "libre" y "hoy puedes gastar"
+  salen del mismo número.
+- `MoneyOverview.provisionsSaved` / `provisionsToday`: lo ya apartado para pagos del año (salió
+  de "Tienes") y la cuota de hoy, visibles en el Home.
+- `SetAsidePlanner` → `SetAsidePlan`: pagos del año pendientes del ciclo y luego metas (fondo de
+  emergencia primero) con máximo el 50% de lo libre. `ApplySetAside` usa `SetAsideForProvision`
+  y `ApplyWindfallSlices`; solo aplica lo que el usuario marca.
+
+### Fijos por estado y movimientos
+- `FixedCycleStatusBuilder` (application/fixed): cada fijo como pagado / recibido / por pagar
+  (con su cobertura) / vencido / pausado / no le toca. La pantalla de fijos los agrupa y colorea
+  (verde pagado, ámbar por pagar, rojo sin plata), siempre con icono y texto.
+- Tocar un movimiento abre `TransactionPreviewSheet` (solo lectura: monto, fecha, categoría,
+  vínculo, notas); Editar abre el formulario de siempre.
+
 ### Canales nativos (Android, `MainActivity.kt`)
 Se prefiere un canal pequeño a un paquete grande cuando la necesidad es puntual.
 
@@ -145,7 +198,7 @@ abono→deuda, aporte→meta) y un CSV por tabla pierde esas relaciones. Un solo
 `finanzas-copia-AAAA-MM-DD.json`:
 
 ```json
-{ "app": "finance_app", "format": 1, "schemaVersion": 9, "exportedAt": "…",
+{ "app": "finance_app", "format": 1, "schemaVersion": 11, "exportedAt": "…",
   "data": { "categories": [...], "accounts": [...], "debts": [...], "savingsGoals": [...],
             "fixedMovements": [...], "provisions": [...], "transactions": [...],
             "budgetLines": [...], "assets": [...], "extraPayments": [...],

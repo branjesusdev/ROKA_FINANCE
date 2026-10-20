@@ -6,6 +6,7 @@ import 'package:finance_app/core/result.dart';
 import 'package:finance_app/domain/shared/date_range.dart';
 import 'package:finance_app/domain/shared/money.dart';
 import 'package:finance_app/domain/transactions/transaction.dart';
+import 'package:finance_app/infrastructure/repositories/drift_debt_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_fixed_movement_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_settings_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_transaction_repository.dart';
@@ -25,6 +26,7 @@ void main() {
   late SaveFixedMovement save;
   late PostDueFixedMovements postDue;
   late ConfirmVariableFixed confirm;
+  late MarkFixedUnpaid markUnpaid;
 
   setUp(() {
     final db = createTestDatabase();
@@ -46,12 +48,20 @@ void main() {
     confirm = ConfirmVariableFixed(
       fixed: fixed,
       transactions: transactions,
+      debts: DriftDebtRepository(db),
       clock: clock,
       ids: ids,
+    );
+    markUnpaid = MarkFixedUnpaid(
+      fixed: fixed,
+      transactions: transactions,
+      currentCycle: currentCycle,
+      clock: clock,
     );
     postDue = PostDueFixedMovements(
       fixed: fixed,
       transactions: transactions,
+      debts: DriftDebtRepository(db),
       currentCycle: currentCycle,
       clock: clock,
       ids: ids,
@@ -73,6 +83,7 @@ void main() {
       amount: const Money.pesos(1200000),
       categoryId: housing,
       dayOfMonth: 1,
+      autoDebit: true,
     );
     await save(
       name: 'Sueldo',
@@ -87,6 +98,7 @@ void main() {
       amount: const Money.pesos(400000),
       categoryId: 'seed-expense-education',
       dayOfMonth: 10,
+      autoDebit: true,
     );
 
     expect(posted(await postDue()), 2);
@@ -110,6 +122,43 @@ void main() {
     );
   });
 
+  test('arriendo sin débito automático: no queda pagado hasta "Ya lo '
+      'pagué"; "Aún no lo he pagado" lo deshace', () async {
+    clock.value = DateTime(2026, 10, 14, 9);
+    await save(
+      name: 'Arriendo',
+      kind: TransactionKind.expense,
+      amount: const Money.pesos(1200000),
+      categoryId: housing,
+      dayOfMonth: 14,
+    );
+
+    expect(posted(await postDue()), 0, reason: 'espera confirmación');
+    expect(await all(), isEmpty);
+
+    final rent = (await fixed.getAll()).single;
+    await confirm(
+      movement: rent,
+      scheduledDate: DateTime(2026, 10, 14),
+      amount: rent.amount,
+    );
+    expect((await all()).single.amount, const Money.pesos(1200000));
+    expect(
+      (await fixed.getAll()).single.amount,
+      const Money.pesos(1200000),
+      reason: 'valor fijo: no cambia',
+    );
+
+    final undone = await markUnpaid(
+      movement: (await fixed.getAll()).single,
+      paidOn: DateTime(2026, 10, 14),
+    );
+    expect(undone, isA<Ok<Object?>>());
+    expect(await all(), isEmpty);
+    expect(posted(await postDue()), 0, reason: 'vuelve a esperar');
+    expect((await fixed.getAll()).single.lastPostedOn, DateTime(2026, 10, 13));
+  });
+
   test('borrar el movimiento generado no lo vuelve a crear', () async {
     await save(
       name: 'Arriendo',
@@ -117,6 +166,7 @@ void main() {
       amount: const Money.pesos(1200000),
       categoryId: housing,
       dayOfMonth: 1,
+      autoDebit: true,
     );
     await postDue();
     await transactions.delete((await all()).single.id);
@@ -131,6 +181,7 @@ void main() {
       amount: const Money.pesos(1200000),
       categoryId: housing,
       dayOfMonth: 1,
+      autoDebit: true,
       registerInCurrentCycle: false,
     );
 

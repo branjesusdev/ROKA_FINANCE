@@ -5,9 +5,12 @@ import 'package:finance_app/application/budgets/budget_use_cases.dart';
 import 'package:finance_app/application/categories/category_use_cases.dart';
 import 'package:finance_app/application/cycles/load_current_cycle.dart';
 import 'package:finance_app/application/cycles/reconcile_balance.dart';
+import 'package:finance_app/application/dashboard/set_aside_plan.dart';
 import 'package:finance_app/application/debts/debt_use_cases.dart';
 import 'package:finance_app/application/fixed/fixed_movement_use_cases.dart';
+import 'package:finance_app/application/markets/load_usd_rate.dart';
 import 'package:finance_app/application/markets/load_watchlist.dart';
+import 'package:finance_app/application/markets/value_investments.dart';
 import 'package:finance_app/application/provisions/provision_use_cases.dart';
 import 'package:finance_app/application/reminders/sync_reminders.dart';
 import 'package:finance_app/application/savings/savings_use_cases.dart';
@@ -162,8 +165,32 @@ final confirmVariableFixedProvider = Provider(
   (ref) => ConfirmVariableFixed(
     fixed: ref.watch(fixedMovementRepositoryProvider),
     transactions: ref.watch(transactionRepositoryProvider),
+    debts: ref.watch(debtRepositoryProvider),
     clock: ref.watch(clockProvider),
     ids: ref.watch(idGeneratorProvider),
+  ),
+);
+
+final snoozeFixedBillProvider = Provider(
+  (ref) => SnoozeFixedBill(
+    fixed: ref.watch(fixedMovementRepositoryProvider),
+    clock: ref.watch(clockProvider),
+  ),
+);
+
+final markFixedUnpaidProvider = Provider(
+  (ref) => MarkFixedUnpaid(
+    fixed: ref.watch(fixedMovementRepositoryProvider),
+    transactions: ref.watch(transactionRepositoryProvider),
+    currentCycle: ref.watch(loadCurrentCycleProvider),
+    clock: ref.watch(clockProvider),
+  ),
+);
+
+final linkDebtToFixedProvider = Provider(
+  (ref) => LinkDebtToFixed(
+    fixed: ref.watch(fixedMovementRepositoryProvider),
+    save: ref.watch(saveFixedMovementProvider),
   ),
 );
 
@@ -175,6 +202,7 @@ final postDueFixedMovementsProvider = Provider(
   (ref) => PostDueFixedMovements(
     fixed: ref.watch(fixedMovementRepositoryProvider),
     transactions: ref.watch(transactionRepositoryProvider),
+    debts: ref.watch(debtRepositoryProvider),
     currentCycle: ref.watch(loadCurrentCycleProvider),
     clock: ref.watch(clockProvider),
     ids: ref.watch(idGeneratorProvider),
@@ -194,6 +222,8 @@ final syncRemindersProvider = Provider(
     settings: ref.watch(settingsRepositoryProvider),
     scheduler: ref.watch(reminderSchedulerProvider),
     clock: ref.watch(clockProvider),
+    debts: ref.watch(debtRepositoryProvider),
+    fixed: ref.watch(fixedMovementRepositoryProvider),
   ),
 );
 
@@ -206,6 +236,18 @@ final testReminderProvider = Provider(
 
 final loadWatchlistProvider = Provider(
   (ref) => LoadWatchlist(ref.watch(marketDataSourceProvider)),
+);
+
+final loadUsdRateProvider = Provider(
+  (ref) => LoadUsdRate(ref.watch(marketDataSourceProvider)),
+);
+
+final refreshInvestmentPricesProvider = Provider(
+  (ref) => RefreshInvestmentPrices(
+    investments: ref.watch(investmentRepositoryProvider),
+    market: ref.watch(marketDataSourceProvider),
+    clock: ref.watch(clockProvider),
+  ),
 );
 
 final reconcileBalanceProvider = Provider(
@@ -224,6 +266,10 @@ final updateAppearanceProvider = Provider(
 
 final updateHouseholdProvider = Provider(
   (ref) => UpdateHousehold(ref.watch(settingsRepositoryProvider)),
+);
+
+final updateSalaryProvider = Provider(
+  (ref) => UpdateSalary(ref.watch(settingsRepositoryProvider)),
 );
 
 final saveProvisionProvider = Provider(
@@ -325,6 +371,13 @@ final applyWindfallSlicesProvider = Provider(
     transactions: ref.watch(transactionRepositoryProvider),
     clock: ref.watch(clockProvider),
     ids: ref.watch(idGeneratorProvider),
+  ),
+);
+
+final applySetAsideProvider = Provider(
+  (ref) => ApplySetAside(
+    provisions: ref.watch(setAsideForProvisionProvider),
+    goals: ref.watch(applyWindfallSlicesProvider),
   ),
 );
 

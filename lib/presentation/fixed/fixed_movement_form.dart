@@ -1,6 +1,7 @@
 import 'package:finance_app/bootstrap/providers.dart';
 import 'package:finance_app/bootstrap/use_cases.dart';
 import 'package:finance_app/domain/categories/category.dart';
+import 'package:finance_app/domain/categories/default_categories.dart';
 import 'package:finance_app/domain/fixed/fixed_movement.dart';
 import 'package:finance_app/domain/transactions/transaction.dart';
 import 'package:finance_app/presentation/fixed/fixed_movements_screen.dart';
@@ -32,8 +33,14 @@ class _FixedMovementFormSheetState
   late int _day = widget.movement?.dayOfMonth ?? DateTime.now().day;
   late bool _isActive = widget.movement?.isActive ?? true;
   late bool _isVariable = widget.movement?.isVariable ?? false;
+  late bool _autoDebit = widget.movement?.autoDebit ?? false;
+
+  /// Crédito que paga esta cuota (solo en la categoría Deudas).
+  late String? _debtId = widget.movement?.debtId;
   bool _alreadyPaid = true;
   bool _saving = false;
+
+  static const _debtsId = DefaultCategories.debtsId;
 
   bool get _isNew => widget.movement == null;
   bool get _isExpense => _kind == TransactionKind.expense;
@@ -139,6 +146,20 @@ class _FixedMovementFormSheetState
                       'cuánto llegó.',
           ),
         ),
+        if (_isExpense && !_isVariable)
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            value: _autoDebit,
+            onChanged: (v) => setState(() => _autoDebit = v),
+            title: const Text('Se descuenta solo (débito automático)'),
+            subtitle: Text(
+              _autoDebit
+                  ? 'Ese día queda como pagado sin preguntarte.'
+                  : 'Ese día te pregunta "¿Ya lo pagaste?" y te recuerda en '
+                        'la mañana, la tarde y la noche hasta que lo '
+                        'confirmes.',
+            ),
+          ),
         DropdownButtonFormField<int>(
           initialValue: _day,
           decoration: InputDecoration(
@@ -158,6 +179,11 @@ class _FixedMovementFormSheetState
           selectedId: _categoryId,
           onSelected: (id) => setState(() => _categoryId = id),
         ),
+        if (_isExpense && (_debtId != null || _categoryId == _debtsId))
+          _DebtPicker(
+            debtId: _debtId,
+            onChanged: (id) => setState(() => _debtId = id),
+          ),
         if (dayPassed)
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
@@ -170,6 +196,8 @@ class _FixedMovementFormSheetState
               _alreadyPaid
                   ? 'El día $_day ya pasó: no se descuenta otra vez de lo que '
                         'te queda (tu dinero real ya lo incluye).'
+                  : _isExpense && (_isVariable || !_autoDebit)
+                  ? 'Te preguntará si ya lo pagaste.'
                   : 'Se registrará con fecha del día $_day.',
             ),
           )
@@ -198,8 +226,10 @@ class _FixedMovementFormSheetState
           dayOfMonth: _day,
           isActive: _isActive,
           isVariable: _isVariable,
+          autoDebit: _autoDebit && !_isVariable,
           lastPostedOn: widget.movement?.lastPostedOn,
           registerInCurrentCycle: !_alreadyPaid,
+          debtId: _debtId,
         );
     if (!mounted) return;
     if (showResult(context, result, success: 'Fijo guardado')) {
@@ -210,5 +240,45 @@ class _FixedMovementFormSheetState
     } else {
       setState(() => _saving = false);
     }
+  }
+}
+
+/// "¿Qué crédito paga?": al registrarse la cuota baja el saldo del crédito
+/// y sus avisos dicen cuánto te falta.
+class _DebtPicker extends ConsumerWidget {
+  const new({required this.debtId, required this.onChanged});
+
+  final String? debtId;
+  final ValueChanged<String?> onChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final debts = (ref.watch(debtsProvider).value ?? const [])
+        .where((d) => d.currentBalance.isPositive || d.id == debtId)
+        .toList();
+    if (debts.isEmpty) {
+      return const Text(
+        'Si es la cuota de un crédito, créalo en Patrimonio › Deudas y '
+        'enlázalo aquí para que baje su saldo solo.',
+      );
+    }
+    return DropdownButtonFormField<String?>(
+      initialValue: debts.any((d) => d.id == debtId) ? debtId : null,
+      isExpanded: true,
+      decoration: const InputDecoration(
+        labelText: '¿Qué crédito paga? (opcional)',
+        helperText:
+            'Al registrarse, baja el saldo y suma la cuota pagada. Los '
+            'avisos te dicen cuántas cuotas te faltan.',
+        helperMaxLines: 3,
+        border: OutlineInputBorder(),
+      ),
+      items: [
+        const DropdownMenuItem(child: Text('Ninguno')),
+        for (final d in debts)
+          DropdownMenuItem(value: d.id, child: Text(d.name)),
+      ],
+      onChanged: onChanged,
+    );
   }
 }

@@ -100,6 +100,8 @@ final class FinancialSnapshotBuilder {
         'comprometidoEnFijos': _p(overview.committed),
         'apartadosPendientes': _p(overview.provisionsPending),
         'ahorroPendiente': _p(overview.savingsPending),
+        'presupuestoDelMesPorGastar': _p(overview.plannedPending),
+        'yaApartadoPagosDelAno': _p(overview.provisionsSaved),
         'ingresosFijosPorLlegar': _p(overview.expectedIncome),
         'libreParaGastar': _p(overview.free),
         'topeDiarioCalculado': _pn(summary.dailyCap?.cap),
@@ -182,8 +184,11 @@ final class FinancialSnapshotBuilder {
         for (final inv in investments)
           {
             'tipo': inv.type.name,
+            // Símbolo de bolsa: dato público, no escrito libremente.
+            'simbolo': ?inv.symbol,
             'invertido': _p(inv.investedAmount),
             'valorActual': _p(inv.currentValue),
+            'valorConPrecioDeMercado': inv.priceUpdatedAt != null,
           },
       ],
       'metas': [

@@ -2,6 +2,8 @@ import 'package:finance_app/application/advisor/financial_alerts.dart';
 import 'package:finance_app/application/dashboard/cycle_summary.dart';
 import 'package:finance_app/application/reminders/reminder_planner.dart';
 import 'package:finance_app/application/reminders/reminder_scheduler.dart';
+import 'package:finance_app/domain/debts/debt_repository.dart';
+import 'package:finance_app/domain/fixed/fixed_movement_repository.dart';
 import 'package:finance_app/domain/savings/settings_repository.dart';
 import 'package:finance_app/domain/shared/clock.dart';
 
@@ -12,9 +14,13 @@ final class SyncReminders {
     required this._settings,
     required this._scheduler,
     required this._clock,
+    this._debts,
+    this._fixed,
   });
 
   final SettingsRepository _settings;
+  final DebtRepository? _debts;
+  final FixedMovementRepository? _fixed;
   final ReminderScheduler _scheduler;
   final Clock _clock;
 
@@ -31,6 +37,8 @@ final class SyncReminders {
         now: _clock.now(),
         summary: summary,
         alerts: alerts,
+        debts: await _debts?.getAll() ?? const [],
+        fixedMovements: await _fixed?.getAll(),
       );
       // Sin permiso el sistema simplemente no muestra los avisos.
       final granted = reminders.isEmpty || await _scheduler.requestPermission();

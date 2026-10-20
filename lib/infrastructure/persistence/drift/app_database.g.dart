@@ -1758,6 +1758,17 @@ class $TransactionsTable extends Transactions
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _odometerKmMeta = const VerificationMeta(
+    'odometerKm',
+  );
+  @override
+  late final GeneratedColumn<int> odometerKm = GeneratedColumn<int>(
+    'odometer_km',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1773,6 +1784,7 @@ class $TransactionsTable extends Transactions
     debtId,
     provisionId,
     fixedMovementId,
+    odometerKm,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1871,6 +1883,12 @@ class $TransactionsTable extends Transactions
         ),
       );
     }
+    if (data.containsKey('odometer_km')) {
+      context.handle(
+        _odometerKmMeta,
+        odometerKm.isAcceptableOrUnknown(data['odometer_km']!, _odometerKmMeta),
+      );
+    }
     return context;
   }
 
@@ -1936,6 +1954,10 @@ class $TransactionsTable extends Transactions
         DriftSqlType.string,
         data['${effectivePrefix}fixed_movement_id'],
       ),
+      odometerKm: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}odometer_km'],
+      ),
     );
   }
 
@@ -1966,6 +1988,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   final String? debtId;
   final String? provisionId;
   final String? fixedMovementId;
+
+  /// Kilometraje al tanquear (v11).
+  final int? odometerKm;
   const TransactionRow({
     required this.id,
     required this.kind,
@@ -1980,6 +2005,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     this.debtId,
     this.provisionId,
     this.fixedMovementId,
+    this.odometerKm,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2017,6 +2043,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     if (!nullToAbsent || fixedMovementId != null) {
       map['fixed_movement_id'] = Variable<String>(fixedMovementId);
     }
+    if (!nullToAbsent || odometerKm != null) {
+      map['odometer_km'] = Variable<int>(odometerKm);
+    }
     return map;
   }
 
@@ -2049,6 +2078,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       fixedMovementId: fixedMovementId == null && nullToAbsent
           ? const Value.absent()
           : Value(fixedMovementId),
+      odometerKm: odometerKm == null && nullToAbsent
+          ? const Value.absent()
+          : Value(odometerKm),
     );
   }
 
@@ -2075,6 +2107,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       debtId: serializer.fromJson<String?>(json['debtId']),
       provisionId: serializer.fromJson<String?>(json['provisionId']),
       fixedMovementId: serializer.fromJson<String?>(json['fixedMovementId']),
+      odometerKm: serializer.fromJson<int?>(json['odometerKm']),
     );
   }
   @override
@@ -2098,6 +2131,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       'debtId': serializer.toJson<String?>(debtId),
       'provisionId': serializer.toJson<String?>(provisionId),
       'fixedMovementId': serializer.toJson<String?>(fixedMovementId),
+      'odometerKm': serializer.toJson<int?>(odometerKm),
     };
   }
 
@@ -2115,6 +2149,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     Value<String?> debtId = const Value.absent(),
     Value<String?> provisionId = const Value.absent(),
     Value<String?> fixedMovementId = const Value.absent(),
+    Value<int?> odometerKm = const Value.absent(),
   }) => TransactionRow(
     id: id ?? this.id,
     kind: kind ?? this.kind,
@@ -2131,6 +2166,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     fixedMovementId: fixedMovementId.present
         ? fixedMovementId.value
         : this.fixedMovementId,
+    odometerKm: odometerKm.present ? odometerKm.value : this.odometerKm,
   );
   TransactionRow copyWithCompanion(TransactionsCompanion data) {
     return TransactionRow(
@@ -2157,6 +2193,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       fixedMovementId: data.fixedMovementId.present
           ? data.fixedMovementId.value
           : this.fixedMovementId,
+      odometerKm: data.odometerKm.present
+          ? data.odometerKm.value
+          : this.odometerKm,
     );
   }
 
@@ -2175,7 +2214,8 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           ..write('notes: $notes, ')
           ..write('debtId: $debtId, ')
           ..write('provisionId: $provisionId, ')
-          ..write('fixedMovementId: $fixedMovementId')
+          ..write('fixedMovementId: $fixedMovementId, ')
+          ..write('odometerKm: $odometerKm')
           ..write(')'))
         .toString();
   }
@@ -2195,6 +2235,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     debtId,
     provisionId,
     fixedMovementId,
+    odometerKm,
   );
   @override
   bool operator ==(Object other) =>
@@ -2212,7 +2253,8 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           other.notes == this.notes &&
           other.debtId == this.debtId &&
           other.provisionId == this.provisionId &&
-          other.fixedMovementId == this.fixedMovementId);
+          other.fixedMovementId == this.fixedMovementId &&
+          other.odometerKm == this.odometerKm);
 }
 
 class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
@@ -2229,6 +2271,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   final Value<String?> debtId;
   final Value<String?> provisionId;
   final Value<String?> fixedMovementId;
+  final Value<int?> odometerKm;
   final Value<int> rowid;
   const TransactionsCompanion({
     this.id = const Value.absent(),
@@ -2244,6 +2287,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.debtId = const Value.absent(),
     this.provisionId = const Value.absent(),
     this.fixedMovementId = const Value.absent(),
+    this.odometerKm = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   TransactionsCompanion.insert({
@@ -2260,6 +2304,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.debtId = const Value.absent(),
     this.provisionId = const Value.absent(),
     this.fixedMovementId = const Value.absent(),
+    this.odometerKm = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        kind = Value(kind),
@@ -2281,6 +2326,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Expression<String>? debtId,
     Expression<String>? provisionId,
     Expression<String>? fixedMovementId,
+    Expression<int>? odometerKm,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2297,6 +2343,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       if (debtId != null) 'debt_id': debtId,
       if (provisionId != null) 'provision_id': provisionId,
       if (fixedMovementId != null) 'fixed_movement_id': fixedMovementId,
+      if (odometerKm != null) 'odometer_km': odometerKm,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2315,6 +2362,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Value<String?>? debtId,
     Value<String?>? provisionId,
     Value<String?>? fixedMovementId,
+    Value<int?>? odometerKm,
     Value<int>? rowid,
   }) {
     return TransactionsCompanion(
@@ -2331,6 +2379,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       debtId: debtId ?? this.debtId,
       provisionId: provisionId ?? this.provisionId,
       fixedMovementId: fixedMovementId ?? this.fixedMovementId,
+      odometerKm: odometerKm ?? this.odometerKm,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2381,6 +2430,9 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     if (fixedMovementId.present) {
       map['fixed_movement_id'] = Variable<String>(fixedMovementId.value);
     }
+    if (odometerKm.present) {
+      map['odometer_km'] = Variable<int>(odometerKm.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2403,6 +2455,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
           ..write('debtId: $debtId, ')
           ..write('provisionId: $provisionId, ')
           ..write('fixedMovementId: $fixedMovementId, ')
+          ..write('odometerKm: $odometerKm, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -4670,6 +4723,49 @@ class $InvestmentsTable extends Investments
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _symbolMeta = const VerificationMeta('symbol');
+  @override
+  late final GeneratedColumn<String> symbol = GeneratedColumn<String>(
+    'symbol',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _unitsMicrosMeta = const VerificationMeta(
+    'unitsMicros',
+  );
+  @override
+  late final GeneratedColumn<int> unitsMicros = GeneratedColumn<int>(
+    'units_micros',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _priceUpdatedAtMeta = const VerificationMeta(
+    'priceUpdatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> priceUpdatedAt =
+      GeneratedColumn<DateTime>(
+        'price_updated_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _investedUsdCentsMeta = const VerificationMeta(
+    'investedUsdCents',
+  );
+  @override
+  late final GeneratedColumn<int> investedUsdCents = GeneratedColumn<int>(
+    'invested_usd_cents',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -4679,6 +4775,10 @@ class $InvestmentsTable extends Investments
     currentValueCents,
     date,
     notes,
+    symbol,
+    unitsMicros,
+    priceUpdatedAt,
+    investedUsdCents,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -4741,6 +4841,39 @@ class $InvestmentsTable extends Investments
         notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
       );
     }
+    if (data.containsKey('symbol')) {
+      context.handle(
+        _symbolMeta,
+        symbol.isAcceptableOrUnknown(data['symbol']!, _symbolMeta),
+      );
+    }
+    if (data.containsKey('units_micros')) {
+      context.handle(
+        _unitsMicrosMeta,
+        unitsMicros.isAcceptableOrUnknown(
+          data['units_micros']!,
+          _unitsMicrosMeta,
+        ),
+      );
+    }
+    if (data.containsKey('price_updated_at')) {
+      context.handle(
+        _priceUpdatedAtMeta,
+        priceUpdatedAt.isAcceptableOrUnknown(
+          data['price_updated_at']!,
+          _priceUpdatedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('invested_usd_cents')) {
+      context.handle(
+        _investedUsdCentsMeta,
+        investedUsdCents.isAcceptableOrUnknown(
+          data['invested_usd_cents']!,
+          _investedUsdCentsMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -4780,6 +4913,22 @@ class $InvestmentsTable extends Investments
         DriftSqlType.string,
         data['${effectivePrefix}notes'],
       ),
+      symbol: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}symbol'],
+      ),
+      unitsMicros: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}units_micros'],
+      ),
+      priceUpdatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}price_updated_at'],
+      ),
+      investedUsdCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}invested_usd_cents'],
+      ),
     );
   }
 
@@ -4800,6 +4949,18 @@ class InvestmentRow extends DataClass implements Insertable<InvestmentRow> {
   final int currentValueCents;
   final DateTime date;
   final String? notes;
+
+  /// Símbolo de bolsa (NVDA, VOO…) para consultar el precio real (v10).
+  final String? symbol;
+
+  /// Cantidad de acciones en millonésimas (permite fracciones) (v10).
+  final int? unitsMicros;
+
+  /// Última vez que el valor se actualizó con el precio de mercado (v10).
+  final DateTime? priceUpdatedAt;
+
+  /// Lo invertido en centavos de dólar, si se pagó en dólares (v11).
+  final int? investedUsdCents;
   const InvestmentRow({
     required this.id,
     required this.name,
@@ -4808,6 +4969,10 @@ class InvestmentRow extends DataClass implements Insertable<InvestmentRow> {
     required this.currentValueCents,
     required this.date,
     this.notes,
+    this.symbol,
+    this.unitsMicros,
+    this.priceUpdatedAt,
+    this.investedUsdCents,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -4825,6 +4990,18 @@ class InvestmentRow extends DataClass implements Insertable<InvestmentRow> {
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
     }
+    if (!nullToAbsent || symbol != null) {
+      map['symbol'] = Variable<String>(symbol);
+    }
+    if (!nullToAbsent || unitsMicros != null) {
+      map['units_micros'] = Variable<int>(unitsMicros);
+    }
+    if (!nullToAbsent || priceUpdatedAt != null) {
+      map['price_updated_at'] = Variable<DateTime>(priceUpdatedAt);
+    }
+    if (!nullToAbsent || investedUsdCents != null) {
+      map['invested_usd_cents'] = Variable<int>(investedUsdCents);
+    }
     return map;
   }
 
@@ -4839,6 +5016,18 @@ class InvestmentRow extends DataClass implements Insertable<InvestmentRow> {
       notes: notes == null && nullToAbsent
           ? const Value.absent()
           : Value(notes),
+      symbol: symbol == null && nullToAbsent
+          ? const Value.absent()
+          : Value(symbol),
+      unitsMicros: unitsMicros == null && nullToAbsent
+          ? const Value.absent()
+          : Value(unitsMicros),
+      priceUpdatedAt: priceUpdatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(priceUpdatedAt),
+      investedUsdCents: investedUsdCents == null && nullToAbsent
+          ? const Value.absent()
+          : Value(investedUsdCents),
     );
   }
 
@@ -4857,6 +5046,10 @@ class InvestmentRow extends DataClass implements Insertable<InvestmentRow> {
       currentValueCents: serializer.fromJson<int>(json['currentValueCents']),
       date: serializer.fromJson<DateTime>(json['date']),
       notes: serializer.fromJson<String?>(json['notes']),
+      symbol: serializer.fromJson<String?>(json['symbol']),
+      unitsMicros: serializer.fromJson<int?>(json['unitsMicros']),
+      priceUpdatedAt: serializer.fromJson<DateTime?>(json['priceUpdatedAt']),
+      investedUsdCents: serializer.fromJson<int?>(json['investedUsdCents']),
     );
   }
   @override
@@ -4872,6 +5065,10 @@ class InvestmentRow extends DataClass implements Insertable<InvestmentRow> {
       'currentValueCents': serializer.toJson<int>(currentValueCents),
       'date': serializer.toJson<DateTime>(date),
       'notes': serializer.toJson<String?>(notes),
+      'symbol': serializer.toJson<String?>(symbol),
+      'unitsMicros': serializer.toJson<int?>(unitsMicros),
+      'priceUpdatedAt': serializer.toJson<DateTime?>(priceUpdatedAt),
+      'investedUsdCents': serializer.toJson<int?>(investedUsdCents),
     };
   }
 
@@ -4883,6 +5080,10 @@ class InvestmentRow extends DataClass implements Insertable<InvestmentRow> {
     int? currentValueCents,
     DateTime? date,
     Value<String?> notes = const Value.absent(),
+    Value<String?> symbol = const Value.absent(),
+    Value<int?> unitsMicros = const Value.absent(),
+    Value<DateTime?> priceUpdatedAt = const Value.absent(),
+    Value<int?> investedUsdCents = const Value.absent(),
   }) => InvestmentRow(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -4891,6 +5092,14 @@ class InvestmentRow extends DataClass implements Insertable<InvestmentRow> {
     currentValueCents: currentValueCents ?? this.currentValueCents,
     date: date ?? this.date,
     notes: notes.present ? notes.value : this.notes,
+    symbol: symbol.present ? symbol.value : this.symbol,
+    unitsMicros: unitsMicros.present ? unitsMicros.value : this.unitsMicros,
+    priceUpdatedAt: priceUpdatedAt.present
+        ? priceUpdatedAt.value
+        : this.priceUpdatedAt,
+    investedUsdCents: investedUsdCents.present
+        ? investedUsdCents.value
+        : this.investedUsdCents,
   );
   InvestmentRow copyWithCompanion(InvestmentsCompanion data) {
     return InvestmentRow(
@@ -4905,6 +5114,16 @@ class InvestmentRow extends DataClass implements Insertable<InvestmentRow> {
           : this.currentValueCents,
       date: data.date.present ? data.date.value : this.date,
       notes: data.notes.present ? data.notes.value : this.notes,
+      symbol: data.symbol.present ? data.symbol.value : this.symbol,
+      unitsMicros: data.unitsMicros.present
+          ? data.unitsMicros.value
+          : this.unitsMicros,
+      priceUpdatedAt: data.priceUpdatedAt.present
+          ? data.priceUpdatedAt.value
+          : this.priceUpdatedAt,
+      investedUsdCents: data.investedUsdCents.present
+          ? data.investedUsdCents.value
+          : this.investedUsdCents,
     );
   }
 
@@ -4917,7 +5136,11 @@ class InvestmentRow extends DataClass implements Insertable<InvestmentRow> {
           ..write('investedCents: $investedCents, ')
           ..write('currentValueCents: $currentValueCents, ')
           ..write('date: $date, ')
-          ..write('notes: $notes')
+          ..write('notes: $notes, ')
+          ..write('symbol: $symbol, ')
+          ..write('unitsMicros: $unitsMicros, ')
+          ..write('priceUpdatedAt: $priceUpdatedAt, ')
+          ..write('investedUsdCents: $investedUsdCents')
           ..write(')'))
         .toString();
   }
@@ -4931,6 +5154,10 @@ class InvestmentRow extends DataClass implements Insertable<InvestmentRow> {
     currentValueCents,
     date,
     notes,
+    symbol,
+    unitsMicros,
+    priceUpdatedAt,
+    investedUsdCents,
   );
   @override
   bool operator ==(Object other) =>
@@ -4942,7 +5169,11 @@ class InvestmentRow extends DataClass implements Insertable<InvestmentRow> {
           other.investedCents == this.investedCents &&
           other.currentValueCents == this.currentValueCents &&
           other.date == this.date &&
-          other.notes == this.notes);
+          other.notes == this.notes &&
+          other.symbol == this.symbol &&
+          other.unitsMicros == this.unitsMicros &&
+          other.priceUpdatedAt == this.priceUpdatedAt &&
+          other.investedUsdCents == this.investedUsdCents);
 }
 
 class InvestmentsCompanion extends UpdateCompanion<InvestmentRow> {
@@ -4953,6 +5184,10 @@ class InvestmentsCompanion extends UpdateCompanion<InvestmentRow> {
   final Value<int> currentValueCents;
   final Value<DateTime> date;
   final Value<String?> notes;
+  final Value<String?> symbol;
+  final Value<int?> unitsMicros;
+  final Value<DateTime?> priceUpdatedAt;
+  final Value<int?> investedUsdCents;
   final Value<int> rowid;
   const InvestmentsCompanion({
     this.id = const Value.absent(),
@@ -4962,6 +5197,10 @@ class InvestmentsCompanion extends UpdateCompanion<InvestmentRow> {
     this.currentValueCents = const Value.absent(),
     this.date = const Value.absent(),
     this.notes = const Value.absent(),
+    this.symbol = const Value.absent(),
+    this.unitsMicros = const Value.absent(),
+    this.priceUpdatedAt = const Value.absent(),
+    this.investedUsdCents = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   InvestmentsCompanion.insert({
@@ -4972,6 +5211,10 @@ class InvestmentsCompanion extends UpdateCompanion<InvestmentRow> {
     required int currentValueCents,
     required DateTime date,
     this.notes = const Value.absent(),
+    this.symbol = const Value.absent(),
+    this.unitsMicros = const Value.absent(),
+    this.priceUpdatedAt = const Value.absent(),
+    this.investedUsdCents = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        name = Value(name),
@@ -4987,6 +5230,10 @@ class InvestmentsCompanion extends UpdateCompanion<InvestmentRow> {
     Expression<int>? currentValueCents,
     Expression<DateTime>? date,
     Expression<String>? notes,
+    Expression<String>? symbol,
+    Expression<int>? unitsMicros,
+    Expression<DateTime>? priceUpdatedAt,
+    Expression<int>? investedUsdCents,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -4997,6 +5244,10 @@ class InvestmentsCompanion extends UpdateCompanion<InvestmentRow> {
       if (currentValueCents != null) 'current_value_cents': currentValueCents,
       if (date != null) 'date': date,
       if (notes != null) 'notes': notes,
+      if (symbol != null) 'symbol': symbol,
+      if (unitsMicros != null) 'units_micros': unitsMicros,
+      if (priceUpdatedAt != null) 'price_updated_at': priceUpdatedAt,
+      if (investedUsdCents != null) 'invested_usd_cents': investedUsdCents,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -5009,6 +5260,10 @@ class InvestmentsCompanion extends UpdateCompanion<InvestmentRow> {
     Value<int>? currentValueCents,
     Value<DateTime>? date,
     Value<String?>? notes,
+    Value<String?>? symbol,
+    Value<int?>? unitsMicros,
+    Value<DateTime?>? priceUpdatedAt,
+    Value<int?>? investedUsdCents,
     Value<int>? rowid,
   }) {
     return InvestmentsCompanion(
@@ -5019,6 +5274,10 @@ class InvestmentsCompanion extends UpdateCompanion<InvestmentRow> {
       currentValueCents: currentValueCents ?? this.currentValueCents,
       date: date ?? this.date,
       notes: notes ?? this.notes,
+      symbol: symbol ?? this.symbol,
+      unitsMicros: unitsMicros ?? this.unitsMicros,
+      priceUpdatedAt: priceUpdatedAt ?? this.priceUpdatedAt,
+      investedUsdCents: investedUsdCents ?? this.investedUsdCents,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -5049,6 +5308,18 @@ class InvestmentsCompanion extends UpdateCompanion<InvestmentRow> {
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
     }
+    if (symbol.present) {
+      map['symbol'] = Variable<String>(symbol.value);
+    }
+    if (unitsMicros.present) {
+      map['units_micros'] = Variable<int>(unitsMicros.value);
+    }
+    if (priceUpdatedAt.present) {
+      map['price_updated_at'] = Variable<DateTime>(priceUpdatedAt.value);
+    }
+    if (investedUsdCents.present) {
+      map['invested_usd_cents'] = Variable<int>(investedUsdCents.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -5065,6 +5336,10 @@ class InvestmentsCompanion extends UpdateCompanion<InvestmentRow> {
           ..write('currentValueCents: $currentValueCents, ')
           ..write('date: $date, ')
           ..write('notes: $notes, ')
+          ..write('symbol: $symbol, ')
+          ..write('unitsMicros: $unitsMicros, ')
+          ..write('priceUpdatedAt: $priceUpdatedAt, ')
+          ..write('investedUsdCents: $investedUsdCents, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -5270,6 +5545,17 @@ class $FinanceSettingsTableTable extends FinanceSettingsTable
       ).withConverter<ReviewFrequency>(
         $FinanceSettingsTableTable.$converteraiReviewFrequency,
       );
+  static const VerificationMeta _monthlySalaryCentsMeta =
+      const VerificationMeta('monthlySalaryCents');
+  @override
+  late final GeneratedColumn<int> monthlySalaryCents = GeneratedColumn<int>(
+    'monthly_salary_cents',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -5288,6 +5574,7 @@ class $FinanceSettingsTableTable extends FinanceSettingsTable
     appearance,
     aiEnabled,
     aiReviewFrequency,
+    monthlySalaryCents,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -5420,6 +5707,15 @@ class $FinanceSettingsTableTable extends FinanceSettingsTable
         aiEnabled.isAcceptableOrUnknown(data['ai_enabled']!, _aiEnabledMeta),
       );
     }
+    if (data.containsKey('monthly_salary_cents')) {
+      context.handle(
+        _monthlySalaryCentsMeta,
+        monthlySalaryCents.isAcceptableOrUnknown(
+          data['monthly_salary_cents']!,
+          _monthlySalaryCentsMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -5498,6 +5794,10 @@ class $FinanceSettingsTableTable extends FinanceSettingsTable
               data['${effectivePrefix}ai_review_frequency'],
             )!,
           ),
+      monthlySalaryCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}monthly_salary_cents'],
+      )!,
     );
   }
 
@@ -5531,6 +5831,9 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
   final Appearance appearance;
   final bool aiEnabled;
   final ReviewFrequency aiReviewFrequency;
+
+  /// Sueldo neto mensual configurado; 0 = se deduce (v14).
+  final int monthlySalaryCents;
   const SettingsRow({
     required this.id,
     required this.savingsTargetBasisPoints,
@@ -5548,6 +5851,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     required this.appearance,
     required this.aiEnabled,
     required this.aiReviewFrequency,
+    required this.monthlySalaryCents,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -5584,6 +5888,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
         ),
       );
     }
+    map['monthly_salary_cents'] = Variable<int>(monthlySalaryCents);
     return map;
   }
 
@@ -5605,6 +5910,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       appearance: Value(appearance),
       aiEnabled: Value(aiEnabled),
       aiReviewFrequency: Value(aiReviewFrequency),
+      monthlySalaryCents: Value(monthlySalaryCents),
     );
   }
 
@@ -5643,6 +5949,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       aiEnabled: serializer.fromJson<bool>(json['aiEnabled']),
       aiReviewFrequency: $FinanceSettingsTableTable.$converteraiReviewFrequency
           .fromJson(serializer.fromJson<String>(json['aiReviewFrequency'])),
+      monthlySalaryCents: serializer.fromJson<int>(json['monthlySalaryCents']),
     );
   }
   @override
@@ -5677,6 +5984,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           aiReviewFrequency,
         ),
       ),
+      'monthlySalaryCents': serializer.toJson<int>(monthlySalaryCents),
     };
   }
 
@@ -5697,6 +6005,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     Appearance? appearance,
     bool? aiEnabled,
     ReviewFrequency? aiReviewFrequency,
+    int? monthlySalaryCents,
   }) => SettingsRow(
     id: id ?? this.id,
     savingsTargetBasisPoints:
@@ -5719,6 +6028,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     appearance: appearance ?? this.appearance,
     aiEnabled: aiEnabled ?? this.aiEnabled,
     aiReviewFrequency: aiReviewFrequency ?? this.aiReviewFrequency,
+    monthlySalaryCents: monthlySalaryCents ?? this.monthlySalaryCents,
   );
   SettingsRow copyWithCompanion(FinanceSettingsTableCompanion data) {
     return SettingsRow(
@@ -5764,6 +6074,9 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       aiReviewFrequency: data.aiReviewFrequency.present
           ? data.aiReviewFrequency.value
           : this.aiReviewFrequency,
+      monthlySalaryCents: data.monthlySalaryCents.present
+          ? data.monthlySalaryCents.value
+          : this.monthlySalaryCents,
     );
   }
 
@@ -5785,7 +6098,8 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           ..write('kidsMonthlyBufferCents: $kidsMonthlyBufferCents, ')
           ..write('appearance: $appearance, ')
           ..write('aiEnabled: $aiEnabled, ')
-          ..write('aiReviewFrequency: $aiReviewFrequency')
+          ..write('aiReviewFrequency: $aiReviewFrequency, ')
+          ..write('monthlySalaryCents: $monthlySalaryCents')
           ..write(')'))
         .toString();
   }
@@ -5808,6 +6122,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     appearance,
     aiEnabled,
     aiReviewFrequency,
+    monthlySalaryCents,
   );
   @override
   bool operator ==(Object other) =>
@@ -5828,7 +6143,8 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           other.kidsMonthlyBufferCents == this.kidsMonthlyBufferCents &&
           other.appearance == this.appearance &&
           other.aiEnabled == this.aiEnabled &&
-          other.aiReviewFrequency == this.aiReviewFrequency);
+          other.aiReviewFrequency == this.aiReviewFrequency &&
+          other.monthlySalaryCents == this.monthlySalaryCents);
 }
 
 class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
@@ -5848,6 +6164,7 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
   final Value<Appearance> appearance;
   final Value<bool> aiEnabled;
   final Value<ReviewFrequency> aiReviewFrequency;
+  final Value<int> monthlySalaryCents;
   const FinanceSettingsTableCompanion({
     this.id = const Value.absent(),
     this.savingsTargetBasisPoints = const Value.absent(),
@@ -5865,6 +6182,7 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     this.appearance = const Value.absent(),
     this.aiEnabled = const Value.absent(),
     this.aiReviewFrequency = const Value.absent(),
+    this.monthlySalaryCents = const Value.absent(),
   });
   FinanceSettingsTableCompanion.insert({
     this.id = const Value.absent(),
@@ -5883,6 +6201,7 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     this.appearance = const Value.absent(),
     this.aiEnabled = const Value.absent(),
     this.aiReviewFrequency = const Value.absent(),
+    this.monthlySalaryCents = const Value.absent(),
   }) : savingsTargetBasisPoints = Value(savingsTargetBasisPoints),
        warningFromBasisPoints = Value(warningFromBasisPoints),
        criticalAboveBasisPoints = Value(criticalAboveBasisPoints),
@@ -5904,6 +6223,7 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     Expression<String>? appearance,
     Expression<bool>? aiEnabled,
     Expression<String>? aiReviewFrequency,
+    Expression<int>? monthlySalaryCents,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -5927,6 +6247,8 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
       if (appearance != null) 'appearance': appearance,
       if (aiEnabled != null) 'ai_enabled': aiEnabled,
       if (aiReviewFrequency != null) 'ai_review_frequency': aiReviewFrequency,
+      if (monthlySalaryCents != null)
+        'monthly_salary_cents': monthlySalaryCents,
     });
   }
 
@@ -5947,6 +6269,7 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     Value<Appearance>? appearance,
     Value<bool>? aiEnabled,
     Value<ReviewFrequency>? aiReviewFrequency,
+    Value<int>? monthlySalaryCents,
   }) {
     return FinanceSettingsTableCompanion(
       id: id ?? this.id,
@@ -5970,6 +6293,7 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
       appearance: appearance ?? this.appearance,
       aiEnabled: aiEnabled ?? this.aiEnabled,
       aiReviewFrequency: aiReviewFrequency ?? this.aiReviewFrequency,
+      monthlySalaryCents: monthlySalaryCents ?? this.monthlySalaryCents,
     );
   }
 
@@ -6040,6 +6364,9 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
         ),
       );
     }
+    if (monthlySalaryCents.present) {
+      map['monthly_salary_cents'] = Variable<int>(monthlySalaryCents.value);
+    }
     return map;
   }
 
@@ -6061,7 +6388,8 @@ class FinanceSettingsTableCompanion extends UpdateCompanion<SettingsRow> {
           ..write('kidsMonthlyBufferCents: $kidsMonthlyBufferCents, ')
           ..write('appearance: $appearance, ')
           ..write('aiEnabled: $aiEnabled, ')
-          ..write('aiReviewFrequency: $aiReviewFrequency')
+          ..write('aiReviewFrequency: $aiReviewFrequency, ')
+          ..write('monthlySalaryCents: $monthlySalaryCents')
           ..write(')'))
         .toString();
   }
@@ -6176,6 +6504,41 @@ class $FixedMovementsTable extends FixedMovements
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _debtIdMeta = const VerificationMeta('debtId');
+  @override
+  late final GeneratedColumn<String> debtId = GeneratedColumn<String>(
+    'debt_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _remindOnMeta = const VerificationMeta(
+    'remindOn',
+  );
+  @override
+  late final GeneratedColumn<DateTime> remindOn = GeneratedColumn<DateTime>(
+    'remind_on',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _autoDebitMeta = const VerificationMeta(
+    'autoDebit',
+  );
+  @override
+  late final GeneratedColumn<bool> autoDebit = GeneratedColumn<bool>(
+    'auto_debit',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("auto_debit" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -6187,6 +6550,9 @@ class $FixedMovementsTable extends FixedMovements
     isActive,
     isVariable,
     lastPostedOn,
+    debtId,
+    remindOn,
+    autoDebit,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -6266,6 +6632,24 @@ class $FixedMovementsTable extends FixedMovements
         ),
       );
     }
+    if (data.containsKey('debt_id')) {
+      context.handle(
+        _debtIdMeta,
+        debtId.isAcceptableOrUnknown(data['debt_id']!, _debtIdMeta),
+      );
+    }
+    if (data.containsKey('remind_on')) {
+      context.handle(
+        _remindOnMeta,
+        remindOn.isAcceptableOrUnknown(data['remind_on']!, _remindOnMeta),
+      );
+    }
+    if (data.containsKey('auto_debit')) {
+      context.handle(
+        _autoDebitMeta,
+        autoDebit.isAcceptableOrUnknown(data['auto_debit']!, _autoDebitMeta),
+      );
+    }
     return context;
   }
 
@@ -6313,6 +6697,18 @@ class $FixedMovementsTable extends FixedMovements
         DriftSqlType.dateTime,
         data['${effectivePrefix}last_posted_on'],
       ),
+      debtId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}debt_id'],
+      ),
+      remindOn: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}remind_on'],
+      ),
+      autoDebit: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}auto_debit'],
+      )!,
     );
   }
 
@@ -6336,6 +6732,15 @@ class FixedMovementRow extends DataClass
   final bool isActive;
   final bool isVariable;
   final DateTime? lastPostedOn;
+
+  /// Crédito que paga (v11). Sin FK: se agrega en una migración.
+  final String? debtId;
+
+  /// Factura pospuesta hasta este día (v12).
+  final DateTime? remindOn;
+
+  /// Débito automático: se registra pagado sin preguntar (v13).
+  final bool autoDebit;
   const FixedMovementRow({
     required this.id,
     required this.name,
@@ -6346,6 +6751,9 @@ class FixedMovementRow extends DataClass
     required this.isActive,
     required this.isVariable,
     this.lastPostedOn,
+    this.debtId,
+    this.remindOn,
+    required this.autoDebit,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -6365,6 +6773,13 @@ class FixedMovementRow extends DataClass
     if (!nullToAbsent || lastPostedOn != null) {
       map['last_posted_on'] = Variable<DateTime>(lastPostedOn);
     }
+    if (!nullToAbsent || debtId != null) {
+      map['debt_id'] = Variable<String>(debtId);
+    }
+    if (!nullToAbsent || remindOn != null) {
+      map['remind_on'] = Variable<DateTime>(remindOn);
+    }
+    map['auto_debit'] = Variable<bool>(autoDebit);
     return map;
   }
 
@@ -6381,6 +6796,13 @@ class FixedMovementRow extends DataClass
       lastPostedOn: lastPostedOn == null && nullToAbsent
           ? const Value.absent()
           : Value(lastPostedOn),
+      debtId: debtId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(debtId),
+      remindOn: remindOn == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remindOn),
+      autoDebit: Value(autoDebit),
     );
   }
 
@@ -6401,6 +6823,9 @@ class FixedMovementRow extends DataClass
       isActive: serializer.fromJson<bool>(json['isActive']),
       isVariable: serializer.fromJson<bool>(json['isVariable']),
       lastPostedOn: serializer.fromJson<DateTime?>(json['lastPostedOn']),
+      debtId: serializer.fromJson<String?>(json['debtId']),
+      remindOn: serializer.fromJson<DateTime?>(json['remindOn']),
+      autoDebit: serializer.fromJson<bool>(json['autoDebit']),
     );
   }
   @override
@@ -6418,6 +6843,9 @@ class FixedMovementRow extends DataClass
       'isActive': serializer.toJson<bool>(isActive),
       'isVariable': serializer.toJson<bool>(isVariable),
       'lastPostedOn': serializer.toJson<DateTime?>(lastPostedOn),
+      'debtId': serializer.toJson<String?>(debtId),
+      'remindOn': serializer.toJson<DateTime?>(remindOn),
+      'autoDebit': serializer.toJson<bool>(autoDebit),
     };
   }
 
@@ -6431,6 +6859,9 @@ class FixedMovementRow extends DataClass
     bool? isActive,
     bool? isVariable,
     Value<DateTime?> lastPostedOn = const Value.absent(),
+    Value<String?> debtId = const Value.absent(),
+    Value<DateTime?> remindOn = const Value.absent(),
+    bool? autoDebit,
   }) => FixedMovementRow(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -6441,6 +6872,9 @@ class FixedMovementRow extends DataClass
     isActive: isActive ?? this.isActive,
     isVariable: isVariable ?? this.isVariable,
     lastPostedOn: lastPostedOn.present ? lastPostedOn.value : this.lastPostedOn,
+    debtId: debtId.present ? debtId.value : this.debtId,
+    remindOn: remindOn.present ? remindOn.value : this.remindOn,
+    autoDebit: autoDebit ?? this.autoDebit,
   );
   FixedMovementRow copyWithCompanion(FixedMovementsCompanion data) {
     return FixedMovementRow(
@@ -6463,6 +6897,9 @@ class FixedMovementRow extends DataClass
       lastPostedOn: data.lastPostedOn.present
           ? data.lastPostedOn.value
           : this.lastPostedOn,
+      debtId: data.debtId.present ? data.debtId.value : this.debtId,
+      remindOn: data.remindOn.present ? data.remindOn.value : this.remindOn,
+      autoDebit: data.autoDebit.present ? data.autoDebit.value : this.autoDebit,
     );
   }
 
@@ -6477,7 +6914,10 @@ class FixedMovementRow extends DataClass
           ..write('dayOfMonth: $dayOfMonth, ')
           ..write('isActive: $isActive, ')
           ..write('isVariable: $isVariable, ')
-          ..write('lastPostedOn: $lastPostedOn')
+          ..write('lastPostedOn: $lastPostedOn, ')
+          ..write('debtId: $debtId, ')
+          ..write('remindOn: $remindOn, ')
+          ..write('autoDebit: $autoDebit')
           ..write(')'))
         .toString();
   }
@@ -6493,6 +6933,9 @@ class FixedMovementRow extends DataClass
     isActive,
     isVariable,
     lastPostedOn,
+    debtId,
+    remindOn,
+    autoDebit,
   );
   @override
   bool operator ==(Object other) =>
@@ -6506,7 +6949,10 @@ class FixedMovementRow extends DataClass
           other.dayOfMonth == this.dayOfMonth &&
           other.isActive == this.isActive &&
           other.isVariable == this.isVariable &&
-          other.lastPostedOn == this.lastPostedOn);
+          other.lastPostedOn == this.lastPostedOn &&
+          other.debtId == this.debtId &&
+          other.remindOn == this.remindOn &&
+          other.autoDebit == this.autoDebit);
 }
 
 class FixedMovementsCompanion extends UpdateCompanion<FixedMovementRow> {
@@ -6519,6 +6965,9 @@ class FixedMovementsCompanion extends UpdateCompanion<FixedMovementRow> {
   final Value<bool> isActive;
   final Value<bool> isVariable;
   final Value<DateTime?> lastPostedOn;
+  final Value<String?> debtId;
+  final Value<DateTime?> remindOn;
+  final Value<bool> autoDebit;
   final Value<int> rowid;
   const FixedMovementsCompanion({
     this.id = const Value.absent(),
@@ -6530,6 +6979,9 @@ class FixedMovementsCompanion extends UpdateCompanion<FixedMovementRow> {
     this.isActive = const Value.absent(),
     this.isVariable = const Value.absent(),
     this.lastPostedOn = const Value.absent(),
+    this.debtId = const Value.absent(),
+    this.remindOn = const Value.absent(),
+    this.autoDebit = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   FixedMovementsCompanion.insert({
@@ -6542,6 +6994,9 @@ class FixedMovementsCompanion extends UpdateCompanion<FixedMovementRow> {
     required bool isActive,
     this.isVariable = const Value.absent(),
     this.lastPostedOn = const Value.absent(),
+    this.debtId = const Value.absent(),
+    this.remindOn = const Value.absent(),
+    this.autoDebit = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        name = Value(name),
@@ -6560,6 +7015,9 @@ class FixedMovementsCompanion extends UpdateCompanion<FixedMovementRow> {
     Expression<bool>? isActive,
     Expression<bool>? isVariable,
     Expression<DateTime>? lastPostedOn,
+    Expression<String>? debtId,
+    Expression<DateTime>? remindOn,
+    Expression<bool>? autoDebit,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -6572,6 +7030,9 @@ class FixedMovementsCompanion extends UpdateCompanion<FixedMovementRow> {
       if (isActive != null) 'is_active': isActive,
       if (isVariable != null) 'is_variable': isVariable,
       if (lastPostedOn != null) 'last_posted_on': lastPostedOn,
+      if (debtId != null) 'debt_id': debtId,
+      if (remindOn != null) 'remind_on': remindOn,
+      if (autoDebit != null) 'auto_debit': autoDebit,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -6586,6 +7047,9 @@ class FixedMovementsCompanion extends UpdateCompanion<FixedMovementRow> {
     Value<bool>? isActive,
     Value<bool>? isVariable,
     Value<DateTime?>? lastPostedOn,
+    Value<String?>? debtId,
+    Value<DateTime?>? remindOn,
+    Value<bool>? autoDebit,
     Value<int>? rowid,
   }) {
     return FixedMovementsCompanion(
@@ -6598,6 +7062,9 @@ class FixedMovementsCompanion extends UpdateCompanion<FixedMovementRow> {
       isActive: isActive ?? this.isActive,
       isVariable: isVariable ?? this.isVariable,
       lastPostedOn: lastPostedOn ?? this.lastPostedOn,
+      debtId: debtId ?? this.debtId,
+      remindOn: remindOn ?? this.remindOn,
+      autoDebit: autoDebit ?? this.autoDebit,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -6634,6 +7101,15 @@ class FixedMovementsCompanion extends UpdateCompanion<FixedMovementRow> {
     if (lastPostedOn.present) {
       map['last_posted_on'] = Variable<DateTime>(lastPostedOn.value);
     }
+    if (debtId.present) {
+      map['debt_id'] = Variable<String>(debtId.value);
+    }
+    if (remindOn.present) {
+      map['remind_on'] = Variable<DateTime>(remindOn.value);
+    }
+    if (autoDebit.present) {
+      map['auto_debit'] = Variable<bool>(autoDebit.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -6652,6 +7128,9 @@ class FixedMovementsCompanion extends UpdateCompanion<FixedMovementRow> {
           ..write('isActive: $isActive, ')
           ..write('isVariable: $isVariable, ')
           ..write('lastPostedOn: $lastPostedOn, ')
+          ..write('debtId: $debtId, ')
+          ..write('remindOn: $remindOn, ')
+          ..write('autoDebit: $autoDebit, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -9635,6 +10114,7 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       Value<String?> debtId,
       Value<String?> provisionId,
       Value<String?> fixedMovementId,
+      Value<int?> odometerKm,
       Value<int> rowid,
     });
 typedef $$TransactionsTableUpdateCompanionBuilder =
@@ -9652,6 +10132,7 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<String?> debtId,
       Value<String?> provisionId,
       Value<String?> fixedMovementId,
+      Value<int?> odometerKm,
       Value<int> rowid,
     });
 
@@ -9769,6 +10250,11 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<String> get fixedMovementId => $composableBuilder(
     column: $table.fixedMovementId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get odometerKm => $composableBuilder(
+    column: $table.odometerKm,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9901,6 +10387,11 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get odometerKm => $composableBuilder(
+    column: $table.odometerKm,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$CategoriesTableOrderingComposer get categoryId {
     final $$CategoriesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -10018,6 +10509,11 @@ class $$TransactionsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<int> get odometerKm => $composableBuilder(
+    column: $table.odometerKm,
+    builder: (column) => column,
+  );
+
   $$CategoriesTableAnnotationComposer get categoryId {
     final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -10129,6 +10625,7 @@ class $$TransactionsTableTableManager
                 Value<String?> debtId = const Value.absent(),
                 Value<String?> provisionId = const Value.absent(),
                 Value<String?> fixedMovementId = const Value.absent(),
+                Value<int?> odometerKm = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TransactionsCompanion(
                 id: id,
@@ -10144,6 +10641,7 @@ class $$TransactionsTableTableManager
                 debtId: debtId,
                 provisionId: provisionId,
                 fixedMovementId: fixedMovementId,
+                odometerKm: odometerKm,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -10161,6 +10659,7 @@ class $$TransactionsTableTableManager
                 Value<String?> debtId = const Value.absent(),
                 Value<String?> provisionId = const Value.absent(),
                 Value<String?> fixedMovementId = const Value.absent(),
+                Value<int?> odometerKm = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TransactionsCompanion.insert(
                 id: id,
@@ -10176,6 +10675,7 @@ class $$TransactionsTableTableManager
                 debtId: debtId,
                 provisionId: provisionId,
                 fixedMovementId: fixedMovementId,
+                odometerKm: odometerKm,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -11890,6 +12390,10 @@ typedef $$InvestmentsTableCreateCompanionBuilder =
       required int currentValueCents,
       required DateTime date,
       Value<String?> notes,
+      Value<String?> symbol,
+      Value<int?> unitsMicros,
+      Value<DateTime?> priceUpdatedAt,
+      Value<int?> investedUsdCents,
       Value<int> rowid,
     });
 typedef $$InvestmentsTableUpdateCompanionBuilder =
@@ -11901,6 +12405,10 @@ typedef $$InvestmentsTableUpdateCompanionBuilder =
       Value<int> currentValueCents,
       Value<DateTime> date,
       Value<String?> notes,
+      Value<String?> symbol,
+      Value<int?> unitsMicros,
+      Value<DateTime?> priceUpdatedAt,
+      Value<int?> investedUsdCents,
       Value<int> rowid,
     });
 
@@ -11948,6 +12456,26 @@ class $$InvestmentsTableFilterComposer
     column: $table.notes,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnFilters<String> get symbol => $composableBuilder(
+    column: $table.symbol,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get unitsMicros => $composableBuilder(
+    column: $table.unitsMicros,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get priceUpdatedAt => $composableBuilder(
+    column: $table.priceUpdatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get investedUsdCents => $composableBuilder(
+    column: $table.investedUsdCents,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$InvestmentsTableOrderingComposer
@@ -11993,6 +12521,26 @@ class $$InvestmentsTableOrderingComposer
     column: $table.notes,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get symbol => $composableBuilder(
+    column: $table.symbol,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get unitsMicros => $composableBuilder(
+    column: $table.unitsMicros,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get priceUpdatedAt => $composableBuilder(
+    column: $table.priceUpdatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get investedUsdCents => $composableBuilder(
+    column: $table.investedUsdCents,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$InvestmentsTableAnnotationComposer
@@ -12028,6 +12576,24 @@ class $$InvestmentsTableAnnotationComposer
 
   GeneratedColumn<String> get notes =>
       $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<String> get symbol =>
+      $composableBuilder(column: $table.symbol, builder: (column) => column);
+
+  GeneratedColumn<int> get unitsMicros => $composableBuilder(
+    column: $table.unitsMicros,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get priceUpdatedAt => $composableBuilder(
+    column: $table.priceUpdatedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get investedUsdCents => $composableBuilder(
+    column: $table.investedUsdCents,
+    builder: (column) => column,
+  );
 }
 
 class $$InvestmentsTableTableManager
@@ -12068,6 +12634,10 @@ class $$InvestmentsTableTableManager
                 Value<int> currentValueCents = const Value.absent(),
                 Value<DateTime> date = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
+                Value<String?> symbol = const Value.absent(),
+                Value<int?> unitsMicros = const Value.absent(),
+                Value<DateTime?> priceUpdatedAt = const Value.absent(),
+                Value<int?> investedUsdCents = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => InvestmentsCompanion(
                 id: id,
@@ -12077,6 +12647,10 @@ class $$InvestmentsTableTableManager
                 currentValueCents: currentValueCents,
                 date: date,
                 notes: notes,
+                symbol: symbol,
+                unitsMicros: unitsMicros,
+                priceUpdatedAt: priceUpdatedAt,
+                investedUsdCents: investedUsdCents,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -12088,6 +12662,10 @@ class $$InvestmentsTableTableManager
                 required int currentValueCents,
                 required DateTime date,
                 Value<String?> notes = const Value.absent(),
+                Value<String?> symbol = const Value.absent(),
+                Value<int?> unitsMicros = const Value.absent(),
+                Value<DateTime?> priceUpdatedAt = const Value.absent(),
+                Value<int?> investedUsdCents = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => InvestmentsCompanion.insert(
                 id: id,
@@ -12097,6 +12675,10 @@ class $$InvestmentsTableTableManager
                 currentValueCents: currentValueCents,
                 date: date,
                 notes: notes,
+                symbol: symbol,
+                unitsMicros: unitsMicros,
+                priceUpdatedAt: priceUpdatedAt,
+                investedUsdCents: investedUsdCents,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -12151,6 +12733,7 @@ typedef $$FinanceSettingsTableTableCreateCompanionBuilder =
       Value<Appearance> appearance,
       Value<bool> aiEnabled,
       Value<ReviewFrequency> aiReviewFrequency,
+      Value<int> monthlySalaryCents,
     });
 typedef $$FinanceSettingsTableTableUpdateCompanionBuilder =
     FinanceSettingsTableCompanion Function({
@@ -12170,6 +12753,7 @@ typedef $$FinanceSettingsTableTableUpdateCompanionBuilder =
       Value<Appearance> appearance,
       Value<bool> aiEnabled,
       Value<ReviewFrequency> aiReviewFrequency,
+      Value<int> monthlySalaryCents,
     });
 
 class $$FinanceSettingsTableTableFilterComposer
@@ -12262,6 +12846,11 @@ class $$FinanceSettingsTableTableFilterComposer
     column: $table.aiReviewFrequency,
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
+
+  ColumnFilters<int> get monthlySalaryCents => $composableBuilder(
+    column: $table.monthlySalaryCents,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$FinanceSettingsTableTableOrderingComposer
@@ -12352,6 +12941,11 @@ class $$FinanceSettingsTableTableOrderingComposer
     column: $table.aiReviewFrequency,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get monthlySalaryCents => $composableBuilder(
+    column: $table.monthlySalaryCents,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$FinanceSettingsTableTableAnnotationComposer
@@ -12438,6 +13032,11 @@ class $$FinanceSettingsTableTableAnnotationComposer
     column: $table.aiReviewFrequency,
     builder: (column) => column,
   );
+
+  GeneratedColumn<int> get monthlySalaryCents => $composableBuilder(
+    column: $table.monthlySalaryCents,
+    builder: (column) => column,
+  );
 }
 
 class $$FinanceSettingsTableTableTableManager
@@ -12499,6 +13098,7 @@ class $$FinanceSettingsTableTableTableManager
                 Value<Appearance> appearance = const Value.absent(),
                 Value<bool> aiEnabled = const Value.absent(),
                 Value<ReviewFrequency> aiReviewFrequency = const Value.absent(),
+                Value<int> monthlySalaryCents = const Value.absent(),
               }) => FinanceSettingsTableCompanion(
                 id: id,
                 savingsTargetBasisPoints: savingsTargetBasisPoints,
@@ -12516,6 +13116,7 @@ class $$FinanceSettingsTableTableTableManager
                 appearance: appearance,
                 aiEnabled: aiEnabled,
                 aiReviewFrequency: aiReviewFrequency,
+                monthlySalaryCents: monthlySalaryCents,
               ),
           createCompanionCallback:
               ({
@@ -12535,6 +13136,7 @@ class $$FinanceSettingsTableTableTableManager
                 Value<Appearance> appearance = const Value.absent(),
                 Value<bool> aiEnabled = const Value.absent(),
                 Value<ReviewFrequency> aiReviewFrequency = const Value.absent(),
+                Value<int> monthlySalaryCents = const Value.absent(),
               }) => FinanceSettingsTableCompanion.insert(
                 id: id,
                 savingsTargetBasisPoints: savingsTargetBasisPoints,
@@ -12552,6 +13154,7 @@ class $$FinanceSettingsTableTableTableManager
                 appearance: appearance,
                 aiEnabled: aiEnabled,
                 aiReviewFrequency: aiReviewFrequency,
+                monthlySalaryCents: monthlySalaryCents,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -12598,6 +13201,9 @@ typedef $$FixedMovementsTableCreateCompanionBuilder =
       required bool isActive,
       Value<bool> isVariable,
       Value<DateTime?> lastPostedOn,
+      Value<String?> debtId,
+      Value<DateTime?> remindOn,
+      Value<bool> autoDebit,
       Value<int> rowid,
     });
 typedef $$FixedMovementsTableUpdateCompanionBuilder =
@@ -12611,6 +13217,9 @@ typedef $$FixedMovementsTableUpdateCompanionBuilder =
       Value<bool> isActive,
       Value<bool> isVariable,
       Value<DateTime?> lastPostedOn,
+      Value<String?> debtId,
+      Value<DateTime?> remindOn,
+      Value<bool> autoDebit,
       Value<int> rowid,
     });
 
@@ -12691,6 +13300,21 @@ class $$FixedMovementsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get debtId => $composableBuilder(
+    column: $table.debtId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get remindOn => $composableBuilder(
+    column: $table.remindOn,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get autoDebit => $composableBuilder(
+    column: $table.autoDebit,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$CategoriesTableFilterComposer get categoryId {
     final $$CategoriesTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -12764,6 +13388,21 @@ class $$FixedMovementsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get debtId => $composableBuilder(
+    column: $table.debtId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get remindOn => $composableBuilder(
+    column: $table.remindOn,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get autoDebit => $composableBuilder(
+    column: $table.autoDebit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$CategoriesTableOrderingComposer get categoryId {
     final $$CategoriesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -12829,6 +13468,15 @@ class $$FixedMovementsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get debtId =>
+      $composableBuilder(column: $table.debtId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get remindOn =>
+      $composableBuilder(column: $table.remindOn, builder: (column) => column);
+
+  GeneratedColumn<bool> get autoDebit =>
+      $composableBuilder(column: $table.autoDebit, builder: (column) => column);
+
   $$CategoriesTableAnnotationComposer get categoryId {
     final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -12892,6 +13540,9 @@ class $$FixedMovementsTableTableManager
                 Value<bool> isActive = const Value.absent(),
                 Value<bool> isVariable = const Value.absent(),
                 Value<DateTime?> lastPostedOn = const Value.absent(),
+                Value<String?> debtId = const Value.absent(),
+                Value<DateTime?> remindOn = const Value.absent(),
+                Value<bool> autoDebit = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => FixedMovementsCompanion(
                 id: id,
@@ -12903,6 +13554,9 @@ class $$FixedMovementsTableTableManager
                 isActive: isActive,
                 isVariable: isVariable,
                 lastPostedOn: lastPostedOn,
+                debtId: debtId,
+                remindOn: remindOn,
+                autoDebit: autoDebit,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -12916,6 +13570,9 @@ class $$FixedMovementsTableTableManager
                 required bool isActive,
                 Value<bool> isVariable = const Value.absent(),
                 Value<DateTime?> lastPostedOn = const Value.absent(),
+                Value<String?> debtId = const Value.absent(),
+                Value<DateTime?> remindOn = const Value.absent(),
+                Value<bool> autoDebit = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => FixedMovementsCompanion.insert(
                 id: id,
@@ -12927,6 +13584,9 @@ class $$FixedMovementsTableTableManager
                 isActive: isActive,
                 isVariable: isVariable,
                 lastPostedOn: lastPostedOn,
+                debtId: debtId,
+                remindOn: remindOn,
+                autoDebit: autoDebit,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

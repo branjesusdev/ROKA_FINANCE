@@ -3,6 +3,7 @@ import 'package:finance_app/domain/savings/finance_settings.dart';
 import 'package:finance_app/presentation/shared/data_providers.dart';
 import 'package:finance_app/presentation/shared/form_widgets.dart';
 import 'package:finance_app/presentation/shared/section_card.dart';
+import 'package:finance_app/presentation/shared/status_style.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -18,6 +19,9 @@ class AiSettingsScreen extends ConsumerStatefulWidget {
 class _AiSettingsScreenState extends ConsumerState<AiSettingsScreen> {
   final _key = TextEditingController();
   bool _showKey = false;
+
+  /// Con llave guardada se muestra enmascarada; el lápiz pasa a editarla.
+  bool _editing = false;
 
   @override
   void dispose() {
@@ -82,66 +86,72 @@ class _AiSettingsScreenState extends ConsumerState<AiSettingsScreen> {
           const SizedBox(height: 16),
           SectionCard(
             title: 'Tu llave de Groq',
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  hasKey
-                      ? 'Hay una llave guardada en este teléfono. Pega otra '
-                            'para reemplazarla.'
-                      : 'Créala gratis en console.groq.com › API Keys y '
-                            'pégala aquí. Se guarda solo en este teléfono: no '
-                            'va en la copia de seguridad.',
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _key,
-                  obscureText: !_showKey,
-                  autocorrect: false,
-                  enableSuggestions: false,
-                  decoration: InputDecoration(
-                    labelText: 'Llave (empieza por gsk_)',
-                    border: const OutlineInputBorder(),
-                    suffixIcon: IconButton(
-                      tooltip: _showKey ? 'Ocultar llave' : 'Mostrar llave',
-                      icon: Icon(
-                        _showKey ? Icons.visibility_off : Icons.visibility,
+            child: hasKey && !_editing
+                ? _SavedKey(
+                    keyValue: ref.watch(aiKeyProvider).value,
+                    visible: _showKey,
+                    onToggleVisible: () => setState(() => _showKey = !_showKey),
+                    onEdit: () => setState(() {
+                      _editing = true;
+                      _showKey = false;
+                    }),
+                    onDelete: _deleteKey,
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        hasKey
+                            ? 'Pega la llave nueva para reemplazar la actual.'
+                            : 'Créala gratis en console.groq.com › API Keys '
+                                  'y pégala aquí. Se guarda solo en este '
+                                  'teléfono: no va en la copia de seguridad.',
+                        style: theme.textTheme.bodyMedium,
                       ),
-                      onPressed: () => setState(() => _showKey = !_showKey),
-                    ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _key,
+                        obscureText: !_showKey,
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        decoration: InputDecoration(
+                          labelText: 'Llave (empieza por gsk_)',
+                          border: const OutlineInputBorder(),
+                          suffixIcon: IconButton(
+                            tooltip: _showKey
+                                ? 'Ocultar llave'
+                                : 'Mostrar llave',
+                            icon: Icon(
+                              _showKey
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                            ),
+                            onPressed: () =>
+                                setState(() => _showKey = !_showKey),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          FilledButton.icon(
+                            icon: const Icon(Icons.key),
+                            label: const Text('Guardar llave'),
+                            onPressed: () => _saveKey(settings),
+                          ),
+                          if (hasKey)
+                            TextButton(
+                              onPressed: () => setState(() {
+                                _editing = false;
+                                _key.clear();
+                              }),
+                              child: const Text('Cancelar'),
+                            ),
+                        ],
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    FilledButton.icon(
-                      icon: const Icon(Icons.key),
-                      label: const Text('Guardar llave'),
-                      onPressed: _saveKey,
-                    ),
-                    if (hasKey)
-                      TextButton.icon(
-                        icon: const Icon(Icons.delete_outline),
-                        label: const Text('Borrar llave'),
-                        onPressed: () async {
-                          final result = await ref
-                              .read(saveAiKeyProvider)
-                              .call(null);
-                          if (context.mounted) {
-                            showResult(
-                              context,
-                              result,
-                              success: 'Llave borrada',
-                            );
-                          }
-                        },
-                      ),
-                  ],
-                ),
-              ],
-            ),
           ),
           const SizedBox(height: 16),
           SectionCard(
@@ -157,10 +167,13 @@ class _AiSettingsScreenState extends ConsumerState<AiSettingsScreen> {
                   ),
                   value: settings.aiEnabled,
                   onChanged: (enabled) async {
-                    if (enabled && !await _confirmConsent(context)) return;
+                    if (enabled) {
+                      await enableAiWithConsent(context, ref);
+                      return;
+                    }
                     final result = await ref
                         .read(updateAiSettingsProvider)
-                        .call(enabled: enabled);
+                        .call(enabled: false);
                     if (context.mounted) showResult(context, result);
                   },
                 ),
@@ -199,18 +212,30 @@ class _AiSettingsScreenState extends ConsumerState<AiSettingsScreen> {
     );
   }
 
-  Future<void> _saveKey() async {
+  /// Guarda la llave y, si la IA está apagada, pide el consentimiento para
+  /// activarla de una vez (antes quedaba guardada pero apagada).
+  Future<void> _saveKey(FinanceSettings settings) async {
     final key = _key.text.trim();
     if (key.isEmpty) return;
     final result = await ref.read(saveAiKeyProvider).call(key);
     if (!mounted) return;
-    if (showResult(context, result, success: 'Llave guardada')) {
-      _key.clear();
-      FocusScope.of(context).unfocus();
-    }
+    if (!showResult(context, result, success: 'Llave guardada')) return;
+    _key.clear();
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _editing = false;
+      _showKey = false;
+    });
+    if (!settings.aiEnabled) await enableAiWithConsent(context, ref);
   }
 
-  static Future<bool> _confirmConsent(BuildContext context) async =>
+  Future<void> _deleteKey() async {
+    if (!await confirmDelete(context, 'la llave')) return;
+    final result = await ref.read(saveAiKeyProvider).call(null);
+    if (mounted) showResult(context, result, success: 'Llave borrada');
+  }
+
+  static Future<bool> confirmConsent(BuildContext context) async =>
       await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
@@ -235,6 +260,103 @@ class _AiSettingsScreenState extends ConsumerState<AiSettingsScreen> {
         ),
       ) ??
       false;
+}
+
+/// Pide el consentimiento y activa la IA. Devuelve `true` si quedó activa.
+Future<bool> enableAiWithConsent(BuildContext context, WidgetRef ref) async {
+  if (!await _AiSettingsScreenState.confirmConsent(context)) return false;
+  final result = await ref.read(updateAiSettingsProvider).call(enabled: true);
+  if (!context.mounted) return false;
+  return showResult(context, result, success: 'Tu CFO con IA quedó activo');
+}
+
+/// Llave guardada: enmascarada (gsk_••••1234), con ojo para verla, lápiz
+/// para cambiarla y botón para borrarla.
+class _SavedKey extends StatelessWidget {
+  const new({
+    required this.keyValue,
+    required this.visible,
+    required this.onToggleVisible,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final String? keyValue;
+  final bool visible;
+  final VoidCallback onToggleVisible;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  /// Caracteres visibles al inicio y al final cuando está oculta.
+  static const _shown = 4;
+  static const _dots = 8;
+  static const _dot = '•';
+
+  static String mask(String key) => key.length <= _shown * 2
+      ? _dot * key.length
+      : '${key.substring(0, _shown)}${_dot * _dots}'
+            '${key.substring(key.length - _shown)}';
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final key = keyValue;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Icon(
+              Icons.check_circle,
+              size: 18,
+              color: StatusColors.okOf(theme.colorScheme),
+            ),
+            const SizedBox(width: 6),
+            const Expanded(child: Text('Llave guardada en este teléfono')),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.only(left: 12),
+          decoration: BoxDecoration(
+            border: Border.all(color: theme.colorScheme.outline),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  key == null ? '…' : (visible ? key : mask(key)),
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontFamily: 'monospace',
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              IconButton(
+                tooltip: visible ? 'Ocultar llave' : 'Mostrar llave',
+                icon: Icon(visible ? Icons.visibility_off : Icons.visibility),
+                onPressed: onToggleVisible,
+              ),
+              IconButton(
+                tooltip: 'Cambiar llave',
+                icon: const Icon(Icons.edit_outlined),
+                onPressed: onEdit,
+              ),
+            ],
+          ),
+        ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('Borrar llave'),
+            onPressed: onDelete,
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class _Point extends StatelessWidget {

@@ -1,15 +1,19 @@
 import 'package:finance_app/application/advisor/cfo_brief.dart';
+import 'package:finance_app/application/reminders/reminder_planner.dart';
 import 'package:finance_app/bootstrap/providers.dart';
 import 'package:finance_app/domain/savings/finance_settings.dart';
 import 'package:finance_app/domain/shared/money.dart';
 import 'package:finance_app/domain/wisdom/wealth_wisdom.dart';
+import 'package:finance_app/presentation/cashflow/cashflow_screen.dart';
 import 'package:finance_app/presentation/cfo/ai_cfo_card.dart';
 import 'package:finance_app/presentation/cfo/alerts_card.dart';
 import 'package:finance_app/presentation/cfo/watchlist_card.dart';
 import 'package:finance_app/presentation/shared/async_view.dart';
 import 'package:finance_app/presentation/shared/data_providers.dart';
+import 'package:finance_app/presentation/shared/forecast_chart.dart';
 import 'package:finance_app/presentation/shared/formatters.dart';
 import 'package:finance_app/presentation/shared/section_card.dart';
+import 'package:finance_app/presentation/transactions/spend_check_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -33,8 +37,12 @@ class CfoScreen extends ConsumerWidget {
           _spacing,
           const AlertsCard(),
           _spacing,
+          const CashflowEntryCard(),
+          _spacing,
           _TipsCard(tips: brief.tips),
           if (brief.plan case final plan?) ...[_spacing, _PlanCard(plan: plan)],
+          _spacing,
+          const _ForecastCard(),
           _spacing,
           const WatchlistCard(),
           _spacing,
@@ -95,10 +103,39 @@ class _QuoteCard extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              '— ${quote.author}',
+              '— ${quote.source}',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSecondaryContainer,
               ),
+            ),
+            if (quote.today case final today?) ...[
+              const SizedBox(height: 10),
+              Text(
+                'Hoy: $today',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSecondaryContainer,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Icon(
+                  Icons.edit_note,
+                  size: 20,
+                  color: theme.colorScheme.onSecondaryContainer,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    ReminderPlanner.writeItDown,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSecondaryContainer,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -396,7 +433,7 @@ class _WisdomCard extends StatelessWidget {
             child: ExpansionTile(
               tilePadding: EdgeInsets.zero,
               leading: const Icon(Icons.format_quote),
-              title: const Text('Frases de grandes empresarios'),
+              title: const Text('Frases de los libros de dinero'),
               children: [
                 for (final quote in WealthWisdom.quotes)
                   ListTile(
@@ -405,10 +442,40 @@ class _WisdomCard extends StatelessWidget {
                       '«${quote.text}»',
                       style: const TextStyle(fontStyle: FontStyle.italic),
                     ),
-                    subtitle: Text(quote.author),
+                    subtitle: Text(
+                      [
+                        quote.source,
+                        if (quote.today case final today?) 'Hoy: $today',
+                      ].join('\n'),
+                    ),
                   ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "¿Estaré corto?": los próximos meses con tu sueldo.
+class _ForecastCard extends ConsumerWidget {
+  const new();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final forecast = ref.watch(salaryForecastProvider).value;
+    if (forecast == null) return const SizedBox.shrink();
+    return SectionCard(
+      title: '¿Estaré corto los próximos meses?',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ForecastSummary(forecast: forecast),
+          const SizedBox(height: 8),
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: SpendCheckButton(),
           ),
         ],
       ),

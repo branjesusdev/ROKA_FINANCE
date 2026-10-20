@@ -24,6 +24,8 @@ final class DriftDebtRepository implements DebtRepository {
       // El vínculo del activo no tiene FK (columna agregada en migración).
       await (_db.update(_db.assets)..where((a) => a.linkedDebtId.equals(id)))
           .write(const AssetsCompanion(linkedDebtId: Value(null)));
+      await (_db.update(_db.fixedMovements)..where((f) => f.debtId.equals(id)))
+          .write(const FixedMovementsCompanion(debtId: Value(null)));
       await (_db.delete(_db.debts)..where((d) => d.id.equals(id))).go();
     }),
   );

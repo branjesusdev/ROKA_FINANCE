@@ -23,6 +23,7 @@ final class Transaction {
     this.debtId,
     this.provisionId,
     this.fixedMovementId,
+    this.odometerKm,
   });
 
   final String id;
@@ -44,6 +45,9 @@ final class Transaction {
 
   /// Si lo generó un movimiento fijo (arriendo, sueldo…), su id.
   final String? fixedMovementId;
+
+  /// Kilometraje del vehículo al tanquear (opcional, solo gasolina).
+  final int? odometerKm;
 
   /// Vinculado a otro módulo (fijo, deuda o apartado): borrarlo cambia
   /// saldos o el ciclo que dependen de él.
@@ -68,7 +72,8 @@ final class Transaction {
       other.notes == notes &&
       other.debtId == debtId &&
       other.provisionId == provisionId &&
-      other.fixedMovementId == fixedMovementId;
+      other.fixedMovementId == fixedMovementId &&
+      other.odometerKm == odometerKm;
 
   @override
   int get hashCode => Object.hash(
@@ -85,5 +90,6 @@ final class Transaction {
     debtId,
     provisionId,
     fixedMovementId,
+    odometerKm,
   );
 }

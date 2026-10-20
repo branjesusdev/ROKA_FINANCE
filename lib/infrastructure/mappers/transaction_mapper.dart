@@ -18,6 +18,7 @@ extension TransactionRowMapper on TransactionRow {
     debtId: debtId,
     provisionId: provisionId,
     fixedMovementId: fixedMovementId,
+    odometerKm: odometerKm,
   );
 }
 
@@ -38,5 +39,6 @@ extension TransactionCompanionMapper on Transaction {
     debtId: Value(debtId),
     provisionId: Value(provisionId),
     fixedMovementId: Value(fixedMovementId),
+    odometerKm: Value(odometerKm),
   );
 }

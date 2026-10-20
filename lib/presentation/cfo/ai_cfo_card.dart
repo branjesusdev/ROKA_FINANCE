@@ -52,10 +52,21 @@ class _AiCfoCardState extends ConsumerState<AiCfoCard> {
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: 12),
+            if (hasKey) ...[
+              Text(
+                'Tu llave ya está guardada. Solo falta tu permiso para '
+                'enviar el resumen a Groq.',
+                style: theme.textTheme.bodySmall,
+              ),
+              const SizedBox(height: 8),
+            ],
             FilledButton.icon(
               icon: const Icon(Icons.auto_awesome),
               label: Text(hasKey ? 'Activar' : 'Configurar'),
-              onPressed: () => openAiSettings(context),
+              // Con llave, activar es dar el consentimiento aquí mismo.
+              onPressed: () => hasKey
+                  ? enableAiWithConsent(context, ref)
+                  : openAiSettings(context),
             ),
           ],
         ),

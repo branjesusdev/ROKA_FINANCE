@@ -70,6 +70,9 @@ class Transactions extends Table {
   // Fijo que lo generó. Sin FK por la misma razón.
   TextColumn get fixedMovementId => text().nullable()();
 
+  /// Kilometraje al tanquear (v11).
+  IntColumn get odometerKm => integer().nullable()();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 }
@@ -182,6 +185,18 @@ class Investments extends Table {
   DateTimeColumn get date => dateTime()();
   TextColumn get notes => text().nullable()();
 
+  /// Símbolo de bolsa (NVDA, VOO…) para consultar el precio real (v10).
+  TextColumn get symbol => text().nullable()();
+
+  /// Cantidad de acciones en millonésimas (permite fracciones) (v10).
+  IntColumn get unitsMicros => integer().nullable()();
+
+  /// Última vez que el valor se actualizó con el precio de mercado (v10).
+  DateTimeColumn get priceUpdatedAt => dateTime().nullable()();
+
+  /// Lo invertido en centavos de dólar, si se pagó en dólares (v11).
+  IntColumn get investedUsdCents => integer().nullable()();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 }
@@ -219,6 +234,10 @@ class FinanceSettingsTable extends Table {
     Constant(ReviewFrequency.weekly.name),
   )();
 
+  /// Sueldo neto mensual configurado; 0 = se deduce (v14).
+  IntColumn get monthlySalaryCents =>
+      integer().withDefault(const Constant(0))();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 }
@@ -234,6 +253,15 @@ class FixedMovements extends Table {
   BoolColumn get isActive => boolean()();
   BoolColumn get isVariable => boolean().withDefault(const Constant(false))();
   DateTimeColumn get lastPostedOn => dateTime().nullable()();
+
+  /// Crédito que paga (v11). Sin FK: se agrega en una migración.
+  TextColumn get debtId => text().nullable()();
+
+  /// Factura pospuesta hasta este día (v12).
+  DateTimeColumn get remindOn => dateTime().nullable()();
+
+  /// Débito automático: se registra pagado sin preguntar (v13).
+  BoolColumn get autoDebit => boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column<Object>> get primaryKey => {id};

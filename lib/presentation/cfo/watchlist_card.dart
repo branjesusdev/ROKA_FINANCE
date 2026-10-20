@@ -1,14 +1,19 @@
+import 'package:finance_app/application/markets/investment_ideas_question.dart';
 import 'package:finance_app/application/markets/load_watchlist.dart';
 import 'package:finance_app/domain/markets/market_quote.dart';
+import 'package:finance_app/domain/markets/watch_score.dart';
 import 'package:finance_app/domain/markets/watchlist.dart';
 import 'package:finance_app/domain/shared/percentage.dart';
+import 'package:finance_app/presentation/cfo/ask_cfo_sheet.dart';
 import 'package:finance_app/presentation/shared/data_providers.dart';
+import 'package:finance_app/presentation/shared/form_widgets.dart';
 import 'package:finance_app/presentation/shared/formatters.dart';
 import 'package:finance_app/presentation/shared/section_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Ideas de tecnología, IA y robótica con su comportamiento del último año.
+/// Ideas de tecnología, IA y robótica con su comportamiento del último año,
+/// ordenadas por puntaje (resultados, crecimiento, volatilidad y riesgo).
 /// Los precios se consultan solo cuando el usuario lo pide.
 class WatchlistCard extends ConsumerWidget {
   const new({super.key});
@@ -20,6 +25,7 @@ class WatchlistCard extends ConsumerWidget {
     final quotes = ref.watch(watchlistProvider);
     final loaded = quotes.value ?? const <WatchQuote>[];
     final failedAll = loaded.isNotEmpty && loaded.every((q) => !q.hasData);
+    final ranked = loaded.any((q) => q.score != null);
     final rows = loaded.isEmpty
         ? [for (final item in TechWatchlist.items) WatchQuote(item: item)]
         : loaded;
@@ -55,7 +61,22 @@ class WatchlistCard extends ConsumerWidget {
               'No se pudieron consultar los precios. Revisa tu conexión e '
               'intenta de nuevo.',
             ),
-          for (final quote in rows) _WatchRow(quote: quote),
+          if (ranked)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                'Ordenadas de mejor a peor balance: lo que han subido, qué '
+                'tanto se mueven y si reparten el riesgo (fondo) o no '
+                '(empresa).',
+                style: theme.textTheme.bodySmall,
+              ),
+            ),
+          for (final (i, quote) in rows.indexed)
+            _WatchRow(quote: quote, rank: quote.score == null ? null : i + 1),
+          if (ranked) ...[
+            const Divider(height: 24),
+            _AskWithAmount(ranked: loaded),
+          ],
           const SizedBox(height: 8),
           Text(
             'Precios públicos de Yahoo Finance (gratis, con retraso). Solo se '
@@ -73,9 +94,12 @@ class WatchlistCard extends ConsumerWidget {
 }
 
 class _WatchRow extends StatelessWidget {
-  const new({required this.quote});
+  const new({required this.quote, this.rank});
 
   final WatchQuote quote;
+
+  /// Puesto en el orden (1 = mejor balance).
+  final int? rank;
 
   @override
   Widget build(BuildContext context) {
@@ -90,6 +114,20 @@ class _WatchRow extends StatelessWidget {
         children: [
           Row(
             children: [
+              if (rank case final rank?) ...[
+                CircleAvatar(
+                  radius: 12,
+                  backgroundColor: theme.colorScheme.primaryContainer,
+                  child: Text(
+                    '$rank',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: theme.colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
               Icon(_kindIcon(item.kind), size: 20),
               const SizedBox(width: 8),
               Expanded(
@@ -114,6 +152,10 @@ class _WatchRow extends StatelessWidget {
               spacing: 6,
               runSpacing: 6,
               children: [
+                if (quote.score case final score?) ...[
+                  _ScoreChip(score: score),
+                  _RiskChip(risk: score.risk),
+                ],
                 if (stats.change1y case final change?)
                   _Stat(label: '12 meses', value: change, signed: true),
                 if (stats.change3m case final change?)
@@ -206,6 +248,187 @@ class _VolatilityChip extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Puntaje 0–100 con texto (nunca solo color).
+class _ScoreChip extends StatelessWidget {
+  const new({required this.score});
+
+  final WatchScore score;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final onColor = theme.colorScheme.onSecondaryContainer;
+    return Semantics(
+      label:
+          'Puntaje ${score.total} de 100. Crecimiento ${score.growth}, '
+          'estabilidad ${score.stability}.',
+      excludeSemantics: true,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.secondaryContainer,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.leaderboard_outlined, size: 14, color: onColor),
+            const SizedBox(width: 2),
+            Text(
+              'Puntaje ${score.total}/100',
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: onColor,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Tipo de riesgo con icono y texto.
+class _RiskChip extends StatelessWidget {
+  const new({required this.risk});
+
+  final RiskType risk;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final (label, icon) = switch (risk) {
+      RiskType.conservative => ('Riesgo bajo', Icons.shield_outlined),
+      RiskType.moderate => ('Riesgo medio', Icons.balance_outlined),
+      RiskType.aggressive => ('Riesgo alto', Icons.warning_amber_outlined),
+      RiskType.veryAggressive => ('Riesgo muy alto', Icons.bolt_outlined),
+    };
+    final color = risk == RiskType.veryAggressive
+        ? theme.colorScheme.error
+        : theme.colorScheme.onSurface;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 2),
+          Text(label, style: theme.textTheme.labelMedium),
+        ],
+      ),
+    );
+  }
+}
+
+/// "¿Cuánto quieres invertir?": arma la pregunta para Tu CFO con IA con la
+/// lista ordenada y el monto. La pregunta se ve y se puede editar antes de
+/// enviarla.
+class _AskWithAmount extends ConsumerStatefulWidget {
+  const new({required this.ranked});
+
+  final List<WatchQuote> ranked;
+
+  @override
+  ConsumerState<_AskWithAmount> createState() => _AskWithAmountState();
+}
+
+class _AskWithAmountState extends ConsumerState<_AskWithAmount> {
+  final _amount = TextEditingController();
+  bool _dollars = true;
+
+  @override
+  void dispose() {
+    _amount.dispose();
+    super.dispose();
+  }
+
+  InvestAmount? get _value {
+    if (_dollars) {
+      final cents = UsdInput.parse(_amount.text);
+      return cents == null || cents <= 0 ? null : DollarsAmount(cents);
+    }
+    final money = MoneyField.read(_amount);
+    return money == null || !money.isPositive ? null : PesosAmount(money);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final aiEnabled = ref.watch(settingsProvider).value?.aiEnabled ?? false;
+    final value = _value;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('¿Cuánto quieres invertir?', style: theme.textTheme.titleSmall),
+        const SizedBox(height: 4),
+        Text(
+          'Tu CFO con IA (Groq) mira esta lista y tus totales, y te dice a '
+          'cuál o cuáles destinaría ese monto. Verás la pregunta antes de '
+          'enviarla.',
+          style: theme.textTheme.bodySmall,
+        ),
+        const SizedBox(height: 8),
+        SegmentedButton<bool>(
+          segments: const [
+            ButtonSegment(value: true, label: Text(r'Dólares (US$)')),
+            ButtonSegment(value: false, label: Text('Pesos')),
+          ],
+          selected: {_dollars},
+          onSelectionChanged: (s) => setState(() {
+            _dollars = s.first;
+            _amount.clear();
+          }),
+        ),
+        const SizedBox(height: 8),
+        if (_dollars)
+          TextField(
+            controller: _amount,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              labelText: 'Monto en dólares',
+              prefixText: r'US$ ',
+              hintText: 'Ej: 200',
+              border: OutlineInputBorder(),
+            ),
+            onChanged: (_) => setState(() {}),
+          )
+        else
+          MoneyField(
+            controller: _amount,
+            label: 'Monto en pesos',
+            onChanged: (_) => setState(() {}),
+          ),
+        const SizedBox(height: 8),
+        FilledButton.icon(
+          icon: const Icon(Icons.auto_awesome),
+          label: const Text('¿En cuál lo invierto? Pregúntale a Tu CFO'),
+          onPressed: !aiEnabled || value == null
+              ? null
+              : () => showAskCfoSheet(
+                  context,
+                  question: InvestmentIdeasQuestion.build(
+                    ranked: widget.ranked,
+                    amount: value,
+                  ),
+                ),
+        ),
+        if (!aiEnabled)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              'Activa "Tu CFO con IA" arriba para preguntarle.',
+              style: theme.textTheme.bodySmall,
+            ),
+          ),
+      ],
     );
   }
 }

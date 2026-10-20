@@ -2,7 +2,10 @@ import 'package:finance_app/application/dashboard/cycle_summary.dart';
 import 'package:finance_app/application/dashboard/money_overview.dart';
 import 'package:finance_app/domain/shared/money.dart';
 import 'package:finance_app/presentation/app/app_theme.dart';
+import 'package:finance_app/presentation/home/widgets/set_aside_sheet.dart';
+import 'package:finance_app/presentation/home/widgets/today_spends_sheet.dart';
 import 'package:finance_app/presentation/shared/formatters.dart';
+import 'package:finance_app/presentation/transactions/spend_check_sheet.dart';
 import 'package:flutter/material.dart';
 
 /// Lo primero al abrir: cuánto puedes gastar de verdad (no el saldo), y de
@@ -76,19 +79,56 @@ class MoneyHeroCard extends StatelessWidget {
                   ),
                 ),
               ),
-              if (perDay != null)
+              if (perDay != null && cap == null)
                 Text(
                   '≈ ${Formatters.money(perDay)} por día',
                   style: theme.textTheme.bodyMedium?.copyWith(color: muted),
                 ),
               const SizedBox(height: 16),
               _Breakdown(overview: overview),
+              if (overview.provisionsSaved.isPositive ||
+                  overview.provisionsToday != null) ...[
+                const SizedBox(height: 8),
+                _SetAsideLine(overview: overview),
+              ],
               if (cap != null && summary.income.isPositive) ...[
                 const SizedBox(height: 16),
                 _TodayCap(
                   spent: cap.spentToday,
                   cap: cap.cap,
                   exceeded: cap.exceeded,
+                  outsideCap: summary.spentTodayOutsideCap,
+                  onTap: summary.todaySpends.isEmpty
+                      ? null
+                      : () => showTodaySpendsSheet(context, summary: summary),
+                ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppTheme.accent,
+                    ),
+                    onPressed: () => showSpendCheckSheet(context),
+                    icon: const Icon(Icons.help_outline),
+                    label: const Text('¿Puedo gastar…?'),
+                  ),
+                ),
+              ],
+              if (overview.free.isPositive ||
+                  overview.provisionsPending.isPositive) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.tonalIcon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppTheme.accent,
+                      foregroundColor: AppTheme.forest,
+                      minimumSize: const Size.fromHeight(48),
+                    ),
+                    icon: const Icon(Icons.savings_outlined),
+                    label: const Text('Apartar para no gastarlo'),
+                    onPressed: () => showSetAsideSheet(context),
+                  ),
                 ),
               ],
               if (_note() case final note?) ...[
@@ -169,6 +209,7 @@ class _Breakdown extends StatelessWidget {
   static const _fixedColor = Color(0xFF7FB3A5);
   static const _provisionsColor = Color(0xFFE2C46B);
   static const _savingsColor = Color(0xFF6FA8DC);
+  static const _plannedColor = Color(0xFFC9D6A3);
 
   @override
   Widget build(BuildContext context) {
@@ -176,6 +217,11 @@ class _Breakdown extends StatelessWidget {
       ('Pagos fijos que faltan', overview.committed, _fixedColor),
       ('Pagos del año (apartar)', overview.provisionsPending, _provisionsColor),
       ('Ahorro del ciclo', overview.savingsPending, _savingsColor),
+      (
+        'Presupuesto del mes por gastar',
+        overview.plannedPending,
+        _plannedColor,
+      ),
       ('Libre', overview.free.max(Money.zero), AppTheme.accent),
     ];
     final total = Money.sum(parts.map((p) => p.$2));
@@ -266,12 +312,57 @@ class _Breakdown extends StatelessWidget {
   }
 }
 
+/// Lo que ya está guardado para pagos del año y lo que toca apartar hoy.
+class _SetAsideLine extends StatelessWidget {
+  const new({required this.overview});
+
+  final MoneyOverview overview;
+
+  @override
+  Widget build(BuildContext context) {
+    const muted = Color(0xFFB9CBC4);
+    final today = overview.provisionsToday;
+    final saved = Formatters.money(overview.provisionsSaved);
+    final parts = [
+      if (overview.provisionsSaved.isPositive)
+        'Ya apartado para pagos del año: $saved (no está en "Tienes")',
+      if (today != null) 'Hoy aparta ${Formatters.money(today)}',
+    ];
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(Icons.lock_outline, size: 16, color: muted),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            parts.join(' · '),
+            style: Theme.of(context).textTheme.bodySmall
+                ?.copyWith(color: muted),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _TodayCap extends StatelessWidget {
-  const new({required this.spent, required this.cap, required this.exceeded});
+  const new({
+    required this.spent,
+    required this.cap,
+    required this.exceeded,
+    required this.outsideCap,
+    required this.onTap,
+  });
 
   final Money spent;
   final Money cap;
   final bool exceeded;
+
+  /// Gastado hoy en fijos, gastos del mes o ahorro (no baja el tope).
+  final Money outsideCap;
+
+  /// Abre el detalle de los gastos de hoy (`null` si no hay).
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -281,55 +372,77 @@ class _TodayCap extends StatelessWidget {
         ? (spent.cents / cap.cents).clamp(0.0, 1.0)
         : (exceeded ? 1.0 : 0.0);
     final color = exceeded ? const Color(0xFFFCA5A5) : AppTheme.accent;
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0x14FFFFFF),
-        borderRadius: BorderRadius.circular(16),
+    const muted = Color(0xFFB9CBC4);
+    return Material(
+      color: const Color(0x14FFFFFF),
+      borderRadius: BorderRadius.circular(16),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: _content(theme, remaining, fraction, color, muted),
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    );
+  }
+
+  Widget _content(
+    ThemeData theme,
+    Money remaining,
+    double fraction,
+    Color color,
+    Color muted,
+  ) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
         children: [
-          Row(
-            children: [
-              Icon(
-                exceeded ? Icons.do_not_disturb_on_outlined : Icons.today,
-                size: 18,
-                color: color,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  exceeded
-                      ? 'Hoy pasaste tu tope por '
-                            '${Formatters.money(remaining.abs)}'
-                      : 'Hoy puedes gastar ${Formatters.money(remaining)} más',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: const Color(0xFFF2F7F4),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          LinearProgressIndicator(
-            value: fraction,
-            minHeight: 6,
+          Icon(
+            exceeded ? Icons.do_not_disturb_on_outlined : Icons.today,
+            size: 18,
             color: color,
-            backgroundColor: const Color(0x33FFFFFF),
-            borderRadius: BorderRadius.circular(3),
-            semanticsLabel: 'Tope de hoy usado',
           ),
-          const SizedBox(height: 6),
-          Text(
-            'Tope del día ${Formatters.money(cap)} · llevas '
-            '${Formatters.money(spent)} (almuerzos, transporte, antojos)',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: const Color(0xFFB9CBC4),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              exceeded
+                  ? 'Hoy pasaste tu tope por '
+                        '${Formatters.money(remaining.abs)}'
+                  : 'Hoy puedes gastar ${Formatters.money(remaining)} más',
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: const Color(0xFFF2F7F4),
+              ),
             ),
           ),
         ],
       ),
-    );
-  }
+      const SizedBox(height: 8),
+      LinearProgressIndicator(
+        value: fraction,
+        minHeight: 6,
+        color: color,
+        backgroundColor: const Color(0x33FFFFFF),
+        borderRadius: BorderRadius.circular(3),
+        semanticsLabel: 'Tope de hoy usado',
+      ),
+      const SizedBox(height: 6),
+      Row(
+        children: [
+          Expanded(
+            child: Text(
+              [
+                'Tope ${Formatters.money(cap)}',
+                'día a día ${Formatters.money(spent)}',
+                if (outsideCap.isPositive)
+                  'fuera del tope ${Formatters.money(outsideCap)}',
+              ].join(' · '),
+              style: theme.textTheme.bodySmall?.copyWith(color: muted),
+            ),
+          ),
+          if (onTap != null) Icon(Icons.chevron_right, size: 18, color: muted),
+        ],
+      ),
+    ],
+  );
 }

@@ -18,6 +18,7 @@ final class RegisterTransactionInput {
     this.nature,
     this.notes,
     this.debtId,
+    this.odometerKm,
   });
 
   final TransactionKind kind;
@@ -31,6 +32,9 @@ final class RegisterTransactionInput {
   final ExpenseNature? nature;
   final String? notes;
   final String? debtId;
+
+  /// Kilometraje al tanquear (solo gastos).
+  final int? odometerKm;
 }
 
 /// Registra un ingreso o gasto. Solo monto y categoría son obligatorios.
@@ -49,6 +53,9 @@ final class RegisterTransaction {
     if (!input.amount.isPositive) {
       return invalid(ValidationCodes.amountMustBePositive);
     }
+    if (input.odometerKm case final km? when km <= 0) {
+      return invalid(ValidationCodes.invalidOdometer);
+    }
     final now = _clock.now();
     final transaction = Transaction(
       id: _ids.next(),
@@ -62,6 +69,9 @@ final class RegisterTransaction {
       nature: input.kind == TransactionKind.expense ? input.nature : null,
       notes: cleanText(input.notes),
       debtId: input.debtId,
+      odometerKm: input.kind == TransactionKind.expense
+          ? input.odometerKm
+          : null,
     );
     return guardUseCase(() async {
       await _transactions.save(transaction);

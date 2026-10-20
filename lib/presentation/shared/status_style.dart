@@ -69,7 +69,7 @@ abstract final class PriorityStyle {
 abstract final class ObligationStyle {
   static String label(ObligationState state) => switch (state) {
     ObligationState.paid => 'Pagado',
-    ObligationState.overdue => 'Vencido: falta el valor',
+    ObligationState.overdue => 'Vencido: sin confirmar',
     ObligationState.covered => 'Cubierto',
     ObligationState.partial => 'Cubierto en parte',
     ObligationState.uncovered => 'Sin cubrir',

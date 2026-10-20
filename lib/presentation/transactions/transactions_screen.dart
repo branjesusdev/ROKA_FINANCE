@@ -8,6 +8,7 @@ import 'package:finance_app/presentation/shared/empty_state.dart';
 import 'package:finance_app/presentation/shared/formatters.dart';
 import 'package:finance_app/presentation/shared/section_card.dart';
 import 'package:finance_app/presentation/shared/transaction_tile.dart';
+import 'package:finance_app/presentation/transactions/spend_check_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -37,6 +38,13 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           month: month,
           canGoNext: month.isBefore(current),
           onChanged: (value) => setState(() => _month = value),
+        ),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: SpendCheckButton(),
+          ),
         ),
         Expanded(
           child: AsyncView(

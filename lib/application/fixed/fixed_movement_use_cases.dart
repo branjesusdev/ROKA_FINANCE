@@ -2,6 +2,9 @@ import 'package:finance_app/application/common/guard_use_case.dart';
 import 'package:finance_app/application/common/validation.dart';
 import 'package:finance_app/application/cycles/load_current_cycle.dart';
 import 'package:finance_app/core/result.dart';
+import 'package:finance_app/domain/categories/default_categories.dart';
+import 'package:finance_app/domain/debts/debt.dart';
+import 'package:finance_app/domain/debts/debt_repository.dart';
 import 'package:finance_app/domain/fixed/fixed_movement.dart';
 import 'package:finance_app/domain/fixed/fixed_movement_repository.dart';
 import 'package:finance_app/domain/fixed/fixed_movement_scheduler.dart';
@@ -40,8 +43,10 @@ final class SaveFixedMovement {
     String? id,
     bool isActive = true,
     bool isVariable = false,
+    bool autoDebit = false,
     DateTime? lastPostedOn,
     bool registerInCurrentCycle = true,
+    String? debtId,
   }) {
     final cleanName = cleanText(name);
     if (cleanName == null) return invalid(ValidationCodes.nameRequired);
@@ -53,6 +58,9 @@ final class SaveFixedMovement {
       return invalid(ValidationCodes.dayOutOfRange);
     }
     return guardUseCase(() async {
+      final existing = id == null
+          ? null
+          : (await _fixed.getAll()).where((m) => m.id == id).firstOrNull;
       var lastPosted = lastPostedOn;
       if (id == null && !registerInCurrentCycle) {
         final now = _clock.now();
@@ -71,7 +79,10 @@ final class SaveFixedMovement {
         dayOfMonth: dayOfMonth,
         isActive: isActive,
         isVariable: isVariable,
+        autoDebit: kind == TransactionKind.expense && autoDebit,
         lastPostedOn: lastPosted,
+        debtId: kind == TransactionKind.expense ? debtId : null,
+        remindOn: existing?.remindOn,
       );
       await _fixed.save(movement);
       return movement;
@@ -87,20 +98,23 @@ final class DeleteFixedMovement {
   Future<Result<void>> call(String id) => guardUseCase(() => _fixed.delete(id));
 }
 
-/// Registra el pago de un fijo del ciclo: el valor real de una factura
-/// variable (luz, agua…), o un fijo pagado antes de su día. Lo marca como
+/// Registra el pago de un fijo del ciclo ("Ya lo pagué"): el valor real de
+/// una factura variable (luz, agua…), un gasto fijo que venció o uno pagado
+/// antes de su día. Lo marca como
 /// registrado para que no se duplique. En los variables actualiza el
 /// estimado con el promedio de las últimas facturas.
 final class ConfirmVariableFixed {
   const new({
     required this._fixed,
     required this._transactions,
+    required this._debts,
     required this._clock,
     required this._ids,
   });
 
   final FixedMovementRepository _fixed;
   final TransactionRepository _transactions;
+  final DebtRepository _debts;
   final Clock _clock;
   final IdGenerator _ids;
 
@@ -127,10 +141,14 @@ final class ConfirmVariableFixed {
         description: movement.name,
         nature: movement.isExpense ? ExpenseNature.essential : null,
         fixedMovementId: movement.id,
+        debtId: movement.isExpense ? movement.debtId : null,
       );
       await _transactions.save(transaction);
+      await payLinkedDebt(_debts, movement, amount);
       if (!movement.isVariable) {
-        await _fixed.save(movement.copyWith(lastPostedOn: scheduledDate));
+        await _fixed.save(
+          movement.copyWith(lastPostedOn: scheduledDate).remindedOn(null),
+        );
         return transaction;
       }
       final recent = await _transactions.getLinkedToFixed(
@@ -141,12 +159,102 @@ final class ConfirmVariableFixed {
         for (final t in recent) t.amount,
       ]);
       await _fixed.save(
-        movement.copyWith(
-          amount: estimate ?? amount,
-          lastPostedOn: scheduledDate,
-        ),
+        movement
+            .copyWith(amount: estimate ?? amount, lastPostedOn: scheduledDate)
+            .remindedOn(null),
       );
       return transaction;
+    });
+  }
+}
+
+/// "Aún no lo pago: recuérdame mañana / en 2 días". La factura sigue
+/// descontando su estimado; solo deja de avisar hasta ese día.
+final class SnoozeFixedBill {
+  const new({required this._fixed, required this._clock});
+
+  final FixedMovementRepository _fixed;
+  final Clock _clock;
+
+  /// Opciones que ofrecen la app y la notificación.
+  static const tomorrow = 1;
+  static const inTwoDays = 2;
+
+  Future<Result<FixedMovement>> call({
+    required FixedMovement movement,
+    required int days,
+  }) {
+    if (days <= 0) return invalid(ValidationCodes.dayOutOfRange);
+    return guardUseCase(() async {
+      final now = _clock.now();
+      final snoozed = movement.remindedOn(
+        DateTime(now.year, now.month, now.day + days),
+      );
+      await _fixed.save(snoozed);
+      return snoozed;
+    });
+  }
+}
+
+/// "Aún no lo he pagado": deshace el pago registrado de un fijo en el ciclo
+/// actual. Borra su movimiento y lo deja otra vez por confirmar, con avisos.
+/// No aplica a los que pagan un crédito (el saldo ya bajó).
+final class MarkFixedUnpaid {
+  const new({
+    required this._fixed,
+    required this._transactions,
+    required this._currentCycle,
+    required this._clock,
+  });
+
+  final FixedMovementRepository _fixed;
+  final TransactionRepository _transactions;
+  final LoadCurrentCycle _currentCycle;
+  final Clock _clock;
+
+  /// [paidOn]: fecha del pago registrado que se deshace.
+  Future<Result<FixedMovement>> call({
+    required FixedMovement movement,
+    required DateTime paidOn,
+  }) {
+    if (movement.debtId != null) {
+      return invalid(ValidationCodes.linkedToDebt);
+    }
+    return guardUseCase(() async {
+      final current = await _currentCycle(_clock.now());
+      bool sameDay(DateTime a) =>
+          a.year == paidOn.year &&
+          a.month == paidOn.month &&
+          a.day == paidOn.day;
+      for (final t in current.transactions) {
+        if (t.fixedMovementId == movement.id && sameDay(t.date)) {
+          await _transactions.delete(t.id);
+        }
+      }
+      final dates = current.cycle.datesForDayOfMonth(movement.dayOfMonth);
+      final day = DateTime(paidOn.year, paidOn.month, paidOn.day);
+      final scheduled =
+          dates.where((d) => !d.isAfter(day)).lastOrNull ?? dates.firstOrNull;
+      var updated = movement.remindedOn(null);
+      if (scheduled != null) {
+        final before = dates.where((d) => d.isBefore(scheduled)).lastOrNull;
+        updated = FixedMovement(
+          id: updated.id,
+          name: updated.name,
+          kind: updated.kind,
+          amount: updated.amount,
+          categoryId: updated.categoryId,
+          dayOfMonth: updated.dayOfMonth,
+          isActive: updated.isActive,
+          isVariable: updated.isVariable,
+          autoDebit: updated.autoDebit,
+          lastPostedOn:
+              before ??
+              DateTime(scheduled.year, scheduled.month, scheduled.day - 1),
+        );
+      }
+      await _fixed.save(updated);
+      return updated;
     });
   }
 }
@@ -160,6 +268,7 @@ final class PostDueFixedMovements {
   const new({
     required this._fixed,
     required this._transactions,
+    required this._debts,
     required this._currentCycle,
     required this._clock,
     required this._ids,
@@ -167,6 +276,7 @@ final class PostDueFixedMovements {
 
   final FixedMovementRepository _fixed;
   final TransactionRepository _transactions;
+  final DebtRepository _debts;
   final LoadCurrentCycle _currentCycle;
   final Clock _clock;
   final IdGenerator _ids;
@@ -204,8 +314,10 @@ final class PostDueFixedMovements {
           description: movement.name,
           nature: movement.isExpense ? ExpenseNature.essential : null,
           fixedMovementId: movement.id,
+          debtId: movement.isExpense ? movement.debtId : null,
         ),
       );
+      await payLinkedDebt(_debts, movement, movement.amount);
       markPosted(item);
     }
     for (final item in postedUntil.values) {
@@ -213,4 +325,68 @@ final class PostDueFixedMovements {
     }
     return schedule.due.length;
   });
+}
+
+/// Si el fijo paga un crédito, baja su saldo y suma la cuota pagada.
+Future<void> payLinkedDebt(
+  DebtRepository debts,
+  FixedMovement movement,
+  Money amount,
+) async {
+  final id = movement.debtId;
+  if (id == null || !movement.isExpense) return;
+  final debt = await debts.getById(id);
+  if (debt == null || !debt.currentBalance.isPositive) return;
+  await debts.save(debt.afterInstallment(amount));
+}
+
+/// Enlaza un crédito con su cuota fija: con uno existente (`fixed`) o
+/// creando uno nuevo el día `dayOfMonth` por el valor de la cuota.
+/// Un crédito queda enlazado a un solo fijo.
+final class LinkDebtToFixed {
+  const new({required this._fixed, required this._save});
+
+  final FixedMovementRepository _fixed;
+  final SaveFixedMovement _save;
+
+  Future<Result<FixedMovement>> call({
+    required Debt debt,
+    FixedMovement? fixed,
+    int? dayOfMonth,
+    String? categoryId,
+  }) async {
+    final unlinked = await guardUseCase(() async {
+      for (final other in await _fixed.getAll()) {
+        if (other.debtId == debt.id && other.id != fixed?.id) {
+          await _fixed.save(other.linkedTo(null));
+        }
+      }
+    });
+    if (unlinked case Err(:final failure)) return Err(failure);
+    if (fixed != null) {
+      return await guardUseCase(() async {
+        final linked = fixed.linkedTo(debt.id);
+        await _fixed.save(linked);
+        return linked;
+      });
+    }
+    final payment = debt.terms?.monthlyPayment;
+    if (payment == null || !payment.isPositive) {
+      return await invalid(ValidationCodes.amountMustBePositive);
+    }
+    return await _save(
+      name: 'Cuota ${debt.name}',
+      kind: TransactionKind.expense,
+      amount: payment,
+      categoryId: categoryId ?? DefaultCategories.debtsId,
+      dayOfMonth: dayOfMonth ?? FixedMovement.minDay,
+      // Lo de este ciclo ya lo cuenta el saldo que escribiste.
+      registerInCurrentCycle: false,
+      debtId: debt.id,
+    );
+  }
+
+  /// Quita el enlace (el fijo sigue existiendo).
+  Future<Result<void>> unlink(FixedMovement fixed) =>
+      guardUseCase(() => _fixed.save(fixed.linkedTo(null)));
 }

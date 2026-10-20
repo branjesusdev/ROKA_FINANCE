@@ -48,7 +48,7 @@ class AppDatabase extends _$AppDatabase {
   static const fileName = 'finance_app';
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -170,6 +170,38 @@ class AppDatabase extends _$AppDatabase {
           await into(categories)
               .insert(category.toCompanion(), mode: InsertMode.insertOrIgnore);
         }
+      }
+      if (from < 10) {
+        for (final column in <GeneratedColumn<Object>>[
+          investments.symbol,
+          investments.unitsMicros,
+          investments.priceUpdatedAt,
+        ]) {
+          await migrator.addColumn(investments, column);
+        }
+      }
+      if (from < 11) {
+        await migrator.addColumn(transactions, transactions.odometerKm);
+        await migrator.addColumn(investments, investments.investedUsdCents);
+        // Antes de v2 la tabla de fijos se creó completa, con la columna.
+        if (from >= 2) {
+          await migrator.addColumn(fixedMovements, fixedMovements.debtId);
+        }
+      }
+      // Antes de v2 la tabla de fijos se creó completa, con la columna.
+      if (from >= 2 && from < 12) {
+        await migrator.addColumn(fixedMovements, fixedMovements.remindOn);
+      }
+      // Desde v13 los gastos fijos piden "Ya lo pagué" salvo los marcados
+      // como débito automático.
+      if (from >= 2 && from < 13) {
+        await migrator.addColumn(fixedMovements, fixedMovements.autoDebit);
+      }
+      if (from < 14) {
+        await migrator.addColumn(
+          financeSettingsTable,
+          financeSettingsTable.monthlySalaryCents,
+        );
       }
     },
     beforeOpen: (_) => customStatement('PRAGMA foreign_keys = ON'),

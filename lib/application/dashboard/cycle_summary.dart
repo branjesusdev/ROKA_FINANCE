@@ -35,6 +35,32 @@ final class CategoryTotal {
   final int count;
 }
 
+/// Por qué un gasto de hoy cuenta (o no) en el tope del día.
+enum TodaySpendKind {
+  /// Almuerzos, transporte, antojos: baja el tope del día.
+  dayToDay,
+
+  /// Fijo, cuota de crédito o pago del año: ya estaba apartado.
+  linked,
+
+  /// Categoría que se planea por mes (mercado, servicios…): sale del
+  /// presupuesto del mes.
+  monthly,
+
+  /// Ahorro o inversión.
+  saving,
+}
+
+/// Un gasto de hoy y si cuenta en el tope del día.
+final class TodaySpend {
+  const new({required this.transaction, required this.kind});
+
+  final Transaction transaction;
+  final TodaySpendKind kind;
+
+  bool get countsInCap => kind == TodaySpendKind.dayToDay;
+}
+
 /// "¿Cuánto me queda de mi sueldo?" para el ciclo actual (día de pago →
 /// día anterior al siguiente pago). Independiente del patrimonio.
 final class CycleSummary {
@@ -48,10 +74,12 @@ final class CycleSummary {
     required this.previousLeft,
     required this.savingsTarget,
     this.monthlyFixedExpenses = Money.zero,
+    this.plannedReserve = Money.zero,
     this.previousCycle,
     this.usageLight,
     this.dailyCap,
     this.provisionPlan = ProvisionPlan.empty,
+    this.todaySpends = const [],
   });
 
   final PayCycle cycle;
@@ -78,6 +106,10 @@ final class CycleSummary {
   /// recibir el sueldo).
   final Money monthlyFixedExpenses;
 
+  /// Presupuesto del mes que falta gastar (mercado, servicios…) más el
+  /// colchón de los niños: se protege del gasto del día a día.
+  final Money plannedReserve;
+
   /// Tope del gasto del día a día. `null` si el ciclo ya terminó.
   final DailySpendingCap? dailyCap;
 
@@ -86,6 +118,15 @@ final class CycleSummary {
 
   /// Pagos que no son mensuales (SOAT, matrícula…): cuánto apartar.
   final ProvisionPlan provisionPlan;
+
+  /// Gastos de hoy, del más grande al más pequeño, con si cuentan en el
+  /// tope del día.
+  final List<TodaySpend> todaySpends;
+
+  /// Lo que salió hoy y no baja el tope (fijos, mercado, ahorro…).
+  Money get spentTodayOutsideCap => Money.sum(
+    todaySpends.where((s) => !s.countsInCap).map((s) => s.transaction.amount),
+  );
 
   Money get income => cashFlow.income;
 
@@ -185,6 +226,13 @@ final class CycleSummaryBuilder {
         outflow -
         upcoming.upcomingExpenses +
         upcoming.upcomingIncome;
+    final plannedReserve =
+        _monthlyReserve(
+          budgetLines,
+          cycleTransactions,
+          upcoming.upcomingExpensesByCategory,
+        ) +
+        _kidsReserve(settings, cycleTransactions);
 
     return CycleSummary(
       cycle: cycle,
@@ -200,18 +248,12 @@ final class CycleSummaryBuilder {
             .where((m) => m.isActive && m.isExpense)
             .map((m) => m.amount),
       ),
+      plannedReserve: plannedReserve,
       dailyCap: const DailySpendingCapCalculator().calculate(
         available: leftAfterFixed,
         daysLeft: cycle.daysLeft(today),
         spentToday: _dayToDaySpentOn(today, cycleTransactions, savingIds),
-        monthlyReserve:
-            _monthlyReserve(
-              budgetLines,
-              cycleTransactions,
-              upcoming.upcomingExpensesByCategory,
-            ) +
-            _kidsReserve(settings, cycleTransactions) +
-            provisionPlan.pendingThisCycle,
+        monthlyReserve: plannedReserve + provisionPlan.pendingThisCycle,
         savingsReserve: (savingsTarget - savedThisCycle).max(Money.zero),
         thresholds: settings.thresholds,
       ),
@@ -225,8 +267,36 @@ final class CycleSummaryBuilder {
           ? null
           : settings.thresholds.classifyUsage(usage),
       provisionPlan: provisionPlan,
+      todaySpends: _todaySpends(today, cycleTransactions, savingIds),
     );
   }
+
+  /// Por qué un gasto cuenta (o no) en el tope del día.
+  static TodaySpendKind kindOf(Transaction t, Set<String> savingIds) {
+    if (t.isLinked) return TodaySpendKind.linked;
+    if (savingIds.contains(t.categoryId)) return TodaySpendKind.saving;
+    if (DefaultCategories.monthlyPlannedIds.contains(t.categoryId)) {
+      return TodaySpendKind.monthly;
+    }
+    return TodaySpendKind.dayToDay;
+  }
+
+  List<TodaySpend> _todaySpends(
+    DateTime today,
+    List<Transaction> transactions,
+    Set<String> savingIds,
+  ) =>
+      [
+        for (final t in transactions)
+          if (t.isExpense && _sameDay(t.date, today))
+            TodaySpend(transaction: t, kind: kindOf(t, savingIds)),
+      ]..sort(
+        (a, b) =>
+            b.transaction.amount.cents.compareTo(a.transaction.amount.cents),
+      );
+
+  static bool _sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
 
   /// Lo que falta del apartado mensual para imprevistos de los niños
   /// (descontando lo ya gastado en Hijos/Familia este ciclo).
@@ -242,11 +312,11 @@ final class CycleSummaryBuilder {
 
   static const familyCategoryId = 'seed-expense-family';
 
-  /// Gasto del día a día: ni ahorro ni categorías que se planean por mes.
+  /// Gasto del día a día: ni ahorro, ni categorías que se planean por mes,
+  /// ni fijos, cuotas de crédito o pagos del año (sea cual sea su
+  /// categoría).
   static bool isDayToDay(Transaction t, Set<String> savingIds) =>
-      t.isExpense &&
-      !savingIds.contains(t.categoryId) &&
-      !DefaultCategories.monthlyPlannedIds.contains(t.categoryId);
+      t.isExpense && kindOf(t, savingIds) == TodaySpendKind.dayToDay;
 
   Money _dayToDaySpentOn(
     DateTime today,

@@ -5,7 +5,6 @@ import 'package:finance_app/domain/categories/default_categories.dart';
 import 'package:finance_app/domain/debts/debt.dart';
 import 'package:finance_app/domain/debts/debt_repository.dart';
 import 'package:finance_app/domain/debts/extra_payment.dart';
-import 'package:finance_app/domain/debts/loan_projector.dart';
 import 'package:finance_app/domain/debts/loan_terms.dart';
 import 'package:finance_app/domain/shared/clock.dart';
 import 'package:finance_app/domain/shared/id_generator.dart';
@@ -87,18 +86,7 @@ final class RegisterDebtPayment {
     if (!amount.isPositive) {
       return invalid(ValidationCodes.amountMustBePositive);
     }
-    final terms = debt.terms;
-    final principal = terms == null
-        ? amount.min(debt.currentBalance)
-        : const LoanProjector().principalPortion(
-            balance: debt.currentBalance,
-            terms: terms,
-            payment: amount,
-          );
-    final updated = debt.afterPayment(
-      debt.currentBalance - principal,
-      countsAsInstallment: true,
-    );
+    final updated = debt.afterInstallment(amount);
     final now = _clock.now();
     return guardUseCase(() async {
       await _transactions.save(

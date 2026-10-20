@@ -39,6 +39,7 @@ final class FinanceSettings {
     this.appearance = Appearance.system,
     this.aiEnabled = false,
     this.aiReviewFrequency = ReviewFrequency.weekly,
+    this.monthlySalary = Money.zero,
   });
 
   /// Referencia (no obligación): 10% del ingreso.
@@ -50,6 +51,10 @@ final class FinanceSettings {
   /// Horas de los avisos inteligentes (resumen de la mañana, mediodía,
   /// fijos de mañana y cierre de ciclo).
   static const morningBriefHour = 7;
+
+  /// Frase del día para escribir (antes del resumen de la mañana).
+  static const wisdomHour = 6;
+  static const wisdomMinute = 30;
   static const middayNudgeHour = 13;
   static const fixedHeadsUpHour = 19;
   static const fixedDueHour = 8;
@@ -131,6 +136,13 @@ final class FinanceSettings {
   final bool aiEnabled;
   final ReviewFrequency aiReviewFrequency;
 
+  /// Sueldo neto que llega cada mes (lo que cae en la cuenta). Cero = la
+  /// app lo deduce de lo que registras en Salario. Base de "¿Puedo
+  /// gastar…?" y de la proyección de los próximos meses.
+  final Money monthlySalary;
+
+  bool get hasSalary => monthlySalary.isPositive;
+
   bool get hasDependents => dependents > 0;
 
   /// Meses de gastos esenciales que debería cubrir el fondo de emergencia.
@@ -161,6 +173,7 @@ final class FinanceSettings {
     Appearance? appearance,
     bool? aiEnabled,
     ReviewFrequency? aiReviewFrequency,
+    Money? monthlySalary,
   }) => FinanceSettings(
     savingsTargetRate: savingsTargetRate ?? this.savingsTargetRate,
     thresholds: thresholds ?? this.thresholds,
@@ -176,6 +189,7 @@ final class FinanceSettings {
     appearance: appearance ?? this.appearance,
     aiEnabled: aiEnabled ?? this.aiEnabled,
     aiReviewFrequency: aiReviewFrequency ?? this.aiReviewFrequency,
+    monthlySalary: monthlySalary ?? this.monthlySalary,
   );
 
   @override
@@ -194,7 +208,8 @@ final class FinanceSettings {
       other.kidsMonthlyBuffer == kidsMonthlyBuffer &&
       other.appearance == appearance &&
       other.aiEnabled == aiEnabled &&
-      other.aiReviewFrequency == aiReviewFrequency;
+      other.aiReviewFrequency == aiReviewFrequency &&
+      other.monthlySalary == monthlySalary;
 
   @override
   int get hashCode => Object.hash(
@@ -212,5 +227,6 @@ final class FinanceSettings {
     appearance,
     aiEnabled,
     aiReviewFrequency,
+    monthlySalary,
   );
 }

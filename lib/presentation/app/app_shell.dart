@@ -1,11 +1,14 @@
 import 'dart:async';
 
 import 'package:finance_app/application/advisor/financial_alerts.dart';
+import 'package:finance_app/application/fixed/fixed_movement_use_cases.dart';
+import 'package:finance_app/application/reminders/reminder_scheduler.dart';
 import 'package:finance_app/bootstrap/use_cases.dart';
 import 'package:finance_app/core/result.dart';
 import 'package:finance_app/domain/savings/finance_settings.dart';
 import 'package:finance_app/presentation/app/app_theme.dart';
 import 'package:finance_app/presentation/cfo/cfo_screen.dart';
+import 'package:finance_app/presentation/fixed/bill_actions.dart';
 import 'package:finance_app/presentation/home/home_screen.dart';
 import 'package:finance_app/presentation/insights/insights_screen.dart';
 import 'package:finance_app/presentation/plan/plan_screen.dart';
@@ -48,17 +51,45 @@ class _AppShellState extends ConsumerState<AppShell>
     _Section('Tu CFO', Icons.auto_awesome_outlined, Icons.auto_awesome),
   ];
 
+  StreamSubscription<ReminderResponse>? _reminderTaps;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _reminderTaps = ref
+        .read(reminderResponsesProvider)
+        .listen((r) => unawaited(_onReminderTap(r)));
     unawaited(_onOpened());
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    unawaited(_reminderTaps?.cancel());
     super.dispose();
+  }
+
+  /// Botones del aviso de una factura: "Ya lo pagué" abre el registro del
+  /// valor; "Mañana" / "En 2 días" la posponen. Tocar el aviso = ver
+  /// "Ya lo pagué".
+  Future<void> _onReminderTap(ReminderResponse response) async {
+    final movementId = response.payload;
+    if (movementId == null) return;
+    _select(_homeIndex);
+    final days = switch (response.action) {
+      ReminderAction.tomorrow => SnoozeFixedBill.tomorrow,
+      ReminderAction.inTwoDays => SnoozeFixedBill.inTwoDays,
+      ReminderAction.paid || null => null,
+    };
+    if (days == null) {
+      await confirmBillById(context, ref, movementId);
+      return;
+    }
+    final movements = await ref.read(fixedMovementsProvider.future);
+    final movement = movements.where((m) => m.id == movementId).firstOrNull;
+    if (movement == null || !mounted) return;
+    await snoozeBill(context, ref, movement, days: days);
   }
 
   @override
@@ -128,6 +159,12 @@ class _AppShellState extends ConsumerState<AppShell>
     ref.listen(financialAlertsProvider, (_, next) {
       if (next.value case final alerts?) unawaited(_syncReminders(alerts));
     });
+    // Un fijo nuevo o editado reprograma sus avisos (víspera y día de pago).
+    ref.listen(fixedMovementsProvider, (previous, next) {
+      if (previous?.value != null && next.hasValue) {
+        unawaited(_syncReminders());
+      }
+    });
     final isHome = _index == _homeIndex;
     // Atrás (gesto o botón) desde otra sección vuelve a Inicio; solo desde
     // Inicio sale de la app.
@@ -194,7 +231,7 @@ class _AppShellState extends ConsumerState<AppShell>
           ),
         ],
       ),
-      bottomNavigationBar: _LabeledNavBar(
+      bottomNavigationBar: _IconNavBar(
         sections: _sections,
         selected: _index,
         onSelected: _select,
@@ -228,9 +265,9 @@ class _Section {
   final IconData selectedIcon;
 }
 
-/// Barra flotante oscura con icono y nombre de cada sección (los iconos
-/// solos no se entienden a la primera). Cada destino mide al menos 48 px.
-class _LabeledNavBar extends StatelessWidget {
+/// Barra flotante oscura solo con iconos (el nombre de cada sección va en
+/// el tooltip y en Semantics). Cada destino mide al menos 48 px.
+class _IconNavBar extends StatelessWidget {
   const new({
     required this.sections,
     required this.selected,
@@ -241,7 +278,7 @@ class _LabeledNavBar extends StatelessWidget {
   final int selected;
   final ValueChanged<int> onSelected;
 
-  static const _height = 68.0;
+  static const _height = 60.0;
   static const _indicatorWidth = 52.0;
 
   @override
@@ -294,20 +331,6 @@ class _LabeledNavBar extends StatelessWidget {
                                   ? AppTheme.accent
                                   : AppTheme.inkMuted,
                               size: 22,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            sections[i].label,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: i == selected
-                                  ? AppTheme.accent
-                                  : AppTheme.inkMuted,
-                              fontWeight: i == selected
-                                  ? FontWeight.w700
-                                  : FontWeight.w500,
                             ),
                           ),
                         ],

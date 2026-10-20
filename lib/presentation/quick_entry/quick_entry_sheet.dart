@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:finance_app/application/transactions/description_suggestions.dart';
 import 'package:finance_app/application/transactions/frequent_categories.dart';
 import 'package:finance_app/application/transactions/register_transaction.dart';
 import 'package:finance_app/application/transactions/update_transaction.dart';
@@ -9,10 +10,12 @@ import 'package:finance_app/domain/categories/category.dart';
 import 'package:finance_app/domain/fixed/fixed_movement_scheduler.dart';
 import 'package:finance_app/domain/fixed/fixed_payment_matcher.dart';
 import 'package:finance_app/domain/shared/money.dart';
+import 'package:finance_app/domain/transactions/fuel_economy.dart';
 import 'package:finance_app/domain/transactions/transaction.dart';
 import 'package:finance_app/presentation/categories/category_form.dart';
 import 'package:finance_app/presentation/quick_entry/voice_entry_sheet.dart';
 import 'package:finance_app/presentation/shared/category_picker.dart';
+import 'package:finance_app/presentation/shared/category_style.dart';
 import 'package:finance_app/presentation/shared/data_providers.dart';
 import 'package:finance_app/presentation/shared/form_widgets.dart';
 import 'package:finance_app/presentation/shared/formatters.dart';
@@ -87,8 +90,18 @@ class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
       widget.editing?.categoryId ?? widget.draft?.categoryId;
   late DateTime? _date = widget.editing?.date ?? widget.draft?.date;
   late ExpenseNature? _nature = widget.editing?.nature;
+  late final _odometer = TextEditingController(
+    text: switch (widget.editing?.odometerKm) {
+      final km? => Formatters.pesos(km),
+      null => null,
+    },
+  );
+  final _descriptionFocus = FocusNode();
   bool _showAllCategories = false;
   bool _saving = false;
+
+  /// Ya elegiste una sugerencia: no se vuelve a mostrar hasta que escribas.
+  late bool _suggestionPicked = _description.text.isNotEmpty;
 
   int? get _pesos => PesosInputFormatter.parse(_amount.text);
   bool get _isExpense => _kind == TransactionKind.expense;
@@ -98,6 +111,8 @@ class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
   void dispose() {
     _amount.dispose();
     _description.dispose();
+    _odometer.dispose();
+    _descriptionFocus.dispose();
     super.dispose();
   }
 
@@ -132,6 +147,24 @@ class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
         : [?selected, ...frequent.where((c) => c.id != selectedId)];
     final heard = widget.draft?.heard;
     final canSave = (_pesos ?? 0) > 0 && selectedId != null && !_saving;
+    final history = ref.watch(lastYearTransactionsProvider).value ?? const [];
+    final suggestions = _suggestionPicked
+        ? const <DescriptionSuggestion>[]
+        : const DescriptionSuggestions().suggest(
+            query: _description.text,
+            kind: _kind,
+            history: history,
+            categories: categories,
+            fixed: ref.watch(fixedMovementsProvider).value ?? const [],
+          );
+    final tracksKm = _isExpense && FuelEconomyCalculator.appliesTo(selected);
+    final fuel = tracksKm
+        ? const FuelEconomyCalculator().compute(
+            history.where(
+              (t) => t.categoryId == selectedId && t.id != widget.editing?.id,
+            ),
+          )
+        : null;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -203,6 +236,29 @@ class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 16),
+            TextField(
+              controller: _description,
+              focusNode: _descriptionFocus,
+              textCapitalization: TextCapitalization.sentences,
+              maxLength: _descriptionMaxLength,
+              decoration: const InputDecoration(
+                labelText: 'Descripción (opcional)',
+                hintText: 'Ej: Mercado del mes',
+                helperText:
+                    'Escribe y elige algo que ya anotaste: se pone '
+                    'su categoría.',
+                helperMaxLines: 2,
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (_) => setState(() => _suggestionPicked = false),
+            ),
+            if (suggestions.isNotEmpty)
+              _Suggestions(
+                suggestions: suggestions,
+                categories: categories,
+                onPick: _pickSuggestion,
+              ),
+            const SizedBox(height: 8),
             Text('Categoría', style: theme.textTheme.titleSmall),
             const SizedBox(height: 8),
             CategoryPicker(
@@ -233,17 +289,26 @@ class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _description,
-              textCapitalization: TextCapitalization.sentences,
-              maxLength: _descriptionMaxLength,
-              decoration: const InputDecoration(
-                labelText: 'Descripción (opcional)',
-                hintText: 'Ej: Mercado del mes',
-                border: OutlineInputBorder(),
+
+            if (tracksKm) ...[
+              const SizedBox(height: 12),
+              TextField(
+                controller: _odometer,
+                keyboardType: TextInputType.number,
+                inputFormatters: [PesosInputFormatter()],
+                decoration: InputDecoration(
+                  labelText: 'Kilometraje del vehículo (opcional)',
+                  suffixText: 'km',
+                  helperText: fuel == null
+                      ? 'Si es gasolina, anota el kilometraje al tanquear: '
+                            'así sabrás cuánto te cuesta cada km.'
+                      : 'La última vez: '
+                            '${Formatters.pesos(fuel.lastOdometerKm)} km.',
+                  helperMaxLines: 3,
+                  border: const OutlineInputBorder(),
+                ),
               ),
-            ),
+            ],
             ExpansionTile(
               initiallyExpanded:
                   widget.draft?.date != null || widget.editing?.nature != null,
@@ -312,6 +377,18 @@ class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
     );
   }
 
+  void _pickSuggestion(DescriptionSuggestion suggestion) {
+    setState(() {
+      _description.text = suggestion.text;
+      _description.selection = TextSelection.collapsed(
+        offset: suggestion.text.length,
+      );
+      _categoryId = suggestion.categoryId;
+      _suggestionPicked = true;
+    });
+    _descriptionFocus.unfocus();
+  }
+
   void _switchToVoice() {
     final navigator = Navigator.of(context);
     final parent = navigator.context;
@@ -364,6 +441,7 @@ class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
                   date: _date,
                   description: _description.text,
                   nature: _nature,
+                  odometerKm: _odometerKm(categoryId),
                 ),
               )
         : await ref
@@ -377,12 +455,14 @@ class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
                   date: _date ?? editing.date,
                   description: _description.text,
                   nature: _nature,
+                  odometerKm: _odometerKm(categoryId),
                 ),
               );
     if (!mounted) return;
     final messenger = ScaffoldMessenger.of(context);
     switch (result) {
-      case Ok():
+      case Ok(:final value):
+        final fuelNote = _fuelNote(value);
         final navigator = Navigator.of(context);
         final parent = navigator.context;
         final category = (ref.read(categoriesProvider).value ?? const [])
@@ -404,11 +484,15 @@ class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
         messenger.showSnackBar(
           SnackBar(
             content: Text(
-              _isEditing
-                  ? 'Cambios guardados'
-                  : _isExpense
-                  ? 'Gasto registrado'
-                  : 'Ingreso registrado',
+              [
+                if (_isEditing)
+                  'Cambios guardados'
+                else if (_isExpense)
+                  'Gasto registrado'
+                else
+                  'Ingreso registrado',
+                ?fuelNote,
+              ].join('. '),
             ),
           ),
         );
@@ -418,6 +502,31 @@ class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
           SnackBar(content: Text(failureMessage(failure))),
         );
     }
+  }
+
+  /// Kilometraje escrito, solo si la categoría lo admite.
+  int? _odometerKm(String categoryId) {
+    final category = (ref.read(categoriesProvider).value ?? const [])
+        .where((c) => c.id == categoryId)
+        .firstOrNull;
+    if (!_isExpense || !FuelEconomyCalculator.appliesTo(category)) return null;
+    return PesosInputFormatter.parse(_odometer.text);
+  }
+
+  /// "Te costó $350 por km desde la última tanqueada".
+  String? _fuelNote(Transaction saved) {
+    if (saved.odometerKm == null) return null;
+    final history = ref.read(lastYearTransactionsProvider).value ?? const [];
+    final fuel = const FuelEconomyCalculator().compute([
+      ...history.where(
+        (t) => t.categoryId == saved.categoryId && t.id != saved.id,
+      ),
+      saved,
+    ]);
+    final perKm = fuel?.lastCostPerKm;
+    if (fuel == null || perKm == null) return null;
+    return 'Te costó ${Formatters.money(perKm)} por km en los últimos '
+        '${Formatters.pesos(fuel.lastSegmentKm!)} km';
   }
 
   /// `true`: es ese pago fijo; `false`: es otro gasto; `null`: canceló.
@@ -491,5 +600,51 @@ class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
           SnackBar(content: Text(failureMessage(failure))),
         );
     }
+  }
+}
+
+/// Lista corta de cosas que ya anotaste; tocar una llena la descripción y
+/// elige su categoría.
+class _Suggestions extends StatelessWidget {
+  const new({
+    required this.suggestions,
+    required this.categories,
+    required this.onPick,
+  });
+
+  final List<DescriptionSuggestion> suggestions;
+  final List<Category> categories;
+  final ValueChanged<DescriptionSuggestion> onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final byId = {for (final c in categories) c.id: c};
+    return Card(
+      margin: EdgeInsets.zero,
+      color: theme.colorScheme.surfaceContainerHighest,
+      child: Column(
+        children: [
+          for (final s in suggestions)
+            ListTile(
+              dense: true,
+              leading: CategoryAvatar(category: byId[s.categoryId], size: 28),
+              title: Text(s.text, maxLines: 1, overflow: TextOverflow.ellipsis),
+              subtitle: Text(
+                [
+                  byId[s.categoryId]?.name ?? '',
+                  if (s.isFixed)
+                    'fijo'
+                  else if (s.count > 1)
+                    '${s.count} veces',
+                  if (s.lastAmount case final amount?)
+                    '${s.isFixed ? '' : 'última '}${Formatters.money(amount)}',
+                ].where((p) => p.isNotEmpty).join(' · '),
+              ),
+              onTap: () => onPick(s),
+            ),
+        ],
+      ),
+    );
   }
 }

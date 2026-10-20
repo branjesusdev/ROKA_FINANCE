@@ -1,6 +1,7 @@
 import 'package:finance_app/bootstrap/use_cases.dart';
 import 'package:finance_app/domain/categories/category.dart';
 import 'package:finance_app/presentation/categories/category_form.dart';
+import 'package:finance_app/presentation/insights/category_report_screen.dart';
 import 'package:finance_app/presentation/shared/async_view.dart';
 import 'package:finance_app/presentation/shared/category_style.dart';
 import 'package:finance_app/presentation/shared/data_providers.dart';
@@ -82,17 +83,29 @@ class _CategoryRow extends ConsumerWidget {
       subtitle: hidden ? const Text('No aparece al registrar') : null,
       onTap: () =>
           showCategoryForm(context, kind: category.kind, editing: category),
-      trailing: IconButton(
-        tooltip: hidden ? 'Mostrar' : 'Ocultar',
-        icon: Icon(
-          hidden ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-        ),
-        onPressed: () async {
-          final result = await ref
-              .read(updateCategoryProvider)
-              .call(category, isArchived: !hidden);
-          if (context.mounted) showResult(context, result);
-        },
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            tooltip: 'Ver análisis',
+            icon: const Icon(Icons.insights),
+            onPressed: () => openCategoryReport(context, category.id),
+          ),
+          IconButton(
+            tooltip: hidden ? 'Mostrar' : 'Ocultar',
+            icon: Icon(
+              hidden
+                  ? Icons.visibility_outlined
+                  : Icons.visibility_off_outlined,
+            ),
+            onPressed: () async {
+              final result = await ref
+                  .read(updateCategoryProvider)
+                  .call(category, isArchived: !hidden);
+              if (context.mounted) showResult(context, result);
+            },
+          ),
+        ],
       ),
     );
   }

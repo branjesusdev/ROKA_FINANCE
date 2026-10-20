@@ -17,6 +17,7 @@ void main() {
     TransactionKind kind = TransactionKind.expense,
     bool isActive = true,
     bool isVariable = false,
+    bool autoDebit = true,
     DateTime? lastPostedOn,
   }) => FixedMovement(
     id: name,
@@ -27,6 +28,7 @@ void main() {
     dayOfMonth: day,
     isActive: isActive,
     isVariable: isVariable,
+    autoDebit: autoDebit,
     lastPostedOn: lastPostedOn,
   );
 
@@ -55,6 +57,19 @@ void main() {
     expect(result.upcoming.single.date, DateTime(2026, 10, 10));
     expect(result.upcomingExpenses, const Money.pesos(100000));
     expect(result.upcomingIncome, Money.zero);
+  });
+
+  test('gasto sin débito automático: su día no lo da por pagado, espera '
+      '"Ya lo pagué" y sigue descontándose', () {
+    final result = schedule([
+      fixed('Arriendo', 3, autoDebit: false),
+      fixed('Sueldo', 20, kind: TransactionKind.income, autoDebit: false),
+    ]);
+
+    expect(result.due.map((s) => s.movement.name), ['Sueldo']);
+    expect(result.awaitingAmount.single.movement.name, 'Arriendo');
+    expect(result.awaitingAmount.single.date, DateTime(2026, 10, 3));
+    expect(result.upcomingExpenses, const Money.pesos(100000));
   });
 
   test('no repite lo ya registrado en este ciclo ni los pausados', () {

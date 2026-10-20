@@ -5,6 +5,7 @@ import 'package:finance_app/core/result.dart';
 import 'package:finance_app/domain/shared/date_range.dart';
 import 'package:finance_app/domain/shared/money.dart';
 import 'package:finance_app/domain/transactions/transaction.dart';
+import 'package:finance_app/infrastructure/repositories/drift_debt_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_fixed_movement_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_settings_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_transaction_repository.dart';
@@ -49,6 +50,7 @@ void main() {
     postDue = PostDueFixedMovements(
       fixed: fixed,
       transactions: transactions,
+      debts: DriftDebtRepository(db),
       currentCycle: currentCycle,
       clock: clock,
       ids: ids,
@@ -70,6 +72,7 @@ void main() {
       amount: const Money.pesos(1200000),
       categoryId: housing,
       dayOfMonth: cycle.start.day,
+      autoDebit: true,
     );
     await postDue();
     final day = cycle.start.add(const Duration(days: 1));

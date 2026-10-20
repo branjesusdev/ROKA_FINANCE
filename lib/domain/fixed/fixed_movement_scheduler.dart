@@ -29,8 +29,8 @@ final class FixedSchedule {
   /// (p. ej. sueldo adelantado): marcar como registrados sin duplicarlos.
   final List<ScheduledFixed> covered;
 
-  /// Fijos de valor variable cuyo día ya llegó: esperan que el usuario
-  /// escriba el valor real de la factura.
+  /// Fijos cuyo día ya llegó y esperan confirmación: "Ya lo pagué" (o el
+  /// valor real si es variable). Siguen descontando lo que te queda.
   final List<ScheduledFixed> awaitingAmount;
 
   /// Lo que aún falta por salir o entrar en el ciclo: lo que viene y las
@@ -96,7 +96,7 @@ final class FixedMovementScheduler {
         if (isFuture) {
           upcoming.add(item);
         } else {
-          (movement.isVariable ? awaiting : due).add(item);
+          (movement.needsConfirmation ? awaiting : due).add(item);
         }
       }
     }

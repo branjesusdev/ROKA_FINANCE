@@ -16,6 +16,9 @@ final class MarketQuote {
     required this.asOf,
   });
 
+  /// Centésimas por unidad de moneda (precios en "minor").
+  static const minorPerUnit = 100;
+
   final String symbol;
   final String currency;
   final int lastPriceMinor;

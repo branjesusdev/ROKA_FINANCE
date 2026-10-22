@@ -226,6 +226,7 @@ final class CycleSummaryBuilder {
         outflow -
         upcoming.upcomingExpenses +
         upcoming.upcomingIncome;
+    final day = DateTime(today.year, today.month, today.day);
     final plannedReserve =
         _monthlyReserve(
           budgetLines,
@@ -238,8 +239,14 @@ final class CycleSummaryBuilder {
       cycle: cycle,
       today: today,
       cashFlow: cashFlow,
-      expenseTotals: _totals(cycleTransactions.where((t) => t.isExpense), byId),
-      incomeTotals: _totals(cycleTransactions.where((t) => t.isIncome), byId),
+      expenseTotals: categoryTotals(
+        cycleTransactions.where((t) => t.isExpense),
+        byId,
+      ),
+      incomeTotals: categoryTotals(
+        cycleTransactions.where((t) => t.isIncome),
+        byId,
+      ),
       upcomingFixed: upcoming,
       previousCycle: previousCycle,
       savingsTarget: savingsTarget,
@@ -256,6 +263,12 @@ final class CycleSummaryBuilder {
         monthlyReserve: plannedReserve + provisionPlan.pendingThisCycle,
         savingsReserve: (savingsTarget - savedThisCycle).max(Money.zero),
         thresholds: settings.thresholds,
+        trackedDays: _trackedDays(cycle, cycleTransactions),
+        spentBeforeToday: Money.sum(
+          cycleTransactions
+              .where((t) => isDayToDay(t, savingIds) && t.date.isBefore(day))
+              .map((t) => t.amount),
+        ),
       ),
       previousLeft: previousCycleTransactions.isEmpty
           ? null
@@ -294,6 +307,22 @@ final class CycleSummaryBuilder {
         (a, b) =>
             b.transaction.amount.cents.compareTo(a.transaction.amount.cents),
       );
+
+  /// Días del ciclo desde que hay registro: si empezaste a anotar a mitad
+  /// del ciclo, el promedio se calcula desde ese día.
+  static int? _trackedDays(PayCycle cycle, List<Transaction> transactions) {
+    if (transactions.isEmpty) return null;
+    final first = transactions
+        .map((t) => DateTime(t.date.year, t.date.month, t.date.day))
+        .reduce((a, b) => a.isBefore(b) ? a : b);
+    final from = first.isAfter(cycle.start) ? first : cycle.start;
+    if (!from.isBefore(cycle.endExclusive)) return null;
+    return PayCycle.between(
+      start: from,
+      endExclusive: cycle.endExclusive,
+      payday: cycle.payday,
+    ).totalDays;
+  }
 
   static bool _sameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
@@ -358,7 +387,8 @@ final class CycleSummaryBuilder {
     return reserve;
   }
 
-  List<CategoryTotal> _totals(
+  /// Total por categoría, de mayor a menor, con su parte del total.
+  static List<CategoryTotal> categoryTotals(
     Iterable<Transaction> transactions,
     Map<String, Category> byId,
   ) {

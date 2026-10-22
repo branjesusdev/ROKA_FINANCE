@@ -40,8 +40,19 @@ void main() {
     expect(result.daysAfterToday, 16);
   });
 
-  test('600 mil: se puede gastando menos los días que siguen', () {
+  test('600 mil: sale de lo que sobra del tope parejo, sin bajar el de los '
+      'días que siguen', () {
+    // 3.060.000 libres en 30 días = 102.000 por día; con 17 días por
+    // delante sobran 1.326.000.
+    expect(summary.dailyCap!.surplus, const Money.pesos(1326000));
     final result = check(600000);
+    expect(result.verdict, SpendVerdict.fitsWithRecovery);
+    expect(result.payAll.dailyCapAfter, result.capToday);
+    expect(result.payAll.dailyCut, Money.zero);
+  });
+
+  test('1,6 millones: se puede gastando menos los días que siguen', () {
+    final result = check(1600000);
     expect(result.verdict, SpendVerdict.fitsWithRecovery);
     final after = result.payAll.dailyCapAfter!;
     expect(after, lessThan(result.capToday));

@@ -1,6 +1,7 @@
 import 'package:finance_app/application/dashboard/salary_forecast.dart';
 import 'package:finance_app/domain/shared/money.dart';
 import 'package:finance_app/presentation/shared/formatters.dart';
+import 'package:finance_app/presentation/shared/motion.dart';
 import 'package:finance_app/presentation/shared/status_style.dart';
 import 'package:flutter/material.dart';
 
@@ -48,16 +49,20 @@ class ForecastChart extends StatelessWidget {
         children: [
           SizedBox(
             height: _height,
-            child: CustomPaint(
-              painter: _BarsPainter(
-                values: [for (final b in balances) b.cents.toDouble()],
-                ghosts: before == null
-                    ? null
-                    : [for (final b in before!.balances) b.cents.toDouble()],
-                positive: StatusColors.okOf(scheme),
-                negative: scheme.error,
-                ghost: scheme.onSurfaceVariant,
-                axis: scheme.outlineVariant,
+            child: ChartReveal(
+              replayKey: Object.hashAll(balances.map((b) => b.cents)),
+              builder: (context, progress) => CustomPaint(
+                painter: _BarsPainter(
+                  progress: progress,
+                  values: [for (final b in balances) b.cents.toDouble()],
+                  ghosts: before == null
+                      ? null
+                      : [for (final b in before!.balances) b.cents.toDouble()],
+                  positive: StatusColors.okOf(scheme),
+                  negative: scheme.error,
+                  ghost: scheme.onSurfaceVariant,
+                  axis: scheme.outlineVariant,
+                ),
               ),
             ),
           ),
@@ -105,6 +110,7 @@ class ForecastChart extends StatelessWidget {
 
 class _BarsPainter extends CustomPainter {
   new({
+    required this.progress,
     required this.values,
     required this.ghosts,
     required this.positive,
@@ -119,6 +125,9 @@ class _BarsPainter extends CustomPainter {
   final Color negative;
   final Color ghost;
   final Color axis;
+
+  /// 0→1: las barras crecen desde la línea del cero.
+  final double progress;
 
   /// Parte del ancho de cada columna que ocupa la barra.
   static const _barShare = 0.56;
@@ -137,7 +146,7 @@ class _BarsPainter extends CustomPainter {
     final barWidth = column * _barShare;
     for (var i = 0; i < values.length; i++) {
       final left = column * i + (column - barWidth) / 2;
-      final v = values[i];
+      final v = values[i] * progress;
       final rect = Rect.fromLTRB(
         left,
         v >= 0 ? y(v) : zero,
@@ -172,6 +181,7 @@ class _BarsPainter extends CustomPainter {
   bool shouldRepaint(_BarsPainter old) =>
       old.values != values ||
       old.ghosts != ghosts ||
+      old.progress != progress ||
       old.positive != positive ||
       old.negative != negative;
 }

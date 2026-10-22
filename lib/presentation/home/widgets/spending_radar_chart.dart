@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:finance_app/presentation/shared/motion.dart';
 import 'package:flutter/material.dart';
 
 /// Gráfica de araña: dos formas (actual y anterior) sobre los mismos ejes,
@@ -35,19 +36,26 @@ class SpendingRadarChart extends StatelessWidget {
       excludeSemantics: true,
       child: SizedBox.square(
         dimension: size,
-        child: CustomPaint(
-          painter: _RadarPainter(
-            labels: labels,
-            current: current,
-            previous: previous,
-            currentColor: currentColor,
-            previousColor: previousColor,
-            gridColor: theme.colorScheme.outlineVariant,
-            labelStyle:
-                theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ) ??
-                const TextStyle(fontSize: 11),
+        child: ChartReveal(
+          replayKey: Object.hash(
+            Object.hashAll(current),
+            Object.hashAll(previous),
+          ),
+          builder: (context, progress) => CustomPaint(
+            painter: _RadarPainter(
+              progress: progress,
+              labels: labels,
+              current: current,
+              previous: previous,
+              currentColor: currentColor,
+              previousColor: previousColor,
+              gridColor: theme.colorScheme.outlineVariant,
+              labelStyle:
+                  theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ) ??
+                  const TextStyle(fontSize: 11),
+            ),
           ),
         ),
       ),
@@ -57,6 +65,7 @@ class SpendingRadarChart extends StatelessWidget {
 
 class _RadarPainter extends CustomPainter {
   new({
+    required this.progress,
     required this.labels,
     required this.current,
     required this.previous,
@@ -74,6 +83,9 @@ class _RadarPainter extends CustomPainter {
   final Color gridColor;
   final TextStyle labelStyle;
 
+  /// 0→1: la figura se abre desde el centro.
+  final double progress;
+
   static const _rings = 4;
   static const _labelGap = 14.0;
   static const _labelSpace = 34.0;
@@ -88,7 +100,7 @@ class _RadarPainter extends CustomPainter {
     final center = size.center(Offset.zero);
     final radius = size.shortestSide / 2 - _labelSpace;
     final peak = [...current, ...previous].fold<double>(0, math.max);
-    final scale = peak <= 0 ? 0.0 : 1 / peak;
+    final scale = peak <= 0 ? 0.0 : progress / peak;
 
     Offset point(int i, double fraction) {
       // Primer eje arriba, en sentido horario.
@@ -181,6 +193,7 @@ class _RadarPainter extends CustomPainter {
   @override
   bool shouldRepaint(_RadarPainter old) =>
       old.current != current ||
+      old.progress != progress ||
       old.previous != previous ||
       old.labels != labels ||
       old.currentColor != currentColor ||

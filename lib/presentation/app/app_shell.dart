@@ -16,6 +16,7 @@ import 'package:finance_app/presentation/quick_entry/quick_entry_sheet.dart';
 import 'package:finance_app/presentation/quick_entry/voice_entry_sheet.dart';
 import 'package:finance_app/presentation/settings/settings_sheet.dart';
 import 'package:finance_app/presentation/shared/data_providers.dart';
+import 'package:finance_app/presentation/shared/motion.dart';
 import 'package:finance_app/presentation/transactions/transactions_screen.dart';
 import 'package:finance_app/presentation/wealth/wealth_screen.dart';
 import 'package:flutter/material.dart';
@@ -199,16 +200,18 @@ class _AppShellState extends ConsumerState<AppShell>
       body: IndexedStack(
         index: _index,
         children: [
-          HomeScreen(
-            onSeeAllTransactions: () => _select(_transactionsIndex),
-            onOpenAnalysis: _openAnalysis,
-            onOpenCfo: () => _select(_cfoIndex),
-            onOpenWealth: () => _select(_wealthIndex),
-          ),
-          const TransactionsScreen(),
-          const PlanScreen(),
-          const WealthScreen(),
-          const CfoScreen(),
+          for (final (i, screen) in [
+            HomeScreen(
+              onSeeAllTransactions: () => _select(_transactionsIndex),
+              onOpenCfo: () => _select(_cfoIndex),
+              onOpenWealth: () => _select(_wealthIndex),
+            ),
+            TransactionsScreen(onOpenAnalysis: _openAnalysis),
+            const PlanScreen(),
+            const WealthScreen(),
+            const CfoScreen(),
+          ].indexed)
+            RevealOnActive(active: i == _index, child: screen),
         ],
       ),
       floatingActionButton: Column(
@@ -280,6 +283,7 @@ class _IconNavBar extends StatelessWidget {
 
   static const _height = 60.0;
   static const _indicatorWidth = 52.0;
+  static const _selectedScale = 1.12;
 
   @override
   Widget build(BuildContext context) {
@@ -314,7 +318,8 @@ class _IconNavBar extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
+                            duration: Motion.quick,
+                            curve: Motion.emphasized,
                             width: _indicatorWidth,
                             height: 30,
                             decoration: BoxDecoration(
@@ -323,14 +328,19 @@ class _IconNavBar extends StatelessWidget {
                                   : Colors.transparent,
                               borderRadius: BorderRadius.circular(15),
                             ),
-                            child: Icon(
-                              i == selected
-                                  ? sections[i].selectedIcon
-                                  : sections[i].icon,
-                              color: i == selected
-                                  ? AppTheme.accent
-                                  : AppTheme.inkMuted,
-                              size: 22,
+                            child: AnimatedScale(
+                              scale: i == selected ? _selectedScale : 1,
+                              duration: Motion.quick,
+                              curve: Motion.emphasized,
+                              child: Icon(
+                                i == selected
+                                    ? sections[i].selectedIcon
+                                    : sections[i].icon,
+                                color: i == selected
+                                    ? AppTheme.accent
+                                    : AppTheme.inkMuted,
+                                size: 22,
+                              ),
                             ),
                           ),
                         ],

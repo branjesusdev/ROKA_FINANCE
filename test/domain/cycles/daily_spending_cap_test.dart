@@ -49,4 +49,55 @@ void main() {
     expect(calculate(available: 100000, monthly: 300000)!.cap, Money.zero);
     expect(calculate(daysLeft: 0), isNull);
   });
+
+  group('tope parejo del ciclo', () {
+    DailySpendingCap balanced({
+      required int available,
+      required int daysLeft,
+      required int trackedDays,
+      int spentBefore = 0,
+    }) => const DailySpendingCapCalculator().calculate(
+      available: Money.pesos(available),
+      daysLeft: daysLeft,
+      spentToday: Money.zero,
+      monthlyReserve: Money.zero,
+      savingsReserve: Money.zero,
+      thresholds: const TrafficLightThresholds(),
+      trackedDays: trackedDays,
+      spentBeforeToday: Money.pesos(spentBefore),
+    )!;
+
+    test('el último día no deja gastar todo lo que sobró: lo deja para '
+        'apartar', () {
+      // 30 días, 1.500.000 para el día a día; gastó 1.000.000 en 29 días.
+      final cap = balanced(
+        available: 500000,
+        daysLeft: 1,
+        trackedDays: 30,
+        spentBefore: 1000000,
+      );
+
+      expect(cap.cap, const Money.pesos(50000));
+      expect(cap.surplus, const Money.pesos(450000));
+    });
+
+    test('si gastaste de más, el tope es lo que queda entre los días', () {
+      final cap = balanced(
+        available: 100000,
+        daysLeft: 10,
+        trackedDays: 30,
+        spentBefore: 1400000,
+      );
+
+      expect(cap.cap, const Money.pesos(10000));
+      expect(cap.surplus, Money.zero);
+    });
+
+    test('el primer día del ciclo no hay sobrante', () {
+      final cap = balanced(available: 900000, daysLeft: 30, trackedDays: 30);
+
+      expect(cap.cap, const Money.pesos(30000));
+      expect(cap.surplus, Money.zero);
+    });
+  });
 }

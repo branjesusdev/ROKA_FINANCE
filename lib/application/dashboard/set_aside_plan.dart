@@ -52,7 +52,8 @@ final class SetAsidePlan {
 /// "Si me sobra, lo aparto": primero los pagos del año que faltan este
 /// ciclo (ya están descontados del libre: apartarlos solo los protege),
 /// luego las metas, con la mitad de lo libre como máximo para que quede
-/// para el día a día.
+/// para el día a día (o todo lo que sobra del tope parejo del ciclo, si es
+/// más).
 final class SetAsidePlanner {
   const new();
 
@@ -77,9 +78,12 @@ final class SetAsidePlanner {
             provision: s.provision,
           ),
     ];
-    var budget = overview.free
-        .max(Money.zero)
-        .applyPercentage(freeShareForGoals);
+    // Lo que sobra del tope parejo del ciclo puede ir completo a metas.
+    final free = overview.free.max(Money.zero);
+    var budget = free
+        .applyPercentage(freeShareForGoals)
+        .max(overview.dayToDaySurplus)
+        .min(free);
     final open =
         goals
             .where(

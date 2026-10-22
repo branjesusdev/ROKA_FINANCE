@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:finance_app/presentation/shared/motion.dart';
 import 'package:flutter/material.dart';
 
 /// Gráfico de dona simple. La información también se muestra como texto en
@@ -25,14 +26,19 @@ class DonutChart extends StatelessWidget {
     return ExcludeSemantics(
       child: SizedBox.square(
         dimension: size,
-        child: CustomPaint(
-          painter: _DonutPainter(
-            values: values,
-            colors: colors,
-            strokeWidth: strokeWidth,
-            trackColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+        // Se dibuja en sentido horario al aparecer o al cambiar los datos.
+        child: ChartReveal(
+          replayKey: Object.hashAll(values),
+          builder: (context, progress) => CustomPaint(
+            painter: _DonutPainter(
+              values: values,
+              colors: colors,
+              strokeWidth: strokeWidth,
+              trackColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+              progress: progress,
+            ),
+            child: Center(child: center),
           ),
-          child: Center(child: center),
         ),
       ),
     );
@@ -45,6 +51,7 @@ class _DonutPainter extends CustomPainter {
     required this.colors,
     required this.strokeWidth,
     required this.trackColor,
+    required this.progress,
   });
 
   static const _gap = 0.03;
@@ -53,6 +60,9 @@ class _DonutPainter extends CustomPainter {
   final List<Color> colors;
   final double strokeWidth;
   final Color trackColor;
+
+  /// 0→1: cuánto de la vuelta ya se dibujó.
+  final double progress;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -66,9 +76,12 @@ class _DonutPainter extends CustomPainter {
     if (total <= 0) return;
 
     final gap = values.length > 1 ? _gap : 0.0;
-    var start = -math.pi / 2;
+    const origin = -math.pi / 2;
+    final end = origin + 2 * math.pi * progress;
+    var start = origin;
     for (var i = 0; i < values.length; i++) {
-      final sweep = 2 * math.pi * values[i] / total;
+      final full = 2 * math.pi * values[i] / total;
+      final sweep = math.min(full, end - start);
       if (sweep > gap) {
         canvas.drawArc(
           rect,
@@ -78,7 +91,8 @@ class _DonutPainter extends CustomPainter {
           paint..color = colors[i],
         );
       }
-      start += sweep;
+      start += full;
+      if (start >= end) break;
     }
   }
 
@@ -86,5 +100,6 @@ class _DonutPainter extends CustomPainter {
   bool shouldRepaint(_DonutPainter old) =>
       old.values != values ||
       old.colors != colors ||
-      old.trackColor != trackColor;
+      old.trackColor != trackColor ||
+      old.progress != progress;
 }

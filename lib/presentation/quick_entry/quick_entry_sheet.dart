@@ -4,9 +4,12 @@ import 'package:finance_app/application/transactions/description_suggestions.dar
 import 'package:finance_app/application/transactions/frequent_categories.dart';
 import 'package:finance_app/application/transactions/register_transaction.dart';
 import 'package:finance_app/application/transactions/update_transaction.dart';
+import 'package:finance_app/bootstrap/providers.dart';
 import 'package:finance_app/bootstrap/use_cases.dart';
 import 'package:finance_app/core/result.dart';
 import 'package:finance_app/domain/categories/category.dart';
+import 'package:finance_app/domain/categories/default_categories.dart';
+import 'package:finance_app/domain/cycles/cycle_recount.dart';
 import 'package:finance_app/domain/fixed/fixed_movement_scheduler.dart';
 import 'package:finance_app/domain/fixed/fixed_payment_matcher.dart';
 import 'package:finance_app/domain/shared/money.dart';
@@ -19,6 +22,7 @@ import 'package:finance_app/presentation/shared/category_style.dart';
 import 'package:finance_app/presentation/shared/data_providers.dart';
 import 'package:finance_app/presentation/shared/form_widgets.dart';
 import 'package:finance_app/presentation/shared/formatters.dart';
+import 'package:finance_app/presentation/shared/recount_badge.dart';
 import 'package:finance_app/presentation/windfall/windfall_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -97,6 +101,9 @@ class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
     },
   );
   final _descriptionFocus = FocusNode();
+
+  /// Reconteo al registrar el sueldo: lo que de verdad tenías antes.
+  final _recount = TextEditingController();
   bool _showAllCategories = false;
   bool _saving = false;
 
@@ -112,6 +119,7 @@ class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
     _amount.dispose();
     _description.dispose();
     _odometer.dispose();
+    _recount.dispose();
     _descriptionFocus.dispose();
     super.dispose();
   }
@@ -158,6 +166,7 @@ class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
             fixed: ref.watch(fixedMovementsProvider).value ?? const [],
           );
     final tracksKm = _isExpense && FuelEconomyCalculator.appliesTo(selected);
+    final asksRecount = _asksRecount(selectedId);
     final fuel = tracksKm
         ? const FuelEconomyCalculator().compute(
             history.where(
@@ -309,6 +318,10 @@ class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
                 ),
               ),
             ],
+            if (asksRecount) ...[
+              const SizedBox(height: 12),
+              _RecountField(controller: _recount),
+            ],
             ExpansionTile(
               initiallyExpanded:
                   widget.draft?.date != null || widget.editing?.nature != null,
@@ -430,6 +443,8 @@ class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
       }
     }
     setState(() => _saving = true);
+    final recount = await _applyRecount(categoryId);
+    if (!mounted) return;
     final result = editing == null
         ? await ref
               .read(registerTransactionProvider)
@@ -492,6 +507,7 @@ class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
                 else
                   'Ingreso registrado',
                 ?fuelNote,
+                ?recount,
               ].join('. '),
             ),
           ),
@@ -502,6 +518,32 @@ class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
           SnackBar(content: Text(failureMessage(failure))),
         );
     }
+  }
+
+  /// Al registrar un sueldo nuevo se ofrece recontar el ciclo que cierra.
+  bool _asksRecount(String? categoryId) =>
+      !_isEditing && !_isExpense && categoryId == DefaultCategories.salaryId;
+
+  /// Cuadra el ciclo que se cierra (el día antes del sueldo) con lo que de
+  /// verdad quedaba. Devuelve el texto para el aviso, o `null`.
+  Future<String?> _applyRecount(String categoryId) async {
+    final actual = PesosInputFormatter.parse(_recount.text);
+    if (!_asksRecount(categoryId) || actual == null) return null;
+    final now = ref.read(clockProvider).now();
+    final day = _date ?? now;
+    final result = await ref
+        .read(reconcileBalanceProvider)
+        .call(
+          actual: Money.pesos(actual),
+          closingOn: DateTime(day.year, day.month, day.day - 1),
+        );
+    return switch (result) {
+      Ok(:final value) when value.difference.isZero =>
+        'Reconteo: cuadra exacto',
+      Ok(:final value) =>
+        'Reconteo: diferencia de ${Formatters.money(value.difference)}',
+      Err() => null,
+    };
   }
 
   /// Kilometraje escrito, solo si la categoría lo admite.
@@ -645,6 +687,58 @@ class _Suggestions extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+/// "¿Cuánto tenías antes de este sueldo?": compara con lo registrado del
+/// ciclo que se cierra y muestra la diferencia con su color (normal, aviso o
+/// desbalance grande).
+class _RecountField extends ConsumerStatefulWidget {
+  const new({required this.controller});
+
+  final TextEditingController controller;
+
+  @override
+  ConsumerState<_RecountField> createState() => _RecountFieldState();
+}
+
+class _RecountFieldState extends ConsumerState<_RecountField> {
+  @override
+  Widget build(BuildContext context) {
+    final registered = ref.watch(cycleMovementsProvider(0)).value?.left;
+    final actual = PesosInputFormatter.parse(widget.controller.text);
+    final recount = registered == null || actual == null
+        ? null
+        : CycleRecount.measure(
+            registered: registered,
+            actual: Money.pesos(actual),
+          );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          controller: widget.controller,
+          keyboardType: TextInputType.number,
+          inputFormatters: [PesosInputFormatter()],
+          decoration: InputDecoration(
+            labelText: 'Reconteo: ¿cuánto tenías antes de este sueldo?',
+            prefixText: r'$ ',
+            helperText: registered == null
+                ? 'Opcional. Lo que de verdad quedaba en tu cuenta y '
+                      'efectivo.'
+                : 'Opcional. Según lo registrado te quedaban '
+                      '${Formatters.money(registered)}.',
+            helperMaxLines: 3,
+            border: const OutlineInputBorder(),
+          ),
+          onChanged: (_) => setState(() {}),
+        ),
+        if (recount != null) ...[
+          const SizedBox(height: 8),
+          RecountBadge(recount: recount),
+        ],
+      ],
     );
   }
 }

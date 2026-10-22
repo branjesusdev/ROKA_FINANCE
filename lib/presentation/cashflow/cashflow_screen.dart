@@ -3,6 +3,7 @@ import 'package:finance_app/domain/shared/money.dart';
 import 'package:finance_app/presentation/app/app_theme.dart';
 import 'package:finance_app/presentation/shared/async_view.dart';
 import 'package:finance_app/presentation/shared/data_providers.dart';
+import 'package:finance_app/presentation/shared/decor.dart';
 import 'package:finance_app/presentation/shared/form_widgets.dart';
 import 'package:finance_app/presentation/shared/formatters.dart';
 import 'package:finance_app/presentation/shared/section_card.dart';
@@ -120,8 +121,8 @@ class _RatRaceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    const text = Color(0xFFF2F7F4);
-    const muted = Color(0xFFB9CBC4);
+    const text = AppTheme.onHero;
+    const muted = AppTheme.onHeroMuted;
     final s = statement;
     final freedom = s.freedom;
     final fraction = (freedom?.fraction ?? 0).clamp(0.0, 1.0);
@@ -143,14 +144,8 @@ class _RatRaceCard extends StatelessWidget {
       label:
           'Ingreso pasivo cubre $percent de tus gastos. '
           'Flujo de caja del mes ${Formatters.money(s.cashflow)}.',
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: theme.brightness == Brightness.dark
-              ? theme.colorScheme.surfaceContainerHighest
-              : AppTheme.forest,
-          borderRadius: BorderRadius.circular(28),
-        ),
+      child: DecorBackdrop.daily(
+        DailyArt.all.first,
         child: DefaultTextStyle.merge(
           style: const TextStyle(color: text),
           child: Column(
@@ -182,7 +177,10 @@ class _RatRaceCard extends StatelessWidget {
                 semanticsLabel: 'Avance para salir de la carrera de la rata',
               ),
               const SizedBox(height: 12),
-              Text(message, style: theme.textTheme.bodyMedium),
+              Text(
+                message,
+                style: theme.textTheme.bodyMedium?.copyWith(color: text),
+              ),
               const SizedBox(height: 12),
               Text(
                 'Flujo de caja del mes: '

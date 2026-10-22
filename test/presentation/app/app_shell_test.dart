@@ -1,4 +1,5 @@
 import 'package:finance_app/bootstrap/providers.dart';
+import 'package:finance_app/domain/budgets/budget_line.dart';
 import 'package:finance_app/domain/categories/default_categories.dart';
 import 'package:finance_app/domain/debts/debt.dart';
 import 'package:finance_app/domain/debts/interest_rate.dart';
@@ -8,8 +9,10 @@ import 'package:finance_app/domain/investments/investment.dart';
 import 'package:finance_app/domain/markets/market_quote.dart';
 import 'package:finance_app/domain/shared/money.dart';
 import 'package:finance_app/domain/shared/percentage.dart';
+import 'package:finance_app/domain/shared/year_month.dart';
 import 'package:finance_app/domain/transactions/transaction.dart';
 import 'package:finance_app/infrastructure/persistence/drift/app_database.dart';
+import 'package:finance_app/infrastructure/repositories/drift_budget_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_debt_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_fixed_movement_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_investment_repository.dart';
@@ -55,6 +58,20 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  // Baja en la lista hasta que [finder] se vea completo y lo toca.
+  Future<void> scrollAndTap(WidgetTester tester, Finder finder) async {
+    await tester.scrollUntilVisible(
+      finder,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(finder);
+    await tester.pumpAndSettle();
+    await tester.tap(finder);
+    await tester.pumpAndSettle();
+  }
+
   // Desmonta la app (cancela streams de drift) y cierra la base.
   Future<void> tearDownApp(WidgetTester tester) async {
     await tester.pumpWidget(const SizedBox.shrink());
@@ -75,13 +92,7 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('Próximos pagos'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('Gastos'),
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(find.text('Gastos'), findsOneWidget);
-    expect(find.text('Ingresos'), findsOneWidget);
+    expect(find.text('Gastos'), findsNothing, reason: 'vive en Movimientos');
     await tester.scrollUntilVisible(
       find.text('Patrimonio y metas'),
       300,
@@ -159,6 +170,8 @@ void main() {
 
     expect(find.text('Gasto registrado'), findsOneWidget);
     expect(find.text(r'-$ 5.000'), findsOneWidget, reason: 'últimos');
+    await tester.tap(find.byTooltip('Movimientos'));
+    await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
       find.text('100%'),
       300,
@@ -184,8 +197,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Gasto registrado'), findsOneWidget);
+    await tester.tap(find.byTooltip('Movimientos'));
+    await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
-      find.text('Alimentación'),
+      find.text('Alimentación').first,
       300,
       scrollable: find.byType(Scrollable).first,
     );
@@ -229,7 +244,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Gastos e ingresos fijos'));
     await tester.pumpAndSettle();
-    expect(find.text('Nuevo fijo'), findsOneWidget);
+    expect(find.byTooltip('Nuevo fijo'), findsOneWidget);
 
     await tearDownApp(tester);
   });
@@ -264,11 +279,24 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Gastos e ingresos fijos'));
     await tester.pumpAndSettle();
+    // Cabecera con el conteo completo y la dona por categoría.
+    expect(find.text('Gastos fijos de este ciclo'), findsOneWidget);
+    expect(find.text('Dónde se va más'), findsOneWidget);
+    expect(find.text('Ya pagado (1)'), findsOneWidget);
+    expect(find.text('Por pagar (1)'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Por pagar 15 oct'),
+      300,
+      scrollable: find.byType(Scrollable).last,
+    );
     expect(find.text('Por pagar este ciclo'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Pagado 1 oct'),
+      300,
+      scrollable: find.byType(Scrollable).last,
+    );
     expect(find.text('Ya pagados este ciclo'), findsOneWidget);
-    expect(find.text('Pagado 1 oct'), findsOneWidget);
-    expect(find.text('Por pagar 15 oct'), findsOneWidget);
-    Navigator.of(tester.element(find.text('Nuevo fijo'))).pop();
+    Navigator.of(tester.element(find.byTooltip('Nuevo fijo'))).pop();
     await tester.pumpAndSettle();
     final settings = find.text('Día en que normalmente llega tu sueldo');
     if (settings.evaluate().isNotEmpty) {
@@ -278,11 +306,12 @@ void main() {
 
     await tester.tap(find.byTooltip('Movimientos'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Arriendo'));
-    await tester.pumpAndSettle();
+    await scrollAndTap(tester, find.text('Arriendo'));
     expect(find.text('Fijo: Arriendo'), findsOneWidget, reason: 'vista previa');
     expect(find.text('Eliminar gasto'), findsNothing, reason: 'aún no edita');
 
+    await tester.ensureVisible(find.widgetWithText(FilledButton, 'Editar'));
+    await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Editar'));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Eliminar gasto'));
@@ -499,6 +528,8 @@ void main() {
     );
     await pumpApp(tester);
 
+    await tester.ensureVisible(find.text('¿Puedo gastar…?').first);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('¿Puedo gastar…?').first);
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).first, '20000');
@@ -567,9 +598,15 @@ void main() {
 
     await tester.tap(find.byTooltip('Movimientos'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Gasolina'));
-    await tester.pumpAndSettle();
+    await scrollAndTap(tester, find.text('Gasolina').first);
     expect(find.text('10.400 km'), findsOneWidget);
+    expect(
+      find.textContaining('en 12 meses'),
+      findsOneWidget,
+      reason: 'histograma',
+    );
+    await tester.ensureVisible(find.text('Ver análisis de Transporte'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Ver análisis de Transporte'));
     await tester.pumpAndSettle();
     expect(find.text('¿En qué mes gasté más?'), findsOneWidget);
@@ -662,7 +699,10 @@ void main() {
 
     expect(find.text('Según tu saldo, tasa y cuota'), findsOneWidget);
     expect(find.text('Según tu registro (19 cuotas)'), findsOneWidget);
-    expect(find.textContaining('No cuadran'), findsOneWidget);
+    expect(
+      find.textContaining(RegExp('cuotas? (adelantado|atrasado)')),
+      findsOneWidget,
+    );
 
     final create = find.textContaining('Crear fijo de');
     await tester.scrollUntilVisible(
@@ -679,6 +719,91 @@ void main() {
     final fixed = (await DriftFixedMovementRepository(db).getAll()).single;
     expect(fixed.debtId, 'carro');
     expect(fixed.dayOfMonth, 15);
+
+    await tearDownApp(tester);
+  });
+
+  testWidgets('presupuesto: un límite ya definido se edita y se quita', (
+    tester,
+  ) async {
+    await DriftBudgetRepository(db).save(
+      BudgetLine(
+        id: 'b1',
+        period: const YearMonth(2026, 10),
+        categoryId: DefaultCategories.groceries.id,
+        limit: const Money.pesos(600000),
+      ),
+    );
+    await pumpApp(tester);
+    await tester.tap(find.byTooltip('Plan'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Con límite'), findsOneWidget);
+    await tester.tap(find.byTooltip('Editar límite'));
+    await tester.pumpAndSettle();
+    expect(find.text('Editar límite de Mercado'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, '700000');
+    await tester.tap(find.text('Guardar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Límite guardado'), findsOneWidget);
+    expect(find.textContaining(r'de $ 700.000'), findsWidgets);
+
+    // Que los botones flotantes (voz, +) no tapen el ícono.
+    await tester.drag(find.text('Con límite'), const Offset(0, -150));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Quitar límite'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Quitar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Con límite'), findsNothing);
+
+    await tearDownApp(tester);
+  });
+
+  testWidgets('sueldo con reconteo: diferencia con color en el ciclo', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+
+    await tester.tap(find.byTooltip('Registrar movimiento'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ingreso'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, '3000000');
+    await tester.ensureVisible(find.text('Salario'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Salario'));
+    await tester.pumpAndSettle();
+
+    final recount = find.widgetWithText(
+      TextField,
+      'Reconteo: ¿cuánto tenías antes de este sueldo?',
+    );
+    await tester.ensureVisible(recount);
+    await tester.enterText(recount, '150000');
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('Desbalance grande', findRichText: true),
+      findsOneWidget,
+      reason: 'más de 100 mil sin registrar es rojo',
+    );
+
+    await tester.ensureVisible(find.text('Guardar ingreso'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Guardar ingreso'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text(r'Ingreso registrado. Reconteo: diferencia de $ 150.000'),
+      findsOneWidget,
+    );
+
+    // La diferencia queda en el ciclo que se cerró.
+    await tester.tap(find.byTooltip('Movimientos'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Ciclo anterior').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Reconteo del ciclo'), findsOneWidget);
+    expect(find.text('Real que quedó'), findsOneWidget);
 
     await tearDownApp(tester);
   });

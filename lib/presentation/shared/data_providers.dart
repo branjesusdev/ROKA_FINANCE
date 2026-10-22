@@ -17,6 +17,8 @@ import 'package:finance_app/application/insights/financial_health.dart';
 import 'package:finance_app/application/markets/load_watchlist.dart';
 import 'package:finance_app/application/markets/value_investments.dart';
 import 'package:finance_app/application/reminders/reminder_scheduler.dart';
+import 'package:finance_app/application/transactions/cycle_movements.dart';
+import 'package:finance_app/application/transactions/movement_history.dart';
 import 'package:finance_app/bootstrap/providers.dart';
 import 'package:finance_app/bootstrap/use_cases.dart';
 import 'package:finance_app/core/result.dart';
@@ -202,6 +204,7 @@ final payCycleResolverProvider = FutureProvider<PayCycleResolver>((ref) async {
   return PayCycleResolver.fromTransactions(
     payday: settings.payday,
     transactions: await transactions,
+    today: today,
   );
 });
 
@@ -210,6 +213,12 @@ final currentCycleProvider = FutureProvider<PayCycle>((ref) async {
   final resolver = await ref.watch(payCycleResolverProvider.future);
   return resolver.containing(ref.watch(clockProvider).now());
 });
+
+/// Ya pasó el día de pago y el sueldo no se ha registrado: el ciclo anterior
+/// sigue abierto.
+final salaryLateProvider = FutureProvider<bool>(
+  (ref) async => (await ref.watch(payCycleResolverProvider.future)).salaryLate,
+);
 
 final cycleSummaryProvider = FutureProvider<CycleSummary>((ref) async {
   final month = ref.watch(currentMonthProvider);
@@ -316,6 +325,53 @@ final categoryReportProvider = FutureProvider.family<CategoryReport?, String>((
     today: ref.watch(clockProvider).now(),
   );
 });
+
+/// Ciclos para navegar en Movimientos (12 meses de sueldos registrados).
+final movementsResolverProvider = FutureProvider<PayCycleResolver>((ref) async {
+  final transactions = await ref.watch(lastYearTransactionsProvider.future);
+  final settings = await ref.watch(settingsProvider.future);
+  return PayCycleResolver.fromTransactions(
+    payday: settings.payday,
+    transactions: transactions,
+    today: ref.watch(clockProvider).now(),
+  );
+});
+
+/// Movimientos del ciclo `back` ciclos atrás (0 = el actual).
+final cycleMovementsProvider = FutureProvider.family<CycleMovements, int>((
+  ref,
+  back,
+) async {
+  final resolver = await ref.watch(movementsResolverProvider.future);
+  var cycle = resolver.containing(ref.watch(clockProvider).now());
+  for (var i = 0; i < back; i++) {
+    cycle = resolver.previousOf(cycle);
+  }
+  final transactions = ref.watch(
+    transactionsInRangeProvider(cycle.range).future,
+  );
+  return const CycleMovementsBuilder().build(
+    cycle: cycle,
+    transactions: await transactions,
+    categories: await ref.watch(categoriesProvider.future),
+  );
+});
+
+/// Lo mismo que un movimiento, mes a mes: su descripción o toda su categoría
+/// (`null` = la descripción si se repite).
+final movementHistoryProvider =
+    FutureProvider.family<
+      MovementHistory,
+      (Transaction, MovementHistoryBasis?)
+    >((ref, args) async {
+      final transactions = await ref.watch(lastYearTransactionsProvider.future);
+      return const MovementHistoryBuilder().build(
+        target: args.$1,
+        basis: args.$2,
+        transactions: transactions,
+        today: ref.watch(clockProvider).now(),
+      );
+    });
 
 /// Informe de "Tu CFO": consejos y plan para el dinero que sobra.
 final cfoBriefProvider = FutureProvider<CfoBrief>((ref) async {
@@ -553,6 +609,7 @@ final cycleHistoryProvider = FutureProvider<List<CycleRecord>>((ref) async {
     resolver: PayCycleResolver.fromTransactions(
       payday: settings.payday,
       transactions: all,
+      today: now,
     ),
     today: now,
     transactions: all,
@@ -591,6 +648,7 @@ final cashflowStatementProvider = FutureProvider<CashflowStatement>((
     resolver: PayCycleResolver.fromTransactions(
       payday: settings.payday,
       transactions: all,
+      today: now,
     ),
     today: now,
     transactions: all,

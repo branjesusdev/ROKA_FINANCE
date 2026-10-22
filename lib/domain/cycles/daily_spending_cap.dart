@@ -11,6 +11,7 @@ final class DailySpendingCap {
     required this.spentToday,
     required this.reserved,
     required this.light,
+    this.surplus = Money.zero,
   });
 
   /// Lo máximo para gastar hoy sin comprometer el resto del ciclo.
@@ -25,6 +26,10 @@ final class DailySpendingCap {
 
   final TrafficLight light;
 
+  /// Lo que sobra del día a día al repartir parejo todo el ciclo: no se
+  /// gasta, se aparta para pagos del año o metas.
+  final Money surplus;
+
   Money get remainingToday => cap - spentToday;
 
   bool get exceeded => spentToday > cap;
@@ -35,6 +40,10 @@ final class DailySpendingCap {
 
 /// Reparte lo que queda del ciclo entre los días que faltan, después de
 /// apartar fijos, gastos del mes y el ahorro.
+///
+/// El tope nunca pasa del promedio del ciclo completo: si gastaste menos los
+/// primeros días, lo que sobra no se vuelve "puedes gastarlo todo el último
+/// día", queda como [DailySpendingCap.surplus] para apartar.
 final class DailySpendingCapCalculator {
   const new();
 
@@ -42,6 +51,9 @@ final class DailySpendingCapCalculator {
   /// [spentToday]: gasto del día a día de hoy (ya descontado de
   /// [available]); se suma de vuelta para que el tope no baje mientras
   /// gastas.
+  /// [trackedDays]: días del ciclo con registro (desde que empezó o desde
+  /// que empezaste a anotar) y [spentBeforeToday] el día a día gastado en
+  /// ellos antes de hoy; sin ellos no se equilibra.
   DailySpendingCap? calculate({
     required Money available,
     required int daysLeft,
@@ -49,16 +61,27 @@ final class DailySpendingCapCalculator {
     required Money monthlyReserve,
     required Money savingsReserve,
     required TrafficLightThresholds thresholds,
+    int? trackedDays,
+    Money spentBeforeToday = Money.zero,
   }) {
     if (daysLeft <= 0) return null;
     final reserved = monthlyReserve + savingsReserve;
     final free = (available + spentToday - reserved).max(Money.zero);
-    final cap = free.divide(daysLeft);
+    var cap = free.divide(daysLeft);
+    var surplus = Money.zero;
+    if (trackedDays != null && trackedDays > daysLeft) {
+      final balanced = (free + spentBeforeToday).divide(trackedDays);
+      if (balanced < cap) {
+        cap = balanced;
+        surplus = free - cap.times(daysLeft);
+      }
+    }
     final usage = Percentage.ratio(spentToday, cap);
     return DailySpendingCap(
       cap: cap,
       spentToday: spentToday,
       reserved: reserved,
+      surplus: surplus,
       light: usage == null
           ? (spentToday.isPositive ? TrafficLight.critical : TrafficLight.ok)
           : thresholds.classifyUsage(usage),

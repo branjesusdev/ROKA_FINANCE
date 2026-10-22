@@ -22,6 +22,7 @@ final class MoneyOverview {
     this.plannedPending = Money.zero,
     this.provisionsSaved = Money.zero,
     this.provisionsToday,
+    this.dayToDaySurplus = Money.zero,
   });
 
   /// Dinero del ciclo hoy (ingresos − salidas + saldo cuadrado).
@@ -57,6 +58,10 @@ final class MoneyOverview {
 
   final CoveragePlan coverage;
   final int daysLeft;
+
+  /// Parte de [free] que no cabe en el tope diario parejo del ciclo
+  /// (`DailySpendingCap.surplus`): para apartar, no para gastar.
+  final Money dayToDaySurplus;
 
   /// Reservado = fijos + apartados + ahorro pendiente + presupuesto del mes.
   Money get reserved =>
@@ -116,6 +121,7 @@ final class MoneyOverviewBuilder {
       ),
       coverage: coverage,
       daysLeft: summary.daysLeft,
+      dayToDaySurplus: summary.dailyCap?.surplus ?? Money.zero,
     );
   }
 }

@@ -9,21 +9,50 @@ import 'package:finance_app/domain/transactions/transaction.dart';
 /// 14 (lo que sobró pasa a ser ahorro). Si el sueldo llega tarde, el ciclo
 /// anterior se alarga hasta ese día. Sin sueldo registrado se usa el día
 /// de pago configurado.
+///
+/// Con `today`: si ya pasó el día de pago y el sueldo aún no se registra
+/// (pero el anterior sí), el ciclo anterior sigue abierto hasta que llegue
+/// (como máximo `lateSalaryGraceDays`): el saldo no "vuelve a cero" antes
+/// de tiempo.
 final class PayCycleResolver {
-  new({required this.payday, required Iterable<DateTime> salaryDates})
-    : _starts = _earliestByAnchor(payday, salaryDates);
+  factory({
+    required int payday,
+    required Iterable<DateTime> salaryDates,
+    DateTime? today,
+  }) {
+    final starts = _earliestByAnchor(payday, salaryDates);
+    final late = today == null ? null : _lateAnchor(payday, starts, today);
+    if (late != null) {
+      final day = _dayOf(today!);
+      starts[late] = DateTime(day.year, day.month, day.day + 1);
+    }
+    return PayCycleResolver._(payday, starts, salaryLate: late != null);
+  }
+
+  new _(this.payday, this._starts, {required this.salaryLate});
 
   /// Toma como sueldo los ingresos en la categoría Salario.
   factory fromTransactions({
     required int payday,
     required Iterable<Transaction> transactions,
+    DateTime? today,
   }) => PayCycleResolver(
     payday: payday,
+    today: today,
     salaryDates: [
       for (final t in transactions)
         if (t.isIncome && t.categoryId == DefaultCategories.salaryId) t.date,
     ],
   );
+
+  /// Días después del día de pago que se espera el sueldo antes de dar el
+  /// ciclo por empezado sin él (medio ciclo: después se asociaría al
+  /// siguiente día de pago).
+  static const lateSalaryGraceDays = 14;
+
+  /// Ya pasó el día de pago y el sueldo no se ha registrado: el ciclo
+  /// actual es el anterior, alargado hasta mañana.
+  final bool salaryLate;
 
   /// Días hacia atrás que hay que mirar para resolver el ciclo actual y el
   /// anterior (dos meses largos + medio mes de margen).
@@ -63,6 +92,22 @@ final class PayCycleResolver {
 
   DateTime _shift(DateTime anchor, int months) =>
       PayCycle.paydayIn(anchor.year, anchor.month + months, payday);
+
+  /// Día de pago nominal de hoy si su sueldo va tarde: el anterior se
+  /// registró, este no, ni ninguno posterior, y no ha pasado la gracia.
+  static DateTime? _lateAnchor(
+    int payday,
+    Map<DateTime, DateTime> starts,
+    DateTime today,
+  ) {
+    final day = _dayOf(today);
+    final anchor = PayCycle.containing(day, payday: payday).start;
+    final previous = PayCycle.paydayIn(anchor.year, anchor.month - 1, payday);
+    final registeredLater = starts.keys.any((a) => !a.isBefore(anchor));
+    if (registeredLater || !starts.containsKey(previous)) return null;
+    final late = day.difference(anchor).inHours ~/ Duration.hoursPerDay;
+    return late < lateSalaryGraceDays ? anchor : null;
+  }
 
   static Map<DateTime, DateTime> _earliestByAnchor(
     int payday,

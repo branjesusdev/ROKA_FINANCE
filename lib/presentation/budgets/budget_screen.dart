@@ -34,12 +34,14 @@ class BudgetScreen extends ConsumerWidget {
           for (final c in budget.categories) c.categoryId: c.status,
         };
         final lineById = {for (final l in lines) l.categoryId: l};
-        final budgeted = categories.where(lineById.containsKey).toList()
-          ..sort(
-            (a, b) => (statusById[b.id]?.usage?.basisPoints ?? 0).compareTo(
-              statusById[a.id]?.usage?.basisPoints ?? 0,
-            ),
-          );
+        // Ojo: por id; `containsKey` acepta cualquier objeto y con la
+        // categoría entera nunca coincide (el límite desaparecía).
+        final budgeted =
+            categories.where((c) => lineById.containsKey(c.id)).toList()..sort(
+              (a, b) => (statusById[b.id]?.usage?.basisPoints ?? 0).compareTo(
+                statusById[a.id]?.usage?.basisPoints ?? 0,
+              ),
+            );
         final unbudgeted = categories
             .where((c) => !lineById.containsKey(c.id))
             .toList();
@@ -63,6 +65,12 @@ class BudgetScreen extends ConsumerWidget {
                           month,
                           category,
                           lineById[category.id],
+                        ),
+                        onDelete: () => _confirmRemove(
+                          context,
+                          ref,
+                          category,
+                          lineById[category.id]!,
                         ),
                       ),
                   ],
@@ -103,6 +111,39 @@ class BudgetScreen extends ConsumerWidget {
     context,
     _BudgetLimitSheet(month: month, category: category, line: line),
   );
+}
+
+/// Quita el límite de una categoría después de confirmar.
+Future<void> _confirmRemove(
+  BuildContext context,
+  WidgetRef ref,
+  Category category,
+  BudgetLine line,
+) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      icon: const Icon(Icons.delete_outline),
+      title: Text('¿Quitar el límite de ${category.name}?'),
+      content: Text(
+        'Dejas de controlar ${Formatters.money(line.limit)} este mes. Tus '
+        'gastos no se borran.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Quitar'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true || !context.mounted) return;
+  final result = await ref.read(removeBudgetLimitProvider)(line.id);
+  if (context.mounted) showResult(context, result, success: 'Límite eliminado');
 }
 
 String _spent(Map<String, Money> spending, Category category) =>
@@ -210,11 +251,13 @@ class _BudgetedTile extends StatelessWidget {
     required this.category,
     required this.status,
     required this.onTap,
+    required this.onDelete,
   });
 
   final Category category;
   final BudgetStatus status;
   final VoidCallback onTap;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -241,6 +284,18 @@ class _BudgetedTile extends StatelessWidget {
                     theme.colorScheme,
                   ),
                   semanticLabel: TrafficLightStyle.label(status.light),
+                ),
+                IconButton(
+                  tooltip: 'Editar límite',
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.edit_outlined, size: 20),
+                  onPressed: onTap,
+                ),
+                IconButton(
+                  tooltip: 'Quitar límite',
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.delete_outline, size: 20),
+                  onPressed: onDelete,
                 ),
               ],
             ),
@@ -313,11 +368,14 @@ class _BudgetLimitSheetState extends ConsumerState<_BudgetLimitSheet> {
   Widget build(BuildContext context) {
     final line = widget.line;
     return FormSheet(
-      title: 'Límite para ${widget.category.name}',
+      title: line == null
+          ? 'Límite para ${widget.category.name}'
+          : 'Editar límite de ${widget.category.name}',
       onSave: _save,
       extraActions: [
         if (line != null)
-          TextButton(
+          OutlinedButton.icon(
+            icon: const Icon(Icons.delete_outline),
             onPressed: () async {
               final result = await ref.read(removeBudgetLimitProvider)(line.id);
               if (!context.mounted) return;
@@ -325,7 +383,7 @@ class _BudgetLimitSheetState extends ConsumerState<_BudgetLimitSheet> {
                 Navigator.pop(context);
               }
             },
-            child: const Text('Quitar límite'),
+            label: const Text('Quitar límite'),
           ),
       ],
       children: [

@@ -58,6 +58,11 @@ final class FinanceSettings {
   static const middayNudgeHour = 13;
   static const fixedHeadsUpHour = 19;
   static const fixedDueHour = 8;
+
+  /// Reconteo al llegar el sueldo: diferencia sin registrar que ya merece
+  /// revisarse (aviso) y la que es un desbalance grande (rojo).
+  static const recountWarningGap = Money.pesos(50000);
+  static const recountAlertGap = Money.pesos(100000);
   static const cycleCloseHour = 19;
 
   /// Referencias del plan de fin de ciclo ("Tu CFO"). Son supuestos

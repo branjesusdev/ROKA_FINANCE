@@ -415,3 +415,15 @@ class SpendCheckButton extends StatelessWidget {
     label: const Text('¿Puedo gastar…?'),
   );
 }
+
+/// Versión discreta para Movimientos.
+class SpendCheckTextButton extends StatelessWidget {
+  const new({super.key});
+
+  @override
+  Widget build(BuildContext context) => TextButton.icon(
+    onPressed: () => showSpendCheckSheet(context),
+    icon: const Icon(Icons.help_outline, size: 18),
+    label: const Text('¿Puedo gastar…?'),
+  );
+}

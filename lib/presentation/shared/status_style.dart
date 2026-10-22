@@ -10,8 +10,8 @@ abstract final class StatusColors {
   static const okOnDark = Color(0xFF86EFAC);
   static const warning = Color(0xFFB45309);
   static const warningOnDark = Color(0xFFFCD34D);
-  static const info = Color(0xFF2F6B5E);
-  static const infoOnDark = Color(0xFF9FD4C4);
+  static const info = Color(0xFF1D4ED8);
+  static const infoOnDark = Color(0xFF93C5FD);
 
   static Color okOf(ColorScheme s) => _dark(s) ? okOnDark : ok;
   static Color warningOf(ColorScheme s) => _dark(s) ? warningOnDark : warning;

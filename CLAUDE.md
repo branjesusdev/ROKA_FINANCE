@@ -27,9 +27,13 @@ diseño visual: `docs/design.md` · estado/fases: `docs/roadmap.md` · entorno: 
 ## Conceptos del producto (usar estos nombres)
 - **Ciclo de sueldo** (`PayCycle`, `PayCycleResolver`): del día que llega el sueldo al día antes del
   siguiente. Lo marca el ingreso real en categoría Salario, no solo el `payday` configurado.
+  Sueldo que aún no se registra (`salaryLate`, con `today`): sigue el ciclo anterior hasta mañana
+  (máx. `lateSalaryGraceDays`).
 - **"Te queda"**: ingresos − gastos − fijos pendientes del ciclo (Home, `CycleSummaryBuilder`).
 - **Día a día** (`CycleSummaryBuilder.isDayToDay`): gasto que no es ahorro ni planeado del mes.
-  **Tope diario** (`DailySpendingCap`) reparte lo que queda entre los días que faltan.
+  **Tope diario** (`DailySpendingCap`) reparte lo que queda entre los días que faltan, sin pasar
+  del promedio del ciclo (`trackedDays`); el resto es `surplus` ("Sobra: apártalo",
+  `MoneyOverview.dayToDaySurplus`, va completo a `SetAsidePlanner`).
 - **Fijos** (`FixedMovement`): ingresos y gastos con `autoDebit` se registran solos al vencer
   (`PostDueFixedMovements` al abrir/reanudar). Los demás gastos (`needsConfirmation`) quedan "por
   confirmar" hasta "Ya lo pagué" (`ConfirmVariableFixed`); `MarkFixedUnpaid` lo deshace. Avisos
@@ -39,6 +43,10 @@ diseño visual: `docs/design.md` · estado/fases: `docs/roadmap.md` · entorno: 
 - **Apartados / Pagos del año** (`Provision`): SOAT, colegio… se reparte la cuota por ciclo.
 - **Cuadrar con mi dinero real** (`ReconcileBalance`): diferencia → categorías archivadas
   "Gastos sin registrar" / "Saldo inicial / ajuste".
+- **Reconteo al llegar el sueldo** (`ReconcileBalance(closingOn:)`, `CycleRecount`, `RecountLevel`):
+  al registrar Salario, "¿cuánto tenías antes?" cuadra el ciclo que cierra (diferencia el día antes,
+  `recountDescription`). `CycleMovements.recount`: registrado, real que quedó y diferencia;
+  < $50 mil verde, hasta $100 mil ámbar, más rojo (`FinanceSettings.recountWarningGap/AlertGap`).
 - **Reiniciar mes** (`ResetCycleMovements`): borra lo anotado a mano en el ciclo (con deshacer).
 - **Así vas este ciclo** (`CyclePulse`) y **Tu huella de gasto** (`SpendingRadar`, araña: este ciclo vs
   el pasado a la misma altura, por categoría y por día de la semana; solo gasto variable).
@@ -53,18 +61,26 @@ diseño visual: `docs/design.md` · estado/fases: `docs/roadmap.md` · entorno: 
 - **Tu CFO con IA** (`RunAiReview`, `AskCfo`): opt-in; interpreta `FinancialSnapshot`, nunca
   calcula montos base ni cambia datos.
 - **Fijos por estado** (`FixedCycleStatusBuilder`): pagado/recibido (verde) vs por pagar (ámbar;
-  rojo si no alcanza) vs vencido/pausado. La pantalla de fijos agrupa por estado.
+  rojo si no alcanza) vs vencido/pausado. La pantalla de fijos agrupa por estado y su cabecera
+  (`FixedCycleOverviewBuilder`) da total, % pagado, vencidos, neto con ingresos fijos y dona por categoría.
 - **Libre = tope diario**: `CycleSummary.plannedReserve` (presupuesto del mes por gastar + colchón
   de niños) se descuenta igual en `MoneyOverview.free` y en `DailySpendingCap`. El Home muestra lo
   ya apartado para pagos del año (`provisionsSaved`) y la cuota de hoy (`provisionsToday`).
 - **Apartar para no gastarlo** (`SetAsidePlanner` → `ApplySetAside`): pagos del año pendientes y
-  metas (máx. 50% de lo libre); solo aplica lo que el usuario marca.
+  metas (máx. 50% de lo libre, o todo el `surplus` del tope si es más); solo aplica lo que el
+  usuario marca.
 - **Inversiones con precio real** (`RefreshInvestmentPrices`): `Investment.symbol` + `unitsMicros`
   ⇒ valor en pesos con precio público y tasa `COP=X`; `QuarterOutlookCalculator` = rango a 3 meses
   según el último año (estadística, nunca predicción ni recomendación).
 - **Inversión en dólares** (`Investment.investedUsdCents`, `UsdRate`, `LoadUsdRate`): se escribe en
   US$ con decimales (`UsdInput`), se guarda en pesos con el dólar que confirma el usuario.
 - **Vista previa de movimiento** (`TransactionPreviewSheet`): tocar = ver; Editar abre el formulario.
+  Incluye análisis de 12 meses (`MovementHistoryBuilder`: misma descripción si se repite, si no
+  la categoría; el usuario puede reagrupar a toda la categoría), barras o línea, tocar un mes =
+  su detalle, y total, promedio, extremos, valor por vez, vs. promedio y tendencia trimestral.
+- **Movimientos por ciclo** (`CycleMovementsBuilder`, `cycleMovementsProvider(back)`): ‹ ciclo ›,
+  Gastos/Ingresos con su total, dona + lista por categoría; tocar una categoría filtra los
+  movimientos de abajo (mismos datos, siempre suman igual).
 - **Autocompletar descripción** (`DescriptionSuggestions`): máx. 5, de lo ya anotado y los fijos;
   elegir pone su categoría.
 - **Análisis por categoría** (`CategoryReportBuilder`, `CategoryReportScreen`): 12 meses, mes más
@@ -110,7 +126,11 @@ diseño visual: `docs/design.md` · estado/fases: `docs/roadmap.md` · entorno: 
 - UI en español simple, sin jerga. Semáforo y comparaciones: color + icono + texto + % (accesibilidad).
   Gráficas con `Semantics` que resuma los valores.
 - Insights descriptivos basados en datos del usuario; nunca presentarlos como asesoría financiera.
-- Colores desde `AppTheme`/`ColorScheme` (paleta verde bosque `#102521` + lima `#B3DD62`).
+- Colores desde `AppTheme`/`ColorScheme` ("Roka Neo": negro neutro `#0A0B0D` + lima eléctrico
+  `#C6FF3D`; vívidos solo en rellenos/gráficas). Fuente Inter empaquetada. Tarjetas protagonistas:
+  `DailyArt` (cambia cada día; `daily_art_test` exige ≥ 7:1).
+  Animaciones con `shared/motion.dart` (`Motion` duraciones/curvas, `FadeSlideIn`, `ChartReveal`,
+  `AnimatedMoneyText`); sin timers y respetando "quitar animaciones" del sistema.
   Sin rosados ni morados; rojo solo para alertas. Categorías: `CategoryStyle` (icono + color por `iconKey`).
 
 ## Checklist al cambiar el esquema drift

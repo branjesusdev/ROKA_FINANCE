@@ -1,8 +1,10 @@
 import 'dart:async';
 
+import 'package:finance_app/application/transactions/movement_history.dart';
 import 'package:finance_app/bootstrap/use_cases.dart';
 import 'package:finance_app/core/result.dart';
 import 'package:finance_app/domain/categories/category.dart';
+import 'package:finance_app/domain/shared/percentage.dart';
 import 'package:finance_app/domain/transactions/transaction.dart';
 import 'package:finance_app/presentation/insights/category_report_screen.dart';
 import 'package:finance_app/presentation/quick_entry/quick_entry_sheet.dart';
@@ -10,6 +12,7 @@ import 'package:finance_app/presentation/shared/category_style.dart';
 import 'package:finance_app/presentation/shared/data_providers.dart';
 import 'package:finance_app/presentation/shared/form_widgets.dart';
 import 'package:finance_app/presentation/shared/formatters.dart';
+import 'package:finance_app/presentation/shared/monthly_histogram.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -108,6 +111,8 @@ class TransactionPreviewSheet extends ConsumerWidget {
                 color: t.isIncome ? incomeColor : null,
               ),
             ),
+            const SizedBox(height: 12),
+            _HistoryCard(transaction: t, category: category),
             const SizedBox(height: 8),
             for (final (icon, label, value) in rows)
               ListTile(
@@ -213,5 +218,306 @@ class TransactionPreviewSheet extends ConsumerWidget {
           SnackBar(content: Text(failureMessage(failure))),
         );
     }
+  }
+}
+
+/// Análisis de 12 meses de lo mismo que este movimiento: solo esa
+/// descripción o toda su categoría (p. ej. toda Alimentación), en barras o
+/// línea; tocar un mes muestra su detalle.
+class _HistoryCard extends ConsumerStatefulWidget {
+  const new({required this.transaction, required this.category});
+
+  final Transaction transaction;
+  final Category? category;
+
+  @override
+  ConsumerState<_HistoryCard> createState() => _HistoryCardState();
+}
+
+class _HistoryCardState extends ConsumerState<_HistoryCard> {
+  MovementHistoryBasis? _basis;
+  HistogramStyle _style = HistogramStyle.bars;
+  int? _selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = widget.transaction;
+    final history = ref.watch(movementHistoryProvider((t, _basis))).value;
+    if (history == null || history.count == 0) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+    final peak = history.peak!;
+    final average = history.monthlyAverage;
+    final categoryName = widget.category?.name ?? 'la categoría';
+    final byDescription = history.basis == MovementHistoryBasis.description;
+    final what = byDescription
+        ? '"${t.description!.trim()}"'
+        : 'Toda $categoryName';
+    final selected = _selected == null ? null : history.months[_selected!];
+    return Card(
+      margin: EdgeInsets.zero,
+      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.insights, color: theme.colorScheme.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '$what en 12 meses',
+                    style: theme.textTheme.titleSmall,
+                  ),
+                ),
+              ],
+            ),
+            if (history.canGroupByDescription) ...[
+              const SizedBox(height: 8),
+              SegmentedButton<MovementHistoryBasis>(
+                showSelectedIcon: false,
+                segments: [
+                  ButtonSegment(
+                    value: MovementHistoryBasis.description,
+                    icon: const Icon(Icons.label_outline),
+                    label: Text(
+                      t.description!.trim(),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  ButtonSegment(
+                    value: MovementHistoryBasis.category,
+                    icon: const Icon(Icons.category_outlined),
+                    label: Text(
+                      'Toda $categoryName',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+                selected: {history.basis},
+                onSelectionChanged: (s) => setState(() {
+                  _basis = s.first;
+                  _selected = null;
+                }),
+              ),
+            ],
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    selected == null
+                        ? 'Toca un mes para ver su detalle'
+                        : '${Formatters.month(selected.month)}: '
+                              '${Formatters.money(selected.total)} · '
+                              '${selected.count} '
+                              '${selected.count == 1 ? 'vez' : 'veces'}',
+                    style: selected == null
+                        ? theme.textTheme.bodySmall
+                        : theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: _style == HistogramStyle.bars
+                      ? 'Ver como línea'
+                      : 'Ver como barras',
+                  icon: Icon(
+                    _style == HistogramStyle.bars
+                        ? Icons.show_chart
+                        : Icons.bar_chart,
+                  ),
+                  onPressed: () => setState(
+                    () => _style = _style == HistogramStyle.bars
+                        ? HistogramStyle.line
+                        : HistogramStyle.bars,
+                  ),
+                ),
+              ],
+            ),
+            MonthlyHistogram(
+              months: history.months,
+              peak: peak,
+              average: average,
+              style: _style,
+              selected: _selected,
+              onSelect: (i) => setState(() => _selected = i),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 16,
+              runSpacing: 4,
+              children: [
+                if (average != null)
+                  const _Legend(label: 'Promedio', dashed: true),
+                _Legend(label: 'Este mes', color: theme.colorScheme.primary),
+                const _Legend(
+                  label: 'Mes más alto',
+                  color: MonthlyHistogram.peakColor,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _StatsGrid(history: history, isIncome: t.isIncome),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Los números que completan la gráfica: total, promedio, extremos, valor
+/// por vez, este mes frente al promedio y tendencia.
+class _StatsGrid extends StatelessWidget {
+  const new({required this.history, required this.isIncome});
+
+  final MovementHistory history;
+  final bool isIncome;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final peak = history.peak!;
+    final lowest = history.lowest!;
+    final vsAverage = history.currentVsAverage;
+    final trend = history.trend;
+    final times = history.count == 1 ? 'vez' : 'veces';
+    final stats = <(IconData, String, String, Color?)>[
+      (
+        Icons.functions,
+        'Total 12 meses',
+        '${Formatters.money(history.total)} · ${history.count} $times',
+        null,
+      ),
+      if (history.monthlyAverage case final avg?)
+        (
+          Icons.horizontal_rule,
+          'Promedio por mes',
+          '${Formatters.money(avg)} (${history.activeMonths} meses)',
+          null,
+        ),
+      (
+        Icons.arrow_upward,
+        'Mes más alto',
+        '${Formatters.month(peak.month)} · ${Formatters.money(peak.total)}',
+        null,
+      ),
+      (
+        Icons.arrow_downward,
+        'Mes más bajo',
+        '${Formatters.month(lowest.month)} · '
+            '${Formatters.money(lowest.total)}',
+        null,
+      ),
+      if (history.averageTicket case final ticket?)
+        (
+          Icons.receipt_outlined,
+          'Cada vez, en promedio',
+          Formatters.money(ticket),
+          null,
+        ),
+      if (vsAverage != null)
+        _compare(
+          theme,
+          'Este mes vs. promedio',
+          '${Formatters.money(history.current.total)} · ',
+          vsAverage,
+        ),
+      if (trend != null)
+        _compare(theme, 'Últimos 3 meses vs. 3 anteriores', '', trend),
+    ];
+    return Column(
+      children: [
+        for (final (icon, label, value, color) in stats)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 3),
+            child: Row(
+              children: [
+                Icon(
+                  icon,
+                  size: 16,
+                  color: color ?? theme.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 8),
+                Expanded(child: Text(label, style: theme.textTheme.bodySmall)),
+                Flexible(
+                  child: Text(
+                    value,
+                    textAlign: TextAlign.end,
+                    style: theme.textTheme.labelLarge?.copyWith(color: color),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// Subir en gastos es alerta (rojo) y en ingresos es bueno (verde).
+  (IconData, String, String, Color?) _compare(
+    ThemeData theme,
+    String label,
+    String prefix,
+    Percentage change,
+  ) {
+    final up = change.basisPoints > 0;
+    final color = change.basisPoints == 0
+        ? null
+        : up == isIncome
+        ? TransactionPreviewSheet.incomeColor
+        : theme.colorScheme.error;
+    final word = change.basisPoints == 0
+        ? 'igual'
+        : up
+        ? 'subió'
+        : 'bajó';
+    final amount = Formatters.percent(
+      Percentage.basisPoints(change.basisPoints.abs()),
+    );
+    return (
+      up ? Icons.trending_up : Icons.trending_down,
+      label,
+      '$prefix$word $amount',
+      color,
+    );
+  }
+}
+
+class _Legend extends StatelessWidget {
+  const new({required this.label, this.color, this.dashed = false});
+
+  final String label;
+  final Color? color;
+  final bool dashed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (dashed)
+          Text(
+            '- -',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          )
+        else
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+        const SizedBox(width: 4),
+        Text(label, style: theme.textTheme.bodySmall),
+      ],
+    );
   }
 }

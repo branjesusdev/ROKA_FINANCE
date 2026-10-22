@@ -30,19 +30,25 @@ class _CategoryFormState extends ConsumerState<CategoryForm> {
   static const _nameMaxLength = 30;
 
   late final _name = TextEditingController(text: widget.editing?.name);
+  final _search = TextEditingController();
   late String _iconKey = widget.editing?.iconKey ?? 'other';
+
+  /// El usuario tocó un icono: el nombre ya no lo cambia.
+  late bool _iconChosen = widget.editing != null;
   bool _saving = false;
 
   @override
   void dispose() {
     _name.dispose();
+    _search.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final isExpense = widget.kind == CategoryKind.expense;
-    final keys = {...CategoryStyle.choosableKeys, _iconKey};
+    final found = CategoryStyle.search(_search.text);
+    final keys = {if (_search.text.trim().isEmpty) _iconKey, ...found};
     final newTitle = isExpense
         ? 'Nueva categoría de gasto'
         : 'Nueva categoría de ingreso';
@@ -60,9 +66,35 @@ class _CategoryFormState extends ConsumerState<CategoryForm> {
             hintText: isExpense ? 'Ej: Mascotas' : 'Ej: Ventas',
             border: const OutlineInputBorder(),
           ),
-          onChanged: (_) => setState(() {}),
+          onChanged: (name) => setState(() {
+            if (_iconChosen) return;
+            _iconKey = CategoryStyle.suggest(name) ?? _iconKey;
+          }),
         ),
         Text('Icono', style: Theme.of(context).textTheme.titleSmall),
+        TextField(
+          controller: _search,
+          decoration: InputDecoration(
+            prefixIcon: const Icon(Icons.search),
+            hintText: 'Busca: gasolina, mascota, café…',
+            border: const OutlineInputBorder(),
+            isDense: true,
+            suffixIcon: _search.text.isEmpty
+                ? null
+                : IconButton(
+                    tooltip: 'Borrar búsqueda',
+                    icon: const Icon(Icons.close),
+                    onPressed: () => setState(_search.clear),
+                  ),
+          ),
+          onChanged: (_) => setState(() {}),
+        ),
+        if (found.isEmpty)
+          Text(
+            'No hay iconos con "${_search.text.trim()}". Prueba otra '
+            'palabra.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -71,7 +103,10 @@ class _CategoryFormState extends ConsumerState<CategoryForm> {
               _IconChoice(
                 iconKey: key,
                 selected: key == _iconKey,
-                onTap: () => setState(() => _iconKey = key),
+                onTap: () => setState(() {
+                  _iconKey = key;
+                  _iconChosen = true;
+                }),
               ),
           ],
         ),

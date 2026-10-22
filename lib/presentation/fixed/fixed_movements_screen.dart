@@ -1,3 +1,4 @@
+import 'package:finance_app/application/dashboard/cycle_summary.dart';
 import 'package:finance_app/application/fixed/fixed_cycle_status.dart';
 import 'package:finance_app/bootstrap/providers.dart';
 import 'package:finance_app/bootstrap/use_cases.dart';
@@ -12,9 +13,11 @@ import 'package:finance_app/presentation/fixed/fixed_movement_form.dart';
 import 'package:finance_app/presentation/shared/async_view.dart';
 import 'package:finance_app/presentation/shared/category_style.dart';
 import 'package:finance_app/presentation/shared/data_providers.dart';
+import 'package:finance_app/presentation/shared/donut_chart.dart';
 import 'package:finance_app/presentation/shared/empty_state.dart';
 import 'package:finance_app/presentation/shared/form_widgets.dart';
 import 'package:finance_app/presentation/shared/formatters.dart';
+import 'package:finance_app/presentation/shared/motion.dart';
 import 'package:finance_app/presentation/shared/section_card.dart';
 import 'package:finance_app/presentation/shared/status_style.dart';
 import 'package:flutter/material.dart';
@@ -42,11 +45,11 @@ class FixedMovementsScreen extends ConsumerWidget {
     };
     return Scaffold(
       appBar: AppBar(title: const Text('Fijos del mes')),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
+        tooltip: 'Nuevo fijo',
         onPressed: () =>
             showFormSheet<void>(context, const FixedMovementFormSheet()),
-        icon: const Icon(Icons.add),
-        label: const Text('Nuevo fijo'),
+        child: const Icon(Icons.add),
       ),
       body: AsyncView(
         value: ref.watch(fixedMovementsProvider),
@@ -83,7 +86,12 @@ class FixedMovementsScreen extends ConsumerWidget {
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
             children: [
-              _CycleTotals(pending: pending, paid: paid),
+              _FixedHeader(
+                overview: const FixedCycleOverviewBuilder().build(
+                  statuses: ordered,
+                  categories: categories,
+                ),
+              ),
               const SizedBox(height: 12),
               if (pending.isNotEmpty) ...[
                 _FixedGroup(
@@ -123,34 +131,223 @@ class FixedMovementsScreen extends ConsumerWidget {
   }
 }
 
-/// Cuánto falta y cuánto ya salió de los gastos fijos del ciclo.
-class _CycleTotals extends StatelessWidget {
-  const new({required this.pending, required this.paid});
+/// Conteo completo de los fijos del ciclo: total, cuánto va pagado (barra),
+/// vencidos, ingresos fijos y en qué categorías se va más (dona + lista).
+class _FixedHeader extends StatelessWidget {
+  const new({required this.overview});
 
-  final List<FixedCycleStatus> pending;
-  final List<FixedCycleStatus> paid;
+  final FixedCycleOverview overview;
+
+  static const _donutSize = 132.0;
+  static const _donutStroke = 18.0;
+  static const _barHeight = 10.0;
+  static const _pendingTrackAlpha = 0.35;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    Money total(List<FixedCycleStatus> list) =>
-        Money.sum(list.map((s) => s.movement.amount));
-    return SectionCard(
-      title: 'Gastos fijos de este ciclo',
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final ok = StatusColors.okOf(scheme);
+    final warning = StatusColors.warningOf(scheme);
+    final o = overview;
+    final paidShare = o.paidShare;
+    final categories = o.byCategory;
+    final overdueS = o.overdueCount == 1 ? '' : 's';
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Gastos fijos de este ciclo',
+              style: theme.textTheme.titleMedium,
+            ),
+            const SizedBox(height: 4),
+            AnimatedMoneyText(
+              amount: o.expenseTotal,
+              format: Formatters.money,
+              style: theme.textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            Text(
+              [
+                '${o.expenseCount} ${o.expenseCount == 1 ? 'fijo' : 'fijos'}',
+                if (paidShare != null)
+                  '${Formatters.percent(paidShare)} pagado',
+                if (o.pausedCount > 0) '${o.pausedCount} pausados',
+              ].join(' · '),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+            if (o.expenseTotal.isPositive) ...[
+              const SizedBox(height: 12),
+              Semantics(
+                label:
+                    'Pagado ${Formatters.money(o.paid)} de '
+                    '${Formatters.money(o.expenseTotal)}',
+                excludeSemantics: true,
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(
+                    begin: 0,
+                    end: o.paid.cents / o.expenseTotal.cents,
+                  ),
+                  duration: Motion.enabled(context)
+                      ? Motion.slow
+                      : Duration.zero,
+                  curve: Motion.emphasized,
+                  builder: (context, value, _) => LinearProgressIndicator(
+                    value: value,
+                    minHeight: _barHeight,
+                    color: ok,
+                    backgroundColor: warning.withValues(
+                      alpha: _pendingTrackAlpha,
+                    ),
+                    borderRadius: BorderRadius.circular(_barHeight / 2),
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: LabeledValue(
+                    label: 'Ya pagado (${o.paidCount})',
+                    value: Formatters.money(o.paid),
+                    valueColor: ok,
+                  ),
+                ),
+                Expanded(
+                  child: LabeledValue(
+                    label: 'Por pagar (${o.pendingCount})',
+                    value: Formatters.money(o.pending),
+                    valueColor: warning,
+                  ),
+                ),
+              ],
+            ),
+            if (o.overdueCount > 0) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.error_outline, size: 18, color: scheme.error),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      '${o.overdueCount} vencido$overdueS por '
+                      '${Formatters.money(o.overdue)}: confírmalo$overdueS '
+                      'abajo.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: scheme.error,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            if (o.incomeTotal.isPositive) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: LabeledValue(
+                      label: 'Ingresos fijos',
+                      value: Formatters.money(o.incomeTotal),
+                    ),
+                  ),
+                  Expanded(
+                    child: LabeledValue(
+                      label: o.net.isNegative
+                          ? 'Fijos pasan tus ingresos fijos'
+                          : 'Queda después de fijos',
+                      value: Formatters.money(o.net),
+                      valueColor: o.net.isNegative ? scheme.error : null,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            if (categories.isNotEmpty) ...[
+              const Divider(height: 28),
+              Text('Dónde se va más', style: theme.textTheme.titleSmall),
+              const SizedBox(height: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  DonutChart(
+                    size: _donutSize,
+                    strokeWidth: _donutStroke,
+                    values: [
+                      for (final c in categories) c.amount.cents.toDouble(),
+                    ],
+                    colors: [
+                      for (final c in categories)
+                        CategoryStyle.color(c.category?.iconKey),
+                    ],
+                    center: Text(
+                      Formatters.percent(categories.first.share),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        for (final c in categories) _CategoryShare(total: c),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Fila de la leyenda: icono y color de la categoría, monto y porcentaje.
+class _CategoryShare extends StatelessWidget {
+  const new({required this.total});
+
+  final CategoryTotal total;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final iconKey = total.category?.iconKey;
+    final color = CategoryStyle.color(iconKey);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
+          Icon(CategoryStyle.icon(iconKey), size: 18, color: color),
+          const SizedBox(width: 8),
           Expanded(
-            child: LabeledValue(
-              label: 'Por pagar (${pending.length})',
-              value: Formatters.money(total(pending)),
-              valueColor: StatusColors.warningOf(scheme),
-            ),
-          ),
-          Expanded(
-            child: LabeledValue(
-              label: 'Ya pagado (${paid.length})',
-              value: Formatters.money(total(paid)),
-              valueColor: StatusColors.okOf(scheme),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  total.category?.name ?? 'Sin categoría',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyMedium,
+                ),
+                Text(
+                  '${Formatters.money(total.amount)} · '
+                  '${Formatters.percent(total.share)}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

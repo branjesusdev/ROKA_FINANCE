@@ -49,7 +49,7 @@ class _SpendingRadarCardState extends ConsumerState<SpendingRadarCard> {
 
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final currentColor = isDark ? AppTheme.accent : AppTheme.forest;
+    final currentColor = isDark ? AppTheme.accent : AppTheme.ink;
     final previousColor = scheme.onSurfaceVariant;
 
     return SectionCard(

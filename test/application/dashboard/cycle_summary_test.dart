@@ -179,8 +179,15 @@ void main() {
     final cap = summary.dailyCap!;
     // Libre: 4.000.000 − 280.000 gastado − 1.000.000 arriendo + 30.000 de
     // hoy − 350.000 de mercado por gastar − 400.000 de ahorro (10%).
+    // Repartido parejo en los 30 días del ciclo (no 17): lo que sobró de
+    // los días sin gasto queda para apartar.
     expect(cap.reserved, const Money.pesos(750000));
-    expect(cap.cap, const Money.pesos(2000000).divide(17));
+    expect(cap.cap, const Money.pesos(2000000).divide(30));
+    expect(
+      cap.surplus,
+      const Money.pesos(2000000) -
+          const Money.pesos(2000000).divide(30).times(17),
+    );
     expect(cap.spentToday, const Money.pesos(30000), reason: 'sin mercado');
   });
 

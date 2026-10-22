@@ -63,4 +63,46 @@ void main() {
     expect(cycle.start, DateTime(2026, 10, 15));
     expect(cycle.endExclusive, DateTime(2026, 11, 20));
   });
+
+  group('sueldo que aún no se registra', () {
+    PayCycleResolver withToday(List<DateTime> salaries, DateTime today) =>
+        PayCycleResolver(payday: 20, salaryDates: salaries, today: today);
+
+    test('pasado el día de pago, sigue el ciclo anterior hasta mañana', () {
+      final today = DateTime(2026, 10, 20, 9);
+      final r = withToday([DateTime(2026, 9, 20)], today);
+
+      final cycle = r.containing(today);
+      expect(r.salaryLate, isTrue);
+      expect(cycle.start, DateTime(2026, 9, 20));
+      expect(cycle.endExclusive, DateTime(2026, 10, 21));
+    });
+
+    test('al registrarlo arranca el ciclo nuevo', () {
+      final today = DateTime(2026, 10, 22);
+      final r = withToday([
+        DateTime(2026, 9, 20),
+        DateTime(2026, 10, 22),
+      ], today);
+
+      expect(r.salaryLate, isFalse);
+      expect(r.containing(today).start, DateTime(2026, 10, 22));
+    });
+
+    test('sin sueldos registrados antes no se alarga', () {
+      final today = DateTime(2026, 10, 21);
+      final r = withToday([], today);
+
+      expect(r.salaryLate, isFalse);
+      expect(r.containing(today).start, DateTime(2026, 10, 20));
+    });
+
+    test('pasada la gracia el ciclo empieza sin el sueldo', () {
+      final today = DateTime(2026, 11, 4);
+      final r = withToday([DateTime(2026, 9, 20)], today);
+
+      expect(r.salaryLate, isFalse);
+      expect(r.containing(today).start, DateTime(2026, 10, 20));
+    });
+  });
 }

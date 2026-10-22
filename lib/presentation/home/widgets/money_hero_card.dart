@@ -4,7 +4,9 @@ import 'package:finance_app/domain/shared/money.dart';
 import 'package:finance_app/presentation/app/app_theme.dart';
 import 'package:finance_app/presentation/home/widgets/set_aside_sheet.dart';
 import 'package:finance_app/presentation/home/widgets/today_spends_sheet.dart';
+import 'package:finance_app/presentation/shared/decor.dart';
 import 'package:finance_app/presentation/shared/formatters.dart';
+import 'package:finance_app/presentation/shared/motion.dart';
 import 'package:finance_app/presentation/transactions/spend_check_sheet.dart';
 import 'package:flutter/material.dart';
 
@@ -12,24 +14,30 @@ import 'package:flutter/material.dart';
 /// dónde sale ese número. Responde "¿cuánto tengo?", "¿cuánto debo
 /// reservar?" y "¿cuánto puedo gastar hoy?".
 class MoneyHeroCard extends StatelessWidget {
-  const new({required this.summary, required this.overview, super.key});
+  const new({
+    required this.summary,
+    required this.overview,
+    this.salaryLate = false,
+    super.key,
+  });
 
   final CycleSummary summary;
   final MoneyOverview overview;
 
-  static const _radius = 28.0;
+  /// Ya pasó el día de pago y el sueldo no se ha registrado: el ciclo
+  /// anterior sigue abierto.
+  final bool salaryLate;
+
   static const _barHeight = 12.0;
+  static const _decorIntensity = 0.4;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final background = isDark
-        ? theme.colorScheme.surfaceContainerHighest
-        : AppTheme.forest;
-    const text = Color(0xFFF2F7F4);
-    const muted = Color(0xFFB9CBC4);
-    final free = overview.free;
+    const text = AppTheme.onHero;
+    const muted = AppTheme.onHeroMuted;
+    // Lo que sobra del tope parejo no se ofrece para gastar: se aparta.
+    final free = overview.free - overview.dayToDaySurplus;
     final shortfall = overview.shortfall;
     final perDay = overview.freePerDay;
     final cap = summary.dailyCap;
@@ -40,12 +48,12 @@ class MoneyHeroCard extends StatelessWidget {
           'Libre para gastar ${Formatters.money(free)}. Disponible '
           '${Formatters.money(overview.available)}, reservado '
           '${Formatters.money(overview.reserved)}.',
-      child: Container(
+      // Fondo distinto cada día; siempre oscuro para que todo se lea.
+      child: DecorBackdrop.daily(
+        DailyArt.forDay(summary.today),
+        // Figuras tenues y en las esquinas: aquí manda leer los números.
+        intensity: _decorIntensity,
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-        decoration: BoxDecoration(
-          color: background,
-          borderRadius: BorderRadius.circular(_radius),
-        ),
         child: DefaultTextStyle.merge(
           style: const TextStyle(color: text),
           child: Column(
@@ -55,21 +63,25 @@ class MoneyHeroCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      shortfall == null
-                          ? 'Libre para gastar hasta tu sueldo'
-                          : 'Te falta para cubrir lo reservado',
+                      switch ((shortfall, salaryLate)) {
+                        (null, true) => 'Libre mientras llega tu sueldo',
+                        (null, false) => 'Libre para gastar hasta tu sueldo',
+                        _ => 'Te falta para cubrir lo reservado',
+                      },
                       style: theme.textTheme.titleSmall?.copyWith(color: muted),
                     ),
                   ),
-                  _DaysLeft(days: summary.daysLeft),
+                  _DaysLeft(days: summary.daysLeft, salaryLate: salaryLate),
                 ],
               ),
               const SizedBox(height: 4),
               FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
-                child: Text(
-                  Formatters.money(shortfall ?? free),
+                // Cuenta hasta el valor: se nota cuando cambia.
+                child: AnimatedMoneyText(
+                  amount: shortfall ?? free,
+                  format: Formatters.money,
                   style: theme.textTheme.displaySmall?.copyWith(
                     fontWeight: FontWeight.w800,
                     color: shortfall == null
@@ -102,6 +114,10 @@ class MoneyHeroCard extends StatelessWidget {
                       ? null
                       : () => showTodaySpendsSheet(context, summary: summary),
                 ),
+                if (cap.surplus.isPositive) ...[
+                  const SizedBox(height: 8),
+                  _SurplusLine(surplus: cap.surplus),
+                ],
                 Align(
                   alignment: Alignment.centerLeft,
                   child: TextButton.icon(
@@ -122,11 +138,16 @@ class MoneyHeroCard extends StatelessWidget {
                   child: FilledButton.tonalIcon(
                     style: FilledButton.styleFrom(
                       backgroundColor: AppTheme.accent,
-                      foregroundColor: AppTheme.forest,
+                      foregroundColor: AppTheme.ink,
                       minimumSize: const Size.fromHeight(48),
                     ),
                     icon: const Icon(Icons.savings_outlined),
-                    label: const Text('Apartar para no gastarlo'),
+                    label: Text(
+                      (cap?.surplus.isPositive ?? false)
+                          ? 'Apartar lo que sobra '
+                                '(${Formatters.money(cap!.surplus)})'
+                          : 'Apartar para no gastarlo',
+                    ),
                     onPressed: () => showSetAsideSheet(context),
                   ),
                 ),
@@ -157,6 +178,10 @@ class MoneyHeroCard extends StatelessWidget {
   }
 
   String? _note() {
+    if (salaryLate) {
+      return 'Tu sueldo aún no está registrado: sigues con el saldo del '
+          'ciclo anterior. El ciclo nuevo empieza el día que lo anotes.';
+    }
     if (summary.income.isZero && overview.available.isZero) {
       return 'Registra tu sueldo el día que llegue (o cuadra con tu dinero '
           'real): sin eso, esto es solo una estimación.';
@@ -175,9 +200,10 @@ class MoneyHeroCard extends StatelessWidget {
 }
 
 class _DaysLeft extends StatelessWidget {
-  const new({required this.days});
+  const new({required this.days, required this.salaryLate});
 
   final int days;
+  final bool salaryLate;
 
   @override
   Widget build(BuildContext context) {
@@ -189,6 +215,7 @@ class _DaysLeft extends StatelessWidget {
       ),
       child: Text(
         switch (days) {
+          _ when salaryLate => 'Esperando sueldo',
           0 => 'Ciclo cerrado',
           1 => 'Último día',
           _ => '$days días',
@@ -206,10 +233,11 @@ class _Breakdown extends StatelessWidget {
 
   final MoneyOverview overview;
 
-  static const _fixedColor = Color(0xFF7FB3A5);
-  static const _provisionsColor = Color(0xFFE2C46B);
-  static const _savingsColor = Color(0xFF6FA8DC);
-  static const _plannedColor = Color(0xFFC9D6A3);
+  static const _fixedColor = AppTheme.sky;
+  static const _provisionsColor = AppTheme.orange;
+
+  static const _savingsColor = AppTheme.blue;
+  static const _plannedColor = AppTheme.mint;
 
   @override
   Widget build(BuildContext context) {
@@ -222,11 +250,16 @@ class _Breakdown extends StatelessWidget {
         overview.plannedPending,
         _plannedColor,
       ),
-      ('Libre', overview.free.max(Money.zero), AppTheme.accent),
+      ('Sobra: apártalo', overview.dayToDaySurplus, AppTheme.sun),
+      (
+        'Libre',
+        (overview.free - overview.dayToDaySurplus).max(Money.zero),
+        AppTheme.accent,
+      ),
     ];
     final total = Money.sum(parts.map((p) => p.$2));
     final theme = Theme.of(context);
-    const muted = Color(0xFFB9CBC4);
+    const muted = AppTheme.onHeroMuted;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -239,7 +272,7 @@ class _Breakdown extends StatelessWidget {
             Text(
               Formatters.money(overview.available),
               style: theme.textTheme.titleMedium?.copyWith(
-                color: const Color(0xFFF2F7F4),
+                color: AppTheme.onHero,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -259,18 +292,26 @@ class _Breakdown extends StatelessWidget {
           child: SizedBox(
             height: MoneyHeroCard._barHeight,
             child: total.isPositive
-                ? Row(
-                    children: [
-                      for (final (_, amount, color) in parts)
-                        if (amount.isPositive)
-                          Expanded(
-                            flex: (amount.cents * 1000 ~/ total.cents).clamp(
-                              1,
-                              1000,
-                            ),
-                            child: ColoredBox(color: color),
-                          ),
-                    ],
+                ? ChartReveal(
+                    replayKey: Object.hashAll(parts.map((p) => p.$2.cents)),
+                    // La barra se llena de izquierda a derecha.
+                    builder: (context, progress) => ClipRect(
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        widthFactor: progress,
+                        child: Row(
+                          children: [
+                            for (final (_, amount, color) in parts)
+                              if (amount.isPositive)
+                                Expanded(
+                                  flex: (amount.cents * 1000 ~/ total.cents)
+                                      .clamp(1, 1000),
+                                  child: ColoredBox(color: color),
+                                ),
+                          ],
+                        ),
+                      ),
+                    ),
                   )
                 : const ColoredBox(color: Color(0x33FFFFFF)),
           ),
@@ -300,7 +341,7 @@ class _Breakdown extends StatelessWidget {
                   Text(
                     Formatters.money(amount),
                     style: theme.textTheme.labelLarge?.copyWith(
-                      color: const Color(0xFFF2F7F4),
+                      color: AppTheme.onHero,
                       fontFeatures: const [FontFeature.tabularFigures()],
                     ),
                   ),
@@ -308,6 +349,40 @@ class _Breakdown extends StatelessWidget {
               ),
             ),
       ],
+    );
+  }
+}
+
+/// Lo que no cabe en el tope parejo del ciclo: no se gasta, se aparta.
+class _SurplusLine extends StatelessWidget {
+  const new({required this.surplus});
+
+  final Money surplus;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppTheme.sun.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.savings_outlined, size: 18, color: AppTheme.sun),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Te sobran ${Formatters.money(surplus)} del día a día: el tope '
+              'reparte parejo todo el ciclo, no te deja gastarlo de golpe. '
+              'Apártalo para pagos del año o tu meta.',
+              style: Theme.of(context).textTheme.bodySmall
+                  ?.copyWith(color: AppTheme.onHero),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -320,7 +395,7 @@ class _SetAsideLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const muted = Color(0xFFB9CBC4);
+    const muted = AppTheme.onHeroMuted;
     final today = overview.provisionsToday;
     final saved = Formatters.money(overview.provisionsSaved);
     final parts = [
@@ -372,7 +447,7 @@ class _TodayCap extends StatelessWidget {
         ? (spent.cents / cap.cents).clamp(0.0, 1.0)
         : (exceeded ? 1.0 : 0.0);
     final color = exceeded ? const Color(0xFFFCA5A5) : AppTheme.accent;
-    const muted = Color(0xFFB9CBC4);
+    const muted = AppTheme.onHeroMuted;
     return Material(
       color: const Color(0x14FFFFFF),
       borderRadius: BorderRadius.circular(16),
@@ -381,13 +456,14 @@ class _TodayCap extends StatelessWidget {
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(12),
-          child: _content(theme, remaining, fraction, color, muted),
+          child: _content(context, theme, remaining, fraction, color, muted),
         ),
       ),
     );
   }
 
   Widget _content(
+    BuildContext context,
     ThemeData theme,
     Money remaining,
     double fraction,
@@ -411,20 +487,25 @@ class _TodayCap extends StatelessWidget {
                         '${Formatters.money(remaining.abs)}'
                   : 'Hoy puedes gastar ${Formatters.money(remaining)} más',
               style: theme.textTheme.titleSmall?.copyWith(
-                color: const Color(0xFFF2F7F4),
+                color: AppTheme.onHero,
               ),
             ),
           ),
         ],
       ),
       const SizedBox(height: 8),
-      LinearProgressIndicator(
-        value: fraction,
-        minHeight: 6,
-        color: color,
-        backgroundColor: const Color(0x33FFFFFF),
-        borderRadius: BorderRadius.circular(3),
-        semanticsLabel: 'Tope de hoy usado',
+      TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: fraction),
+        duration: Motion.enabled(context) ? Motion.slow : Duration.zero,
+        curve: Motion.emphasized,
+        builder: (context, value, _) => LinearProgressIndicator(
+          value: value,
+          minHeight: 6,
+          color: color,
+          backgroundColor: const Color(0x33FFFFFF),
+          borderRadius: BorderRadius.circular(3),
+          semanticsLabel: 'Tope de hoy usado',
+        ),
       ),
       const SizedBox(height: 6),
       Row(

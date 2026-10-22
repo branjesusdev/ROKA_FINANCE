@@ -183,7 +183,12 @@ final class SpendCheckBuilder {
       if (daysAfter == 0) {
         return SpendPath(spentNow: spentNow, dailyCapAfter: null);
       }
-      final after = (freeLeft - spentNow).max(Money.zero).divide(daysAfter);
+      // Nunca más que el tope parejo del ciclo: gastar de lo que sobra no
+      // lo baja.
+      final after = (freeLeft - spentNow)
+          .max(Money.zero)
+          .divide(daysAfter)
+          .min(cap.cap);
       return SpendPath(
         spentNow: spentNow,
         dailyCapAfter: after,

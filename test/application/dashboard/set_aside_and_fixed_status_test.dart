@@ -136,11 +136,13 @@ void main() {
       expect(overview.plannedPending, const Money.pesos(800000));
       // 5M − 10% ahorro − 800 mil de mercado.
       expect(overview.free, const Money.pesos(3700000));
+      final cap = summary.dailyCap!;
       expect(
-        summary.dailyCap!.cap,
-        overview.free.divide(summary.daysLeft),
-        reason: 'el tope sale del mismo dinero libre',
+        cap.cap.times(summary.daysLeft) + cap.surplus,
+        overview.free,
+        reason: 'el tope (y lo que sobra) sale del mismo dinero libre',
       );
+      expect(overview.dayToDaySurplus, cap.surplus);
     });
 
     test('lo ya apartado para pagos del año se ve en Inicio', () {

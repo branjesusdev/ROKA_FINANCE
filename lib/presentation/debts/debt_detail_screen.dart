@@ -429,7 +429,8 @@ class _AutoPayCard extends ConsumerWidget {
   }
 }
 
-/// Explica por qué tu registro y el cálculo no dan las mismas cuotas.
+/// Tu registro y el cálculo no dan las mismas cuotas: menos cuotas que el
+/// plan = vas adelantado (abonos); más = vas atrasado y toca revisar.
 class _MismatchNote extends StatelessWidget {
   const new({required this.overview, required this.recorded});
 
@@ -443,10 +444,14 @@ class _MismatchNote extends StatelessWidget {
     final terms = overview.debt.terms!;
     final diff = (recorded.months - projection.months).abs();
     final implied = recorded.impliedAnnualRate;
-    final more = recorded.months > projection.months;
+    final ahead = recorded.months > projection.months;
+    final color = ahead
+        ? StatusColors.okOf(theme.colorScheme)
+        : StatusColors.warningOf(theme.colorScheme);
+    final cuotas = diff == 1 ? 'cuota' : 'cuotas';
     return Card(
       margin: const EdgeInsets.only(top: 8),
-      color: theme.colorScheme.surfaceContainerHighest,
+      color: color.withValues(alpha: 0.1),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -455,45 +460,39 @@ class _MismatchNote extends StatelessWidget {
             Row(
               children: [
                 Icon(
-                  Icons.info_outline,
-                  size: 18,
-                  color: StatusColors.warningOf(theme.colorScheme),
+                  ahead ? Icons.emoji_events_outlined : Icons.warning_amber,
+                  size: 20,
+                  color: color,
                 ),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    'No cuadran: $diff '
-                    '${diff == 1 ? 'cuota' : 'cuotas'} de diferencia',
-                    style: theme.textTheme.titleSmall,
+                    ahead
+                        ? '¡Excelente! Vas $diff $cuotas adelantado'
+                        : 'Ojo: vas $diff $cuotas atrasado',
+                    style: theme.textTheme.titleSmall?.copyWith(color: color),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 4),
             Text(
-              more
-                  ? 'Con el saldo, la tasa y la cuota que anotaste el crédito '
-                        'se pagaría en ${projection.months} cuotas, pero tu '
-                        'registro dice ${recorded.months}. Si hiciste abonos '
-                        'extra o pagaste más que la cuota, es normal: vas '
-                        'adelantado y la última cuota sale más pequeña (el '
-                        'extracto sigue contando las cuotas del plazo '
-                        'pactado). Si no, revisa que la tasa, los seguros y '
-                        'el saldo a capital sean los del extracto.'
-                  : 'Tu registro dice ${recorded.months} cuotas, pero con '
-                        'estos datos faltarían ${projection.months}: revisa '
-                        'que el saldo y las cuotas pagadas estén al día.',
+              ahead
+                  ? 'Con tus abonos terminas en ${projection.months} cuotas '
+                        'y no en ${recorded.months}.'
+                  : 'Con este saldo faltarían ${projection.months} cuotas y '
+                        'tu plan dice ${recorded.months}. Revisa en Editar '
+                        'el saldo, la tasa y los seguros del extracto.',
               style: theme.textTheme.bodySmall,
             ),
-            if (implied != null) ...[
+            if (!ahead && implied != null) ...[
               const SizedBox(height: 4),
               Text(
-                'Para que salgan ${recorded.months} cuotas la tasa tendría '
-                'que ser ≈ ${_annual(implied)} EA; anotaste '
-                '${_annual(terms.rate.annualEffective)} EA. Copia del '
-                'extracto el saldo a capital, la tasa y los seguros '
-                '(Editar) para que coincidan.',
-                style: theme.textTheme.bodySmall,
+                'Tasa que daría tu plan ≈ ${_annual(implied)} EA · '
+                'anotaste ${_annual(terms.rate.annualEffective)} EA.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ],

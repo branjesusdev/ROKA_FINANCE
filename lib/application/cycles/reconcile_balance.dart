@@ -34,6 +34,9 @@ final class ReconcileResult {
 /// llegado) y luego anota la diferencia: si falta dinero, como "Gastos sin
 /// registrar" (queda en el histórico para mejorar el próximo ciclo); si
 /// sobra, como "Saldo inicial / ajuste" (no cuenta como ingreso).
+///
+/// Reconteo al llegar el sueldo: con `closingOn` (el día antes del sueldo)
+/// cuadra el ciclo que se cierra y deja la diferencia en su último día.
 final class ReconcileBalance {
   const new({
     required this._currentCycle,
@@ -51,19 +54,24 @@ final class ReconcileBalance {
 
   static const description = 'Cuadre con mi dinero real';
 
+  /// Diferencia anotada al recontar cuando llega el sueldo.
+  static const recountDescription = 'Reconteo al llegar el sueldo';
+
   Future<Result<ReconcileResult>> call({
     required Money actual,
     Set<String> paidFixedIds = const {},
+    DateTime? closingOn,
   }) {
     if (actual.isNegative) {
       return invalid(ValidationCodes.amountMustNotBeNegative);
     }
     return guardUseCase(() async {
       final now = _clock.now();
-      final today = DateTime(now.year, now.month, now.day);
+      final day = closingOn ?? now;
+      final today = DateTime(day.year, day.month, day.day);
       if (paidFixedIds.isNotEmpty) await _registerPaidFixed(now, paidFixedIds);
 
-      final current = await _currentCycle(now);
+      final current = await _currentCycle(today);
       final flow = const CashFlowCalculator().calculate(
         current.transactions,
         savingCategoryIds: const {},
@@ -88,7 +96,7 @@ final class ReconcileBalance {
                 : DefaultCategories.balanceAdjustment.id,
             date: today,
             createdAt: now,
-            description: description,
+            description: closingOn == null ? description : recountDescription,
           ),
         );
       }

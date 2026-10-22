@@ -42,6 +42,7 @@ final class LoadCurrentCycle {
     final cycle = PayCycleResolver.fromTransactions(
       payday: settings.payday,
       transactions: window,
+      today: today,
     ).containing(today);
     return CurrentCycle(
       cycle: cycle,

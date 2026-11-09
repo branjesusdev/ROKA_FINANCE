@@ -32,11 +32,17 @@ abstract final class AppTheme {
   /// Iconos inactivos de la barra inferior (≥ 7:1 sobre la barra).
   static const inkMuted = Color(0xFFA9B1BA);
 
-  /// Base de las tarjetas protagonistas (siempre oscuras).
+  /// Base de las tarjetas protagonistas en oscuro.
   static const heroBase = Color(0xFF0E1013);
   static const heroBaseEnd = Color(0xFF16191D);
 
-  /// Texto principal y secundario sobre las tarjetas protagonistas.
+  /// Base de las tarjetas protagonistas en claro: papel blanco con los
+  /// brillos del día encima (ver `HeroPalette`).
+  static const heroLightBase = Color(0xFFFFFFFF);
+  static const heroLightBaseEnd = Color(0xFFF3F5F7);
+
+  /// Texto principal y secundario sobre las tarjetas protagonistas en
+  /// oscuro.
   static const onHero = Color(0xFFFFFFFF);
   static const onHeroMuted = Color(0xFFE1E6EA);
 

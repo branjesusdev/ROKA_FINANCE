@@ -783,17 +783,18 @@ void main() {
     await tester.enterText(recount, '150000');
     await tester.pumpAndSettle();
     expect(
-      find.textContaining('Desbalance grande', findRichText: true),
+      find.textContaining('¡Genial!', findRichText: true),
       findsOneWidget,
-      reason: 'más de 100 mil sin registrar es rojo',
+      reason: 'tener más de lo registrado es buena noticia, no alerta',
     );
+    expect(find.textContaining('Desbalance grande'), findsNothing);
 
     await tester.ensureVisible(find.text('Guardar ingreso'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Guardar ingreso'));
     await tester.pumpAndSettle();
     expect(
-      find.text(r'Ingreso registrado. Reconteo: diferencia de $ 150.000'),
+      find.text(r'Ingreso registrado. Reconteo: ¡genial! tenías $ 150.000 más'),
       findsOneWidget,
     );
 

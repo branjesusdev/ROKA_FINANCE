@@ -6,6 +6,7 @@ import 'package:finance_app/presentation/shared/async_view.dart';
 import 'package:finance_app/presentation/shared/category_style.dart';
 import 'package:finance_app/presentation/shared/data_providers.dart';
 import 'package:finance_app/presentation/shared/formatters.dart';
+import 'package:finance_app/presentation/shared/motion.dart';
 import 'package:finance_app/presentation/shared/section_card.dart';
 import 'package:finance_app/presentation/shared/status_style.dart';
 import 'package:flutter/material.dart';
@@ -279,10 +280,8 @@ class _ItemsCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  LinearProgressIndicator(
+                  AnimatedProgressBar(
                     value: (item.share?.fraction ?? 0).clamp(0, 1).toDouble(),
-                    minHeight: 6,
-                    borderRadius: BorderRadius.circular(3),
                   ),
                   Text(
                     '${item.count} ${item.count == 1 ? 'vez' : 'veces'} · '

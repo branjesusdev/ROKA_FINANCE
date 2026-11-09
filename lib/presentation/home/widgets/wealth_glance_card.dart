@@ -2,6 +2,7 @@ import 'package:finance_app/domain/savings/savings_goal.dart';
 import 'package:finance_app/domain/shared/money.dart';
 import 'package:finance_app/presentation/shared/data_providers.dart';
 import 'package:finance_app/presentation/shared/formatters.dart';
+import 'package:finance_app/presentation/shared/motion.dart';
 import 'package:finance_app/presentation/shared/section_card.dart';
 import 'package:finance_app/presentation/shared/status_style.dart';
 import 'package:flutter/material.dart';
@@ -60,12 +61,11 @@ class WealthGlanceCard extends ConsumerWidget {
             const SizedBox(height: 12),
             Text(item.goal.name, style: theme.textTheme.titleSmall),
             const SizedBox(height: 4),
-            LinearProgressIndicator(
+            AnimatedProgressBar(
               value: (item.progress.progress?.fraction ?? 0)
                   .clamp(0, 1)
                   .toDouble(),
               minHeight: 8,
-              borderRadius: BorderRadius.circular(4),
               semanticsLabel: 'Avance de ${item.goal.name}',
               semanticsValue: item.progress.progress == null
                   ? null

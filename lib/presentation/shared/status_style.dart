@@ -4,14 +4,15 @@ import 'package:finance_app/domain/fixed/fixed_coverage.dart';
 import 'package:flutter/material.dart';
 
 /// Colores de estado: siempre con icono y texto (nunca solo color). El rojo
-/// solo para lo que requiere acción.
+/// solo para lo que requiere acción. En oscuro, la paleta "One Dark Pro"
+/// (vivid): verde, ámbar y azul que se leen ≥ 7:1 sobre las tarjetas.
 abstract final class StatusColors {
   static const ok = Color(0xFF15803D);
-  static const okOnDark = Color(0xFF86EFAC);
+  static const okOnDark = Color(0xFF89CA78);
   static const warning = Color(0xFFB45309);
-  static const warningOnDark = Color(0xFFFCD34D);
+  static const warningOnDark = Color(0xFFE5C07B);
   static const info = Color(0xFF1D4ED8);
-  static const infoOnDark = Color(0xFF93C5FD);
+  static const infoOnDark = Color(0xFF61AFEF);
 
   static Color okOf(ColorScheme s) => _dark(s) ? okOnDark : ok;
   static Color warningOf(ColorScheme s) => _dark(s) ? warningOnDark : warning;

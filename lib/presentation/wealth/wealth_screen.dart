@@ -10,6 +10,7 @@ import 'package:finance_app/presentation/shared/data_providers.dart';
 import 'package:finance_app/presentation/shared/form_widgets.dart';
 import 'package:finance_app/presentation/shared/formatters.dart';
 import 'package:finance_app/presentation/shared/labels.dart';
+import 'package:finance_app/presentation/shared/motion.dart';
 import 'package:finance_app/presentation/shared/section_card.dart';
 import 'package:finance_app/presentation/shared/transaction_tile.dart';
 import 'package:finance_app/presentation/wealth/investment_detail_sheet.dart';
@@ -266,10 +267,8 @@ class _DebtTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 4),
-          LinearProgressIndicator(
+          AnimatedProgressBar(
             value: paid?.fraction.clamp(0, 1).toDouble() ?? 0,
-            minHeight: 6,
-            borderRadius: BorderRadius.circular(3),
             semanticsLabel: 'Pagado',
             semanticsValue: paid == null ? null : Formatters.percent(paid),
           ),

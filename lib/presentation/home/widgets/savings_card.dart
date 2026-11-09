@@ -1,6 +1,7 @@
 import 'package:finance_app/application/dashboard/home_summary.dart';
 import 'package:finance_app/domain/savings/savings_target_evaluator.dart';
 import 'package:finance_app/presentation/shared/formatters.dart';
+import 'package:finance_app/presentation/shared/motion.dart';
 import 'package:finance_app/presentation/shared/section_card.dart';
 import 'package:finance_app/presentation/shared/traffic_light_badge.dart';
 import 'package:flutter/material.dart';
@@ -98,10 +99,9 @@ class _Progress extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        LinearProgressIndicator(
+        AnimatedProgressBar(
           value: fraction.clamp(0, 1).toDouble(),
           minHeight: 8,
-          borderRadius: BorderRadius.circular(4),
           semanticsLabel: label,
         ),
         const SizedBox(height: 4),

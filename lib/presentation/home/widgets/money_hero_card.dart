@@ -1,3 +1,4 @@
+import 'package:finance_app/application/dashboard/cycle_ledger.dart';
 import 'package:finance_app/application/dashboard/cycle_summary.dart';
 import 'package:finance_app/application/dashboard/money_overview.dart';
 import 'package:finance_app/domain/shared/money.dart';
@@ -12,17 +13,24 @@ import 'package:flutter/material.dart';
 
 /// Lo primero al abrir: cuánto puedes gastar de verdad (no el saldo), y de
 /// dónde sale ese número. Responde "¿cuánto tengo?", "¿cuánto debo
-/// reservar?" y "¿cuánto puedo gastar hoy?".
+/// reservar?", "¿voy bien?" y "¿cuánto puedo gastar hoy?".
+///
+/// Se adapta al tema: oscura con número en lima, o clara (papel blanco con
+/// el brillo del día) con número en tinta. Colores en [HeroPalette].
 class MoneyHeroCard extends StatelessWidget {
   const new({
     required this.summary,
     required this.overview,
+    this.ledger = CycleLedger.empty,
     this.salaryLate = false,
     super.key,
   });
 
   final CycleSummary summary;
   final MoneyOverview overview;
+
+  /// Lo que sobró de cada ciclo: para el dinero total.
+  final CycleLedger ledger;
 
   /// Ya pasó el día de pago y el sueldo no se ha registrado: el ciclo
   /// anterior sigue abierto.
@@ -34,8 +42,7 @@ class MoneyHeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    const text = AppTheme.onHero;
-    const muted = AppTheme.onHeroMuted;
+    final palette = HeroPalette.of(context);
     // Lo que sobra del tope parejo no se ofrece para gastar: se aparta.
     final free = overview.free - overview.dayToDaySurplus;
     final shortfall = overview.shortfall;
@@ -48,14 +55,14 @@ class MoneyHeroCard extends StatelessWidget {
           'Libre para gastar ${Formatters.money(free)}. Disponible '
           '${Formatters.money(overview.available)}, reservado '
           '${Formatters.money(overview.reserved)}.',
-      // Fondo distinto cada día; siempre oscuro para que todo se lea.
+      // Fondo distinto cada día, claro u oscuro según el tema.
       child: DecorBackdrop.daily(
         DailyArt.forDay(summary.today),
         // Figuras tenues y en las esquinas: aquí manda leer los números.
         intensity: _decorIntensity,
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
         child: DefaultTextStyle.merge(
-          style: const TextStyle(color: text),
+          style: TextStyle(color: palette.text),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -68,7 +75,9 @@ class MoneyHeroCard extends StatelessWidget {
                         (null, false) => 'Libre para gastar hasta tu sueldo',
                         _ => 'Te falta para cubrir lo reservado',
                       },
-                      style: theme.textTheme.titleSmall?.copyWith(color: muted),
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: palette.muted,
+                      ),
                     ),
                   ),
                   _DaysLeft(days: summary.daysLeft, salaryLate: salaryLate),
@@ -85,8 +94,8 @@ class MoneyHeroCard extends StatelessWidget {
                   style: theme.textTheme.displaySmall?.copyWith(
                     fontWeight: FontWeight.w800,
                     color: shortfall == null
-                        ? AppTheme.accent
-                        : const Color(0xFFFCA5A5),
+                        ? palette.highlight
+                        : palette.danger,
                     fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
@@ -94,8 +103,16 @@ class MoneyHeroCard extends StatelessWidget {
               if (perDay != null && cap == null)
                 Text(
                   '≈ ${Formatters.money(perDay)} por día',
-                  style: theme.textTheme.bodyMedium?.copyWith(color: muted),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: palette.muted,
+                  ),
                 ),
+              const SizedBox(height: 12),
+              _StatusLines(
+                summary: summary,
+                overview: overview,
+                ledger: ledger,
+              ),
               const SizedBox(height: 16),
               _Breakdown(overview: overview),
               if (overview.provisionsSaved.isPositive ||
@@ -110,6 +127,7 @@ class MoneyHeroCard extends StatelessWidget {
                   cap: cap.cap,
                   exceeded: cap.exceeded,
                   outsideCap: summary.spentTodayOutsideCap,
+                  whyZero: cap.cap.isZero ? _whyZero() : null,
                   onTap: summary.todaySpends.isEmpty
                       ? null
                       : () => showTodaySpendsSheet(context, summary: summary),
@@ -122,7 +140,9 @@ class MoneyHeroCard extends StatelessWidget {
                   alignment: Alignment.centerLeft,
                   child: TextButton.icon(
                     style: TextButton.styleFrom(
-                      foregroundColor: AppTheme.accent,
+                      foregroundColor: palette.isLight
+                          ? palette.text
+                          : AppTheme.accent,
                     ),
                     onPressed: () => showSpendCheckSheet(context),
                     icon: const Icon(Icons.help_outline),
@@ -137,8 +157,12 @@ class MoneyHeroCard extends StatelessWidget {
                   width: double.infinity,
                   child: FilledButton.tonalIcon(
                     style: FilledButton.styleFrom(
-                      backgroundColor: AppTheme.accent,
-                      foregroundColor: AppTheme.ink,
+                      backgroundColor: palette.isLight
+                          ? AppTheme.ink
+                          : AppTheme.accent,
+                      foregroundColor: palette.isLight
+                          ? Colors.white
+                          : AppTheme.ink,
                       minimumSize: const Size.fromHeight(48),
                     ),
                     icon: const Icon(Icons.savings_outlined),
@@ -157,13 +181,13 @@ class MoneyHeroCard extends StatelessWidget {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.info_outline, size: 16, color: muted),
+                    Icon(Icons.info_outline, size: 16, color: palette.muted),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         note,
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: muted,
+                          color: palette.muted,
                         ),
                       ),
                     ),
@@ -175,6 +199,25 @@ class MoneyHeroCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Por qué hoy no hay tope: lo que ya se llevó el dinero del ciclo.
+  String _whyZero() {
+    final parts = [
+      if (overview.committed.isPositive)
+        'fijos ${Formatters.money(overview.committed)}',
+      if (overview.plannedPending.isPositive)
+        'mercado y gastos del mes ${Formatters.money(overview.plannedPending)}',
+      if (overview.provisionsPending.isPositive)
+        'pagos del año ${Formatters.money(overview.provisionsPending)}',
+      if (overview.savingsPending.isPositive)
+        'ahorro ${Formatters.money(overview.savingsPending)}',
+    ];
+    if (parts.isEmpty) {
+      return 'No queda dinero del ciclo para el día a día.';
+    }
+    return 'Tu dinero del ciclo ya está repartido en ${parts.join(', ')}. '
+        'Baja el presupuesto o pausa algo para tener tope.';
   }
 
   String? _note() {
@@ -207,10 +250,11 @@ class _DaysLeft extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = HeroPalette.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: AppTheme.accent.withValues(alpha: 0.16),
+        color: palette.chip,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
@@ -221,8 +265,88 @@ class _DaysLeft extends StatelessWidget {
           _ => '$days días',
         },
         style: Theme.of(context).textTheme.labelMedium
-            ?.copyWith(color: AppTheme.accent, fontWeight: FontWeight.w700),
+            ?.copyWith(color: palette.onChip, fontWeight: FontWeight.w700),
       ),
+    );
+  }
+}
+
+/// Estado del ciclo en una mirada: ahorro (bien / falta / no alcanza) y el
+/// dinero total con lo que sobró de los ciclos anteriores. Siempre icono +
+/// color + texto.
+class _StatusLines extends StatelessWidget {
+  const new({
+    required this.summary,
+    required this.overview,
+    required this.ledger,
+  });
+
+  final CycleSummary summary;
+  final MoneyOverview overview;
+  final CycleLedger ledger;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = HeroPalette.of(context);
+    final carried = ledger.carried;
+    final lines = <(IconData, Color, String)>[
+      if (summary.savingsTarget.isPositive)
+        if (overview.shortfall != null)
+          (
+            Icons.error_outline,
+            palette.danger,
+            'Ahorro en riesgo: lo reservado no alcanza',
+          )
+        else if (overview.savingsPending.isPositive)
+          (
+            Icons.warning_amber_rounded,
+            palette.warning,
+            'Te falta apartar ${Formatters.money(overview.savingsPending)} '
+                'para tu ahorro del ciclo',
+          )
+        else
+          (
+            Icons.check_circle_outline,
+            palette.positive,
+            (summary.previousLeft?.isPositive ?? false)
+                ? 'Ahorro del ciclo cubierto con lo que te sobró'
+                : 'Ahorro del ciclo cubierto',
+          ),
+      if (!ledger.isEmpty && !carried.isZero)
+        (
+          carried.isNegative ? Icons.trending_down : Icons.account_balance,
+          carried.isNegative ? palette.danger : palette.positive,
+          'Total ${Formatters.money(ledger.total)}: '
+              '${carried.isNegative ? 'debes' : 'te sobró'} '
+              '${Formatters.money(carried.abs)} de ciclos anteriores',
+        ),
+    ];
+    if (lines.isEmpty) return const SizedBox.shrink();
+    final style = Theme.of(context).textTheme.bodySmall;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final (icon, color, text) in lines)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(icon, size: 16, color: color),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    text,
+                    style: style?.copyWith(
+                      color: color,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }
@@ -241,12 +365,13 @@ class _Breakdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = HeroPalette.of(context);
     final parts = <(String, Money, Color)>[
       ('Pagos fijos que faltan', overview.committed, _fixedColor),
       ('Pagos del año (apartar)', overview.provisionsPending, _provisionsColor),
       ('Ahorro del ciclo', overview.savingsPending, _savingsColor),
       (
-        'Presupuesto del mes por gastar',
+        'Mercado y gastos del mes (presupuesto)',
         overview.plannedPending,
         _plannedColor,
       ),
@@ -259,7 +384,7 @@ class _Breakdown extends StatelessWidget {
     ];
     final total = Money.sum(parts.map((p) => p.$2));
     final theme = Theme.of(context);
-    const muted = AppTheme.onHeroMuted;
+    final muted = palette.muted;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -272,7 +397,7 @@ class _Breakdown extends StatelessWidget {
             Text(
               Formatters.money(overview.available),
               style: theme.textTheme.titleMedium?.copyWith(
-                color: AppTheme.onHero,
+                color: palette.text,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -291,29 +416,32 @@ class _Breakdown extends StatelessWidget {
           borderRadius: BorderRadius.circular(MoneyHeroCard._barHeight / 2),
           child: SizedBox(
             height: MoneyHeroCard._barHeight,
-            child: total.isPositive
-                ? ChartReveal(
-                    replayKey: Object.hashAll(parts.map((p) => p.$2.cents)),
-                    // La barra se llena de izquierda a derecha.
-                    builder: (context, progress) => ClipRect(
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        widthFactor: progress,
-                        child: Row(
-                          children: [
-                            for (final (_, amount, color) in parts)
-                              if (amount.isPositive)
-                                Expanded(
-                                  flex: (amount.cents * 1000 ~/ total.cents)
-                                      .clamp(1, 1000),
-                                  child: ColoredBox(color: color),
-                                ),
-                          ],
+            child: ColoredBox(
+              color: palette.track,
+              child: total.isPositive
+                  ? ChartReveal(
+                      replayKey: Object.hashAll(parts.map((p) => p.$2.cents)),
+                      // La barra se llena de izquierda a derecha.
+                      builder: (context, progress) => ClipRect(
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          widthFactor: progress,
+                          child: Row(
+                            children: [
+                              for (final (_, amount, color) in parts)
+                                if (amount.isPositive)
+                                  Expanded(
+                                    flex: (amount.cents * 1000 ~/ total.cents)
+                                        .clamp(1, 1000),
+                                    child: ColoredBox(color: color),
+                                  ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  )
-                : const ColoredBox(color: Color(0x33FFFFFF)),
+                    )
+                  : const SizedBox.expand(),
+            ),
           ),
         ),
         const SizedBox(height: 10),
@@ -329,6 +457,10 @@ class _Breakdown extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: color,
                       shape: BoxShape.circle,
+                      // En claro el lima y el ámbar se pierden sobre blanco.
+                      border: palette.isLight
+                          ? Border.all(color: palette.track)
+                          : null,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -341,7 +473,7 @@ class _Breakdown extends StatelessWidget {
                   Text(
                     Formatters.money(amount),
                     style: theme.textTheme.labelLarge?.copyWith(
-                      color: AppTheme.onHero,
+                      color: palette.text,
                       fontFeatures: const [FontFeature.tabularFigures()],
                     ),
                   ),
@@ -361,16 +493,21 @@ class _SurplusLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = HeroPalette.of(context);
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: AppTheme.sun.withValues(alpha: 0.14),
+        color: AppTheme.sun.withValues(alpha: palette.isLight ? 0.22 : 0.14),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.savings_outlined, size: 18, color: AppTheme.sun),
+          Icon(
+            Icons.savings_outlined,
+            size: 18,
+            color: palette.isLight ? palette.warning : AppTheme.sun,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -378,7 +515,7 @@ class _SurplusLine extends StatelessWidget {
               'reparte parejo todo el ciclo, no te deja gastarlo de golpe. '
               'Apártalo para pagos del año o tu meta.',
               style: Theme.of(context).textTheme.bodySmall
-                  ?.copyWith(color: AppTheme.onHero),
+                  ?.copyWith(color: palette.text),
             ),
           ),
         ],
@@ -395,7 +532,7 @@ class _SetAsideLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const muted = AppTheme.onHeroMuted;
+    final muted = HeroPalette.of(context).muted;
     final today = overview.provisionsToday;
     final saved = Formatters.money(overview.provisionsSaved);
     final parts = [
@@ -406,7 +543,7 @@ class _SetAsideLine extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Icon(Icons.lock_outline, size: 16, color: muted),
+        Icon(Icons.lock_outline, size: 16, color: muted),
         const SizedBox(width: 6),
         Expanded(
           child: Text(
@@ -420,6 +557,7 @@ class _SetAsideLine extends StatelessWidget {
   }
 }
 
+/// Tope del día a día: lo que no es mercado, fijos, cuotas ni ahorro.
 class _TodayCap extends StatelessWidget {
   const new({
     required this.spent,
@@ -427,14 +565,19 @@ class _TodayCap extends StatelessWidget {
     required this.exceeded,
     required this.outsideCap,
     required this.onTap,
+    this.whyZero,
   });
 
   final Money spent;
   final Money cap;
   final bool exceeded;
 
-  /// Gastado hoy en fijos, gastos del mes o ahorro (no baja el tope).
+  /// Gastado hoy en fijos, mercado y gastos del mes o ahorro (no baja el
+  /// tope).
   final Money outsideCap;
+
+  /// Explicación cuando el tope es cero (`null` si hay tope).
+  final String? whyZero;
 
   /// Abre el detalle de los gastos de hoy (`null` si no hay).
   final VoidCallback? onTap;
@@ -442,88 +585,104 @@ class _TodayCap extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final palette = HeroPalette.of(context);
     final remaining = cap - spent;
     final fraction = cap.isPositive
         ? (spent.cents / cap.cents).clamp(0.0, 1.0)
         : (exceeded ? 1.0 : 0.0);
-    final color = exceeded ? const Color(0xFFFCA5A5) : AppTheme.accent;
-    const muted = AppTheme.onHeroMuted;
+    final noCap = whyZero != null && !exceeded;
+    final outside = Formatters.money(outsideCap);
+    final color = exceeded
+        ? palette.danger
+        : noCap
+        ? palette.warning
+        : palette.positive;
     return Material(
-      color: const Color(0x14FFFFFF),
+      color: palette.panel,
       borderRadius: BorderRadius.circular(16),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(12),
-          child: _content(context, theme, remaining, fraction, color, muted),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    exceeded
+                        ? Icons.do_not_disturb_on_outlined
+                        : noCap
+                        ? Icons.warning_amber_rounded
+                        : Icons.today,
+                    size: 18,
+                    color: color,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      exceeded
+                          ? 'Hoy pasaste tu tope por '
+                                '${Formatters.money(remaining.abs)}'
+                          : noCap
+                          ? 'Hoy no tienes tope para el día a día'
+                          : 'Hoy puedes gastar ${Formatters.money(remaining)} '
+                                'más',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: palette.text,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: fraction),
+                duration: Motion.enabled(context) ? Motion.slow : Duration.zero,
+                curve: Motion.emphasized,
+                builder: (context, value, _) => LinearProgressIndicator(
+                  value: value,
+                  minHeight: 6,
+                  color: exceeded ? palette.danger : AppTheme.accent,
+                  backgroundColor: palette.track,
+                  borderRadius: BorderRadius.circular(3),
+                  semanticsLabel: 'Tope de hoy usado',
+                ),
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      [
+                        'Tope del día a día ${Formatters.money(cap)}',
+                        'gastado ${Formatters.money(spent)}',
+                        if (outsideCap.isPositive)
+                          'mercado, fijos y ahorro $outside (no cuentan)',
+                      ].join(' · '),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: palette.muted,
+                      ),
+                    ),
+                  ),
+                  if (onTap != null)
+                    Icon(Icons.chevron_right, size: 18, color: palette.muted),
+                ],
+              ),
+              if (whyZero case final why? when noCap) ...[
+                const SizedBox(height: 6),
+                Text(
+                  why,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: palette.text,
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
   }
-
-  Widget _content(
-    BuildContext context,
-    ThemeData theme,
-    Money remaining,
-    double fraction,
-    Color color,
-    Color muted,
-  ) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Row(
-        children: [
-          Icon(
-            exceeded ? Icons.do_not_disturb_on_outlined : Icons.today,
-            size: 18,
-            color: color,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              exceeded
-                  ? 'Hoy pasaste tu tope por '
-                        '${Formatters.money(remaining.abs)}'
-                  : 'Hoy puedes gastar ${Formatters.money(remaining)} más',
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: AppTheme.onHero,
-              ),
-            ),
-          ),
-        ],
-      ),
-      const SizedBox(height: 8),
-      TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0, end: fraction),
-        duration: Motion.enabled(context) ? Motion.slow : Duration.zero,
-        curve: Motion.emphasized,
-        builder: (context, value, _) => LinearProgressIndicator(
-          value: value,
-          minHeight: 6,
-          color: color,
-          backgroundColor: const Color(0x33FFFFFF),
-          borderRadius: BorderRadius.circular(3),
-          semanticsLabel: 'Tope de hoy usado',
-        ),
-      ),
-      const SizedBox(height: 6),
-      Row(
-        children: [
-          Expanded(
-            child: Text(
-              [
-                'Tope ${Formatters.money(cap)}',
-                'día a día ${Formatters.money(spent)}',
-                if (outsideCap.isPositive)
-                  'fuera del tope ${Formatters.money(outsideCap)}',
-              ].join(' · '),
-              style: theme.textTheme.bodySmall?.copyWith(color: muted),
-            ),
-          ),
-          if (onTap != null) Icon(Icons.chevron_right, size: 18, color: muted),
-        ],
-      ),
-    ],
-  );
 }

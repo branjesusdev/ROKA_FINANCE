@@ -1,5 +1,7 @@
+import 'package:finance_app/application/dashboard/cycle_ledger.dart';
 import 'package:finance_app/bootstrap/providers.dart';
 import 'package:finance_app/presentation/days/daily_bars_card.dart';
+import 'package:finance_app/presentation/home/widgets/cycle_ledger_card.dart';
 import 'package:finance_app/presentation/home/widgets/cycle_pulse_card.dart';
 import 'package:finance_app/presentation/home/widgets/cycle_savings_card.dart';
 import 'package:finance_app/presentation/home/widgets/greeting_banner.dart';
@@ -42,6 +44,7 @@ class HomeScreen extends ConsumerWidget {
       value: ref.watch(moneyOverviewProvider),
       builder: (overview) {
         final summary = ref.watch(cycleSummaryProvider).requireValue;
+        final ledger = ref.watch(cycleLedgerProvider).value;
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 160),
           // Las tarjetas entran en cascada la primera vez.
@@ -51,6 +54,7 @@ class HomeScreen extends ConsumerWidget {
             MoneyHeroCard(
               summary: summary,
               overview: overview,
+              ledger: ledger ?? CycleLedger.empty,
               salaryLate: salaryLate,
             ),
             const Center(child: ReconcileButton()),
@@ -66,6 +70,10 @@ class HomeScreen extends ConsumerWidget {
             _spacing,
             const DailyBarsCard(),
             _spacing,
+            if (ledger != null && !ledger.isEmpty) ...[
+              CycleLedgerCard(ledger: ledger),
+              _spacing,
+            ],
             if (summary.previousLeft case final left? when left.isPositive) ...[
               CycleSavingsCard(amount: left, cycle: summary.cycle),
               _spacing,

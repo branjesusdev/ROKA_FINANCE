@@ -125,7 +125,10 @@ class _RevealOnActiveState extends State<RevealOnActive>
     curve: Motion.emphasized,
   );
 
-  static const _offset = 0.015;
+  static const _offset = 0.03;
+
+  /// La sección entra creciendo un poco: se nota el cambio sin marear.
+  static const _startScale = 0.98;
 
   /// Veces que la sección se ha mostrado; las gráficas se repiten en cada
   /// visita.
@@ -158,7 +161,10 @@ class _RevealOnActiveState extends State<RevealOnActive>
           begin: const Offset(0, _offset),
           end: Offset.zero,
         ).animate(_curve),
-        child: widget.child,
+        child: ScaleTransition(
+          scale: Tween<double>(begin: _startScale, end: 1).animate(_curve),
+          child: widget.child,
+        ),
       ),
     ),
   );
@@ -271,4 +277,68 @@ class AnimatedMoneyText extends StatelessWidget {
           Text(format(Money(cents.round())), style: style),
     );
   }
+}
+
+/// Barra de progreso que se llena desde cero al aparecer y se desliza al
+/// nuevo valor cuando cambia.
+class AnimatedProgressBar extends StatelessWidget {
+  const new({
+    required this.value,
+    this.minHeight = 6,
+    this.color,
+    this.backgroundColor,
+    this.semanticsLabel,
+    this.semanticsValue,
+    super.key,
+  });
+
+  /// De 0 a 1 (se recorta).
+  final double value;
+  final double minHeight;
+  final Color? color;
+  final Color? backgroundColor;
+  final String? semanticsLabel;
+  final String? semanticsValue;
+
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+    tween: Tween(begin: 0, end: value.clamp(0, 1)),
+    duration: Motion.enabled(context) ? Motion.slow : Duration.zero,
+    curve: Motion.emphasized,
+    builder: (context, progress, _) => LinearProgressIndicator(
+      value: progress,
+      minHeight: minHeight,
+      color: color,
+      backgroundColor: backgroundColor,
+      borderRadius: BorderRadius.circular(minHeight / 2),
+      semanticsLabel: semanticsLabel,
+      semanticsValue: semanticsValue,
+    ),
+  );
+}
+
+/// Muestra [child] de izquierda a derecha según [progress] (0→1): para
+/// gráficas que "se dibujan" al aparecer, dentro de un [ChartReveal].
+class WipeReveal extends StatelessWidget {
+  const new({required this.progress, required this.child, super.key});
+
+  final double progress;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) =>
+      ClipRect(clipper: _WipeClipper(progress), child: child);
+}
+
+class _WipeClipper extends CustomClipper<Rect> {
+  new(this.progress);
+
+  final double progress;
+
+  @override
+  Rect getClip(Size size) =>
+      Rect.fromLTWH(0, 0, size.width * progress.clamp(0, 1), size.height);
+
+  @override
+  bool shouldReclip(_WipeClipper old) => old.progress != progress;
 }

@@ -540,8 +540,10 @@ class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
     return switch (result) {
       Ok(:final value) when value.difference.isZero =>
         'Reconteo: cuadra exacto',
+      Ok(:final value) when value.difference.isPositive =>
+        'Reconteo: ¡genial! tenías ${Formatters.money(value.difference)} más',
       Ok(:final value) =>
-        'Reconteo: diferencia de ${Formatters.money(value.difference)}',
+        'Reconteo: faltaron ${Formatters.money(value.difference.abs)}',
       Err() => null,
     };
   }
@@ -692,8 +694,8 @@ class _Suggestions extends StatelessWidget {
 }
 
 /// "¿Cuánto tenías antes de este sueldo?": compara con lo registrado del
-/// ciclo que se cierra y muestra la diferencia con su color (normal, aviso o
-/// desbalance grande).
+/// ciclo que se cierra y muestra la diferencia con su color (verde si cuadra
+/// o sobró; ámbar o rojo si faltó).
 class _RecountField extends ConsumerStatefulWidget {
   const new({required this.controller});
 

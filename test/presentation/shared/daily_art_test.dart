@@ -40,6 +40,36 @@ void main() {
     }
   });
 
+  test('en modo claro el texto tinta y los estados se leen (≥ 7:1)', () {
+    const palette = HeroPalette.light;
+    const texture = 0.06;
+    for (final art in DailyArt.all) {
+      for (final glow in art.colors) {
+        final lit = Color.alphaBlend(
+          palette.texture.withValues(alpha: texture),
+          Color.alphaBlend(
+            glow.withValues(alpha: palette.glowAlpha),
+            AppTheme.heroLightBaseEnd,
+          ),
+        );
+        for (final (name, fg) in [
+          ('texto', palette.text),
+          ('texto secundario', palette.muted),
+          ('número', palette.highlight),
+          ('vas bien', palette.positive),
+          ('cuidado', palette.warning),
+          ('falta dinero', palette.danger),
+        ]) {
+          expect(
+            _contrast(fg, lit),
+            greaterThanOrEqualTo(7),
+            reason: '${art.name}: $name',
+          );
+        }
+      }
+    }
+  });
+
   test('cambia de un día al siguiente y se repite cada semana', () {
     final today = DailyArt.forDay(DateTime(2026, 10, 20));
     expect(DailyArt.forDay(DateTime(2026, 10, 21)), isNot(today));

@@ -10,6 +10,7 @@ import 'package:finance_app/presentation/shared/category_style.dart';
 import 'package:finance_app/presentation/shared/data_providers.dart';
 import 'package:finance_app/presentation/shared/form_widgets.dart';
 import 'package:finance_app/presentation/shared/formatters.dart';
+import 'package:finance_app/presentation/shared/motion.dart';
 import 'package:finance_app/presentation/shared/section_card.dart';
 import 'package:finance_app/presentation/shared/traffic_light_badge.dart';
 import 'package:flutter/material.dart';
@@ -31,11 +32,11 @@ class ProvisionsScreen extends ConsumerWidget {
     final provisions = ref.watch(provisionsProvider).value ?? const [];
     return Scaffold(
       appBar: AppBar(title: const Text('Pagos del año')),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
+        tooltip: 'Nuevo pago del año',
         onPressed: () =>
             showFormSheet<void>(context, const ProvisionFormSheet()),
-        icon: const Icon(Icons.add),
-        label: const Text('Nuevo'),
+        child: const Icon(Icons.add),
       ),
       body: AsyncView(
         value: ref.watch(cycleSummaryProvider),
@@ -264,12 +265,11 @@ class _ProvisionCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          LinearProgressIndicator(
+          AnimatedProgressBar(
             value: (progress?.fraction ?? 0).clamp(0, 1).toDouble(),
             minHeight: 8,
             color: color,
             backgroundColor: color.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(4),
             semanticsLabel: 'Apartado de ${provision.name}',
           ),
           const SizedBox(height: 8),

@@ -5,6 +5,7 @@ import 'package:finance_app/domain/fixed/fixed_movement_scheduler.dart';
 import 'package:finance_app/presentation/fixed/bill_actions.dart';
 import 'package:finance_app/presentation/fixed/fixed_movements_screen.dart';
 import 'package:finance_app/presentation/shared/formatters.dart';
+import 'package:finance_app/presentation/shared/motion.dart';
 import 'package:finance_app/presentation/shared/section_card.dart';
 import 'package:finance_app/presentation/shared/status_style.dart';
 import 'package:flutter/material.dart';
@@ -105,6 +106,9 @@ class _ObligationRow extends ConsumerWidget {
         children: [
           Row(
             children: [
+              // Viñeta con el color del estado: lo grave se ve de un vistazo.
+              Icon(ObligationStyle.icon(item.state), size: 18, color: color),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   item.movement.name,
@@ -154,12 +158,10 @@ class _ObligationRow extends ConsumerWidget {
           ],
           if (!paid) ...[
             const SizedBox(height: 6),
-            LinearProgressIndicator(
+            AnimatedProgressBar(
               value: item.progress.fraction.clamp(0, 1).toDouble(),
-              minHeight: 6,
               color: color,
               backgroundColor: color.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(3),
               semanticsLabel: 'Reserva de ${item.movement.name}',
               semanticsValue: Formatters.percent(item.progress),
             ),

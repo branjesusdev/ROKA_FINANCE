@@ -4,22 +4,25 @@ import 'package:finance_app/presentation/shared/status_style.dart';
 import 'package:flutter/material.dart';
 
 /// Color, icono y texto del desbalance de un reconteo (nunca solo color):
-/// verde si es poco, ámbar si vale la pena revisar, rojo si es grande.
+/// verde si es poco o si tenías más de lo registrado; ámbar si faltó y vale
+/// la pena revisar; rojo si faltó mucho.
 abstract final class RecountStyle {
   static Color color(RecountLevel level, ColorScheme scheme) => switch (level) {
-    RecountLevel.fine => StatusColors.okOf(scheme),
+    RecountLevel.fine || RecountLevel.bonus => StatusColors.okOf(scheme),
     RecountLevel.warning => StatusColors.warningOf(scheme),
     RecountLevel.alert => scheme.error,
   };
 
   static IconData icon(RecountLevel level) => switch (level) {
     RecountLevel.fine => Icons.check_circle_outline,
+    RecountLevel.bonus => Icons.celebration_outlined,
     RecountLevel.warning => Icons.warning_amber_outlined,
     RecountLevel.alert => Icons.error_outline,
   };
 
   static String label(RecountLevel level) => switch (level) {
     RecountLevel.fine => 'Cuadra bien',
+    RecountLevel.bonus => '¡Genial!',
     RecountLevel.warning => 'Revisa',
     RecountLevel.alert => 'Desbalance grande',
   };
@@ -30,7 +33,7 @@ abstract final class RecountStyle {
     if (recount.difference.isZero) return 'Cuadra exacto con lo registrado.';
     return recount.difference.isNegative
         ? 'Se escaparon $gap sin registrar.'
-        : 'Tenías $gap más de lo registrado.';
+        : 'Tenías $gap más de lo registrado: súmalo a lo que te sobra.';
   }
 }
 

@@ -9,6 +9,7 @@ import 'package:finance_app/presentation/shared/category_style.dart';
 import 'package:finance_app/presentation/shared/data_providers.dart';
 import 'package:finance_app/presentation/shared/form_widgets.dart';
 import 'package:finance_app/presentation/shared/formatters.dart';
+import 'package:finance_app/presentation/shared/motion.dart';
 import 'package:finance_app/presentation/shared/section_card.dart';
 import 'package:finance_app/presentation/shared/traffic_light_badge.dart';
 import 'package:flutter/material.dart';
@@ -320,11 +321,10 @@ class _UsageBar extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        LinearProgressIndicator(
+        AnimatedProgressBar(
           value: usage?.fraction.clamp(0, 1).toDouble() ?? 1,
           color: TrafficLightStyle.color(status.light, theme.colorScheme),
           minHeight: 8,
-          borderRadius: BorderRadius.circular(4),
           semanticsLabel: 'Uso del presupuesto',
           semanticsValue: usage == null ? null : Formatters.percent(usage),
         ),

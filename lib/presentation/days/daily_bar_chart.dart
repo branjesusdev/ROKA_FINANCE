@@ -1,6 +1,7 @@
 import 'package:finance_app/application/dashboard/daily_spending.dart';
 import 'package:finance_app/domain/shared/money.dart';
 import 'package:finance_app/presentation/shared/formatters.dart';
+import 'package:finance_app/presentation/shared/motion.dart';
 import 'package:flutter/material.dart';
 
 /// Barras por día: abajo el día a día (verde si quedó dentro del tope, rojo
@@ -120,30 +121,37 @@ class _Bar extends StatelessWidget {
                 child: Stack(
                   alignment: Alignment.bottomCenter,
                   children: [
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Container(
-                          height: _height(day.planned),
-                          decoration: const BoxDecoration(
-                            color: DailyBarChart.plannedColor,
-                            borderRadius: BorderRadius.vertical(
-                              top: Radius.circular(4),
+                    // Las barras crecen desde abajo al aparecer.
+                    ChartReveal(
+                      replayKey: Object.hash(
+                        day.planned.cents,
+                        day.dayToDay.cents,
+                      ),
+                      builder: (context, t) => Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Container(
+                            height: _height(day.planned) * t,
+                            decoration: const BoxDecoration(
+                              color: DailyBarChart.plannedColor,
+                              borderRadius: BorderRadius.vertical(
+                                top: Radius.circular(4),
+                              ),
                             ),
                           ),
-                        ),
-                        Container(
-                          height: _height(day.dayToDay),
-                          decoration: BoxDecoration(
-                            color: dayColor,
-                            borderRadius: day.planned.isPositive
-                                ? null
-                                : const BorderRadius.vertical(
-                                    top: Radius.circular(4),
-                                  ),
+                          Container(
+                            height: _height(day.dayToDay) * t,
+                            decoration: BoxDecoration(
+                              color: dayColor,
+                              borderRadius: day.planned.isPositive
+                                  ? null
+                                  : const BorderRadius.vertical(
+                                      top: Radius.circular(4),
+                                    ),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                     if (limit != null && limit.isPositive)
                       Positioned(

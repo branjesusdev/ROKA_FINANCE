@@ -46,8 +46,11 @@ final class DailyArt {
   final Color secondGlow;
   final DecorPattern pattern;
 
-  /// Opacidad máxima de un brillo sobre la base.
+  /// Opacidad máxima de un brillo sobre la base oscura.
   static const maxGlowAlpha = 0.16;
+
+  /// Sobre papel claro el brillo se ve más: se permite un poco más de color.
+  static const maxLightGlowAlpha = 0.22;
 
   static const gradient = LinearGradient(
     begin: Alignment.topLeft,
@@ -112,6 +115,102 @@ final class DailyArt {
   }
 }
 
+/// Colores sobre el arte del día según el tema: en oscuro, la base casi
+/// negra con texto blanco y número en lima; en claro, papel blanco con los
+/// mismos brillos de color y texto tinta. Todo texto ≥ 7:1 sobre el punto
+/// más fuerte del brillo (lo verifica `daily_art_test`).
+@immutable
+final class HeroPalette {
+  const new({
+    required this.isLight,
+    required this.gradient,
+    required this.text,
+    required this.muted,
+    required this.highlight,
+    required this.positive,
+    required this.warning,
+    required this.danger,
+    required this.panel,
+    required this.track,
+    required this.chip,
+    required this.onChip,
+    required this.texture,
+    required this.glowAlpha,
+  });
+
+  final bool isLight;
+  final LinearGradient gradient;
+
+  /// Texto principal y secundario.
+  final Color text;
+  final Color muted;
+
+  /// El número protagonista ("Libre para gastar").
+  final Color highlight;
+
+  /// Texto de "vas bien", "cuidado" y "falta dinero".
+  final Color positive;
+  final Color warning;
+  final Color danger;
+
+  /// Fondo de los recuadros internos (tope de hoy, avisos).
+  final Color panel;
+
+  /// Pista de barras y progreso.
+  final Color track;
+
+  /// Etiqueta destacada (días que faltan) y su texto.
+  final Color chip;
+  final Color onChip;
+
+  /// Color de la textura del patrón y del borde fino.
+  final Color texture;
+
+  /// Opacidad máxima de cada brillo de color.
+  final double glowAlpha;
+
+  static const dark = HeroPalette(
+    isLight: false,
+    gradient: DailyArt.gradient,
+    text: AppTheme.onHero,
+    muted: AppTheme.onHeroMuted,
+    highlight: AppTheme.accent,
+    positive: AppTheme.accent,
+    warning: Color(0xFFFCD34D),
+    danger: Color(0xFFFCA5A5),
+    panel: Color(0x14FFFFFF),
+    track: Color(0x33FFFFFF),
+    chip: Color(0x29C6FF3D),
+    onChip: AppTheme.accent,
+    texture: Colors.white,
+    glowAlpha: DailyArt.maxGlowAlpha,
+  );
+
+  static const light = HeroPalette(
+    isLight: true,
+    gradient: LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [AppTheme.heroLightBase, AppTheme.heroLightBaseEnd],
+    ),
+    text: AppTheme.ink,
+    muted: Color(0xFF30363D),
+    highlight: AppTheme.ink,
+    positive: Color(0xFF24400A),
+    warning: Color(0xFF5A2A08),
+    danger: Color(0xFF6B1616),
+    panel: Color(0xB3FFFFFF),
+    track: Color(0x1F0A0B0D),
+    chip: AppTheme.accent,
+    onChip: AppTheme.onAccent,
+    texture: AppTheme.ink,
+    glowAlpha: DailyArt.maxLightGlowAlpha,
+  );
+
+  static HeroPalette of(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.light ? light : dark;
+}
+
 /// Figuras decorativas para dar vida a banners y tarjetas héroe. No
 /// transmiten datos: se excluyen de la accesibilidad, van detrás del
 /// contenido y se quedan en bordes y esquinas.
@@ -137,7 +236,6 @@ class DecorBackdrop extends StatelessWidget {
     Key? key,
   }) => DecorBackdrop(
     colors: art.colors,
-    gradient: DailyArt.gradient,
     pattern: art.pattern,
     glow: true,
     padding: padding,
@@ -160,22 +258,26 @@ class DecorBackdrop extends StatelessWidget {
   final double intensity;
 
   /// Brillos de color difuminados en dos esquinas (arte del día); las
-  /// figuras pasan a ser una textura blanca muy tenue.
+  /// figuras pasan a ser una textura muy tenue. Fondo y colores salen de
+  /// [HeroPalette] según el tema.
   final bool glow;
 
   static const _borderAlpha = 0.08;
 
   @override
   Widget build(BuildContext context) {
+    final palette = HeroPalette.of(context);
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
       child: DecoratedBox(
-        decoration: BoxDecoration(gradient: gradient),
+        decoration: BoxDecoration(gradient: glow ? palette.gradient : gradient),
         child: CustomPaint(
           painter: glow
-              ? _GlowPainter(colors, pattern)
+              ? _GlowPainter(colors, pattern, palette)
               : _DecorPainter(colors, pattern, intensity),
-          foregroundPainter: glow ? _HairlinePainter(radius) : null,
+          foregroundPainter: glow
+              ? _HairlinePainter(radius, palette.texture)
+              : null,
           child: Padding(padding: padding, child: child),
         ),
       ),
@@ -183,11 +285,12 @@ class DecorBackdrop extends StatelessWidget {
   }
 }
 
-/// Borde de 1 px blanco muy tenue: efecto vidrio.
+/// Borde de 1 px muy tenue: efecto vidrio.
 class _HairlinePainter extends CustomPainter {
-  new(this.radius);
+  new(this.radius, this.color);
 
   final double radius;
+  final Color color;
 
   @override
   void paint(Canvas canvas, Size size) => canvas.drawRRect(
@@ -197,19 +300,21 @@ class _HairlinePainter extends CustomPainter {
     ),
     Paint()
       ..style = PaintingStyle.stroke
-      ..color = Colors.white.withValues(alpha: DecorBackdrop._borderAlpha),
+      ..color = color.withValues(alpha: DecorBackdrop._borderAlpha),
   );
 
   @override
-  bool shouldRepaint(_HairlinePainter old) => old.radius != radius;
+  bool shouldRepaint(_HairlinePainter old) =>
+      old.radius != radius || old.color != color;
 }
 
-/// Dos brillos difuminados + textura blanca tenue del patrón del día.
+/// Dos brillos difuminados + textura tenue del patrón del día.
 class _GlowPainter extends CustomPainter {
-  new(this.colors, this.pattern);
+  new(this.colors, this.pattern, this.palette);
 
   final List<Color> colors;
   final DecorPattern pattern;
+  final HeroPalette palette;
 
   /// La textura casi no se ve: da ritmo sin competir con el texto.
   static const _textureIntensity = 0.2;
@@ -225,7 +330,7 @@ class _GlowPainter extends CustomPainter {
         Paint()
           ..shader = RadialGradient(
             colors: [
-              color.withValues(alpha: DailyArt.maxGlowAlpha),
+              color.withValues(alpha: palette.glowAlpha),
               color.withValues(alpha: 0),
             ],
           ).createShader(Rect.fromCircle(center: center, radius: radius)),
@@ -235,7 +340,7 @@ class _GlowPainter extends CustomPainter {
     glowAt(Offset(size.width * 0.95, 0), short * 0.95, colors.first);
     glowAt(Offset(0, size.height), short * 0.8, colors[1 % colors.length]);
     _DecorPainter(
-      const [Colors.white],
+      [palette.texture],
       pattern,
       _textureIntensity,
     ).paint(canvas, size);
@@ -243,7 +348,7 @@ class _GlowPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_GlowPainter old) =>
-      old.colors != colors || old.pattern != pattern;
+      old.colors != colors || old.pattern != pattern || old.palette != palette;
 }
 
 class _DecorPainter extends CustomPainter {

@@ -6,6 +6,7 @@ import 'package:finance_app/presentation/fixed/bill_actions.dart';
 import 'package:finance_app/presentation/shared/form_widgets.dart';
 import 'package:finance_app/presentation/shared/formatters.dart';
 import 'package:finance_app/presentation/shared/section_card.dart';
+import 'package:finance_app/presentation/shared/status_style.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -32,7 +33,10 @@ class PendingBillsCard extends ConsumerWidget {
           for (final bill in bills) ...[
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.receipt_long_outlined),
+              leading: Icon(
+                Icons.receipt_long_outlined,
+                color: StatusColors.warningOf(Theme.of(context).colorScheme),
+              ),
               title: Text(bill.movement.name),
               subtitle: Text(
                 '${billStateLabel(bill, now)} · '

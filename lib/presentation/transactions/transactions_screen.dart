@@ -236,7 +236,7 @@ class _CycleView extends ConsumerWidget {
           _RecountCard(recount: recount),
           const SizedBox(height: 12),
         ],
-        _KindSelector(movements: movements, kind: kind, onKind: onKind),
+        _KindSelector(kind: kind, onKind: onKind),
         const SizedBox(height: 4),
         const Align(
           alignment: Alignment.centerRight,
@@ -340,37 +340,28 @@ class _CycleView extends ConsumerWidget {
   }
 }
 
-/// Gastos / Ingresos compacto, con el total de cada uno.
+/// Gastos / Ingresos compacto (el total ya lo dice la dona).
 class _KindSelector extends StatelessWidget {
-  const new({
-    required this.movements,
-    required this.kind,
-    required this.onKind,
-  });
+  const new({required this.kind, required this.onKind});
 
-  final CycleMovements movements;
   final TransactionKind kind;
   final ValueChanged<TransactionKind> onKind;
 
   @override
   Widget build(BuildContext context) {
-    final expense = Formatters.money(
-      movements.totalOf(TransactionKind.expense),
-    );
-    final income = Formatters.money(movements.totalOf(TransactionKind.income));
     return SegmentedButton<TransactionKind>(
       showSelectedIcon: false,
       style: const ButtonStyle(visualDensity: VisualDensity.compact),
-      segments: [
+      segments: const [
         ButtonSegment(
           value: TransactionKind.expense,
-          icon: const Icon(Icons.arrow_upward, size: 16),
-          label: Text('Gastos $expense', overflow: TextOverflow.ellipsis),
+          icon: Icon(Icons.arrow_upward, size: 16),
+          label: Text('Gastos'),
         ),
         ButtonSegment(
           value: TransactionKind.income,
-          icon: const Icon(Icons.arrow_downward, size: 16),
-          label: Text('Ingresos $income', overflow: TextOverflow.ellipsis),
+          icon: Icon(Icons.arrow_downward, size: 16),
+          label: Text('Ingresos'),
         ),
       ],
       selected: {kind},
@@ -604,8 +595,8 @@ class _CategoryRow extends StatelessWidget {
 }
 
 /// Reconteo hecho al llegar el sueldo: lo registrado, lo que de verdad
-/// quedó y la diferencia (verde si es poco, ámbar si hay que revisar, rojo
-/// si es un desbalance grande).
+/// quedó y la diferencia (verde si es poco o si sobró, ámbar si faltó y hay
+/// que revisar, rojo si faltó mucho).
 class _RecountCard extends StatelessWidget {
   const new({required this.recount});
 
@@ -645,7 +636,9 @@ class _RecountCard extends StatelessWidget {
                 Expanded(
                   child: LabeledValue(
                     label: 'Diferencia',
-                    value: Formatters.money(recount.difference),
+                    value:
+                        '${recount.difference.isPositive ? '+' : ''}'
+                        '${Formatters.money(recount.difference)}',
                     valueColor: color,
                   ),
                 ),

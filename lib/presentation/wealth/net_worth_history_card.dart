@@ -3,6 +3,7 @@ import 'package:finance_app/domain/wealth/asset.dart';
 import 'package:finance_app/domain/wealth/net_worth_snapshot.dart';
 import 'package:finance_app/presentation/shared/data_providers.dart';
 import 'package:finance_app/presentation/shared/formatters.dart';
+import 'package:finance_app/presentation/shared/motion.dart';
 import 'package:finance_app/presentation/shared/section_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -145,11 +146,18 @@ class _Chart extends StatelessWidget {
           SizedBox(
             height: _height,
             width: double.infinity,
-            child: CustomPaint(
-              painter: _LinePainter(
-                values: [for (final p in points) p.total.cents.toDouble()],
-                color: color,
-                grid: theme.colorScheme.outlineVariant,
+            // La línea se dibuja de izquierda a derecha al aparecer.
+            child: ChartReveal(
+              replayKey: Object.hashAll(points.map((p) => p.total.cents)),
+              builder: (context, progress) => WipeReveal(
+                progress: progress,
+                child: CustomPaint(
+                  painter: _LinePainter(
+                    values: [for (final p in points) p.total.cents.toDouble()],
+                    color: color,
+                    grid: theme.colorScheme.outlineVariant,
+                  ),
+                ),
               ),
             ),
           ),

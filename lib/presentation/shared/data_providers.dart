@@ -3,6 +3,7 @@ import 'package:finance_app/application/advisor/financial_alerts.dart';
 import 'package:finance_app/application/advisor/financial_snapshot.dart';
 import 'package:finance_app/application/advisor/windfall_plan.dart';
 import 'package:finance_app/application/cashflow/cashflow_statement.dart';
+import 'package:finance_app/application/dashboard/cycle_ledger.dart';
 import 'package:finance_app/application/dashboard/cycle_pulse.dart';
 import 'package:finance_app/application/dashboard/cycle_summary.dart';
 import 'package:finance_app/application/dashboard/daily_spending.dart';
@@ -613,6 +614,20 @@ final cycleHistoryProvider = FutureProvider<List<CycleRecord>>((ref) async {
     ),
     today: now,
     transactions: all,
+    savingCategoryIds: _savingIds(await categories),
+  );
+});
+
+/// Dinero total: lo que va del ciclo + lo que sobró de cada ciclo anterior
+/// (12 meses de movimientos).
+final cycleLedgerProvider = FutureProvider<CycleLedger>((ref) async {
+  final transactions = ref.watch(lastYearTransactionsProvider.future);
+  final categories = ref.watch(categoriesProvider.future);
+  final resolver = await ref.watch(movementsResolverProvider.future);
+  return const CycleLedgerBuilder().build(
+    resolver: resolver,
+    today: ref.watch(clockProvider).now(),
+    transactions: await transactions,
     savingCategoryIds: _savingIds(await categories),
   );
 });

@@ -2,6 +2,7 @@ import 'package:finance_app/domain/wisdom/wealth_wisdom.dart';
 import 'package:finance_app/presentation/app/app_theme.dart';
 import 'package:finance_app/presentation/shared/decor.dart';
 import 'package:finance_app/presentation/shared/formatters.dart';
+import 'package:finance_app/presentation/shared/motion.dart';
 import 'package:flutter/material.dart';
 
 /// Lo primero al abrir: saludo, fecha y la frase del día con qué hacer hoy.
@@ -32,10 +33,11 @@ class _GreetingBannerState extends State<GreetingBanner> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final quote = WealthWisdom.quoteFor(widget.now);
-    // Arte del día: siempre oscuro, texto claro con contraste ≥ 7:1.
+    // Arte del día (claro u oscuro según el tema), texto ≥ 7:1.
     final art = DailyArt.forDay(widget.now);
-    const ink = AppTheme.onHero;
-    const muted = AppTheme.onHeroMuted;
+    final palette = HeroPalette.of(context);
+    final ink = palette.text;
+    final muted = palette.muted;
     return Semantics(
       button: true,
       label: '$_greeting. Frase del día: ${quote.text} ${quote.source}',
@@ -45,7 +47,8 @@ class _GreetingBannerState extends State<GreetingBanner> {
           art,
           padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
           child: AnimatedSize(
-            duration: const Duration(milliseconds: 200),
+            duration: Motion.enabled(context) ? Motion.medium : Duration.zero,
+            curve: Motion.emphasized,
             alignment: Alignment.topCenter,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -96,11 +99,7 @@ class _GreetingBannerState extends State<GreetingBanner> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(
-                      Icons.format_quote_rounded,
-                      color: ink,
-                      size: 22,
-                    ),
+                    Icon(Icons.format_quote_rounded, color: ink, size: 22),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
@@ -130,7 +129,7 @@ class _GreetingBannerState extends State<GreetingBanner> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.3),
+                      color: palette.panel,
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Text(

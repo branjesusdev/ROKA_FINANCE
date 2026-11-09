@@ -8,6 +8,7 @@ import 'package:finance_app/presentation/shared/data_providers.dart';
 import 'package:finance_app/presentation/shared/form_widgets.dart';
 import 'package:finance_app/presentation/shared/formatters.dart';
 import 'package:finance_app/presentation/shared/labels.dart';
+import 'package:finance_app/presentation/shared/motion.dart';
 import 'package:finance_app/presentation/shared/section_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -211,10 +212,9 @@ class _GoalProgressView extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 6),
-        LinearProgressIndicator(
+        AnimatedProgressBar(
           value: percent?.fraction.clamp(0, 1).toDouble() ?? 0,
           minHeight: 8,
-          borderRadius: BorderRadius.circular(4),
           semanticsLabel: 'Progreso de ${goal.name}',
           semanticsValue: percent == null ? null : Formatters.percent(percent),
         ),

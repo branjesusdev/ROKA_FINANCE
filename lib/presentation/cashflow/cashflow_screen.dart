@@ -6,6 +6,7 @@ import 'package:finance_app/presentation/shared/data_providers.dart';
 import 'package:finance_app/presentation/shared/decor.dart';
 import 'package:finance_app/presentation/shared/form_widgets.dart';
 import 'package:finance_app/presentation/shared/formatters.dart';
+import 'package:finance_app/presentation/shared/motion.dart';
 import 'package:finance_app/presentation/shared/section_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -92,10 +93,8 @@ class CashflowEntryCard extends ConsumerWidget {
                     ),
                     if (freedom != null) ...[
                       const SizedBox(height: 8),
-                      LinearProgressIndicator(
+                      AnimatedProgressBar(
                         value: freedom.fraction.clamp(0.0, 1.0),
-                        minHeight: 6,
-                        borderRadius: BorderRadius.circular(3),
                         semanticsLabel:
                             'Avance para salir de la carrera de la rata',
                       ),
@@ -121,8 +120,9 @@ class _RatRaceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    const text = AppTheme.onHero;
-    const muted = AppTheme.onHeroMuted;
+    final palette = HeroPalette.of(context);
+    final text = palette.text;
+    final muted = palette.muted;
     final s = statement;
     final freedom = s.freedom;
     final fraction = (freedom?.fraction ?? 0).clamp(0.0, 1.0);
@@ -147,7 +147,7 @@ class _RatRaceCard extends StatelessWidget {
       child: DecorBackdrop.daily(
         DailyArt.all.first,
         child: DefaultTextStyle.merge(
-          style: const TextStyle(color: text),
+          style: TextStyle(color: text),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -160,7 +160,7 @@ class _RatRaceCard extends StatelessWidget {
                 percent,
                 style: theme.textTheme.displaySmall?.copyWith(
                   fontWeight: FontWeight.w800,
-                  color: AppTheme.accent,
+                  color: palette.highlight,
                 ),
               ),
               Text(
@@ -168,12 +168,11 @@ class _RatRaceCard extends StatelessWidget {
                 style: theme.textTheme.bodyMedium?.copyWith(color: muted),
               ),
               const SizedBox(height: 12),
-              LinearProgressIndicator(
+              AnimatedProgressBar(
                 value: fraction,
                 minHeight: 10,
                 color: AppTheme.accent,
-                backgroundColor: const Color(0x33FFFFFF),
-                borderRadius: BorderRadius.circular(5),
+                backgroundColor: palette.track,
                 semanticsLabel: 'Avance para salir de la carrera de la rata',
               ),
               const SizedBox(height: 12),
@@ -188,8 +187,8 @@ class _RatRaceCard extends StatelessWidget {
                 '${Formatters.money(s.cashflow.abs)}',
                 style: theme.textTheme.titleMedium?.copyWith(
                   color: s.cashflow.isNegative
-                      ? const Color(0xFFFCA5A5)
-                      : AppTheme.accent,
+                      ? palette.danger
+                      : palette.positive,
                   fontWeight: FontWeight.w700,
                 ),
               ),

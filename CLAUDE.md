@@ -46,7 +46,12 @@ diseño visual: `docs/design.md` · estado/fases: `docs/roadmap.md` · entorno: 
 - **Reconteo al llegar el sueldo** (`ReconcileBalance(closingOn:)`, `CycleRecount`, `RecountLevel`):
   al registrar Salario, "¿cuánto tenías antes?" cuadra el ciclo que cierra (diferencia el día antes,
   `recountDescription`). `CycleMovements.recount`: registrado, real que quedó y diferencia;
-  < $50 mil verde, hasta $100 mil ámbar, más rojo (`FinanceSettings.recountWarningGap/AlertGap`).
+  faltante < $50 mil verde, hasta $100 mil ámbar, más rojo; si sobra ≥ $50 mil es `RecountLevel.bonus`
+  ("¡Genial!", verde) (`FinanceSettings.recountWarningGap/AlertGap`).
+- **Lo que sobró = ahorro** (`CycleSummary.savingsPending`): el sobrante del ciclo anterior cubre el
+  ahorro del ciclo (el mayor entre aportes y sobrante); no se vuelve a reservar del sueldo.
+- **Tu dinero total** (`CycleLedgerBuilder`, `cycleLedgerProvider`, `CycleLedgerCard`): resultado de cada
+  ciclo (12 meses) con acumulado; total = ciclo actual + `carried`. No incluye lo movido a metas/apartados.
 - **Reiniciar mes** (`ResetCycleMovements`): borra lo anotado a mano en el ciclo (con deshacer).
 - **Así vas este ciclo** (`CyclePulse`) y **Tu huella de gasto** (`SpendingRadar`, araña: este ciclo vs
   el pasado a la misma altura, por categoría y por día de la semana; solo gasto variable).
@@ -128,9 +133,9 @@ diseño visual: `docs/design.md` · estado/fases: `docs/roadmap.md` · entorno: 
 - Insights descriptivos basados en datos del usuario; nunca presentarlos como asesoría financiera.
 - Colores desde `AppTheme`/`ColorScheme` ("Roka Neo": negro neutro `#0A0B0D` + lima eléctrico
   `#C6FF3D`; vívidos solo en rellenos/gráficas). Fuente Inter empaquetada. Tarjetas protagonistas:
-  `DailyArt` (cambia cada día; `daily_art_test` exige ≥ 7:1).
+  `DailyArt` (cambia cada día; claro u oscuro con `HeroPalette`; `daily_art_test` exige ≥ 7:1).
   Animaciones con `shared/motion.dart` (`Motion` duraciones/curvas, `FadeSlideIn`, `ChartReveal`,
-  `AnimatedMoneyText`); sin timers y respetando "quitar animaciones" del sistema.
+  `AnimatedMoneyText`, `AnimatedProgressBar`, `WipeReveal`); sin timers y respetando "quitar animaciones" del sistema.
   Sin rosados ni morados; rojo solo para alertas. Categorías: `CategoryStyle` (icono + color por `iconKey`).
 
 ## Checklist al cambiar el esquema drift

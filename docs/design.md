@@ -16,8 +16,9 @@ y apoyos vívidos que solo van en rellenos, gráficas y brillos (nunca como text
 | `accent` | `#C6FF3D` | Lima eléctrico: lo activo, número protagonista, `primary` y FAB |
 | `onAccent` | `#0A0B0D` | Texto/icono sobre lima |
 | `cyan` `blue` `orange` `sun` `mint` `sky` | `#22D3EE` `#3B82F6` `#FB923C` `#FBBF24` `#34D399` `#7DD3FC` | Brillos del arte del día, barra apilada del saldo, gráficas |
-| `heroBase` → `heroBaseEnd` | `#0E1013` → `#16191D` | Base de las tarjetas protagonistas (siempre oscuras) |
-| `onHero` / `onHeroMuted` | `#FFFFFF` / `#E1E6EA` | Texto sobre tarjetas protagonistas |
+| `heroBase` → `heroBaseEnd` | `#0E1013` → `#16191D` | Base de las tarjetas protagonistas en oscuro |
+| `onHero` / `onHeroMuted` | `#FFFFFF` / `#E1E6EA` | Texto sobre tarjetas protagonistas en oscuro |
+| `heroLightBase` → `heroLightBaseEnd` | `#FFFFFF` → `#F3F5F7` | Base de las tarjetas protagonistas en claro (texto `ink`, secundario `#30363D`; estados `#24400A` / `#5A2A08` / `#6B1616`) — ver `HeroPalette` |
 | fondo claro | `#F2F3F5` | Lista agrupada estilo Apple; tarjetas blancas sin borde |
 | `_lightMuted` | `#4B535C` | Texto secundario en claro (≥ 7:1 sobre blanco) |
 | `_darkBackground` / `_darkCard` / `_darkRaised` / `_darkHigh` | `#0A0B0D` / `#15171A` / `#1C1F23` / `#24282D` | Oscuro neutro por niveles; borde `#2C3036` |
@@ -110,12 +111,15 @@ Problemas concretos encontrados en la app:
   `maxGlowAlpha` (0,16), una textura blanca muy tenue distinta cada día (ondas, rayas, rocas,
   sol, burbujas, montañas, órbitas) y borde de 1 px tipo vidrio. Lo usan el banner de la
   frase, la tarjeta del saldo y la de Cashflow. `daily_art_test` verifica ≥ 7:1 para texto
-  blanco, gris claro y lima en el punto más brillante de cada arte.
+  blanco, gris claro y lima en el punto más brillante de cada arte. En **modo claro**
+  (`HeroPalette.light`) la base es papel blanco, los brillos suben a 0,22, la textura es tinta
+  y el número protagonista va en tinta (el lima queda en rellenos y la etiqueta de días).
 - **Histograma de 12 meses** (`MonthlyHistogram`): barras redondeadas, mes pico en ámbar
   `#E2A52B` con su valor encima, mes actual en `primary`, promedio en línea punteada.
 - **Estados** (`status_style.dart`): `StatusChip` = icono + texto sobre fondo al 12 %.
-  Urgente = rojo (`error`), Atención = ámbar `#B45309`/`#FCD34D`, Oportunidad = azul
-  `#1D4ED8`/`#93C5FD`, Logro/Cubierto = verde `#15803D`/`#86EFAC`.
+  Urgente = rojo (`error`), Atención = ámbar `#B45309`/`#E5C07B`, Oportunidad = azul
+  `#1D4ED8`/`#61AFEF`, Logro/Cubierto = verde `#15803D`/`#89CA78` (en oscuro, paleta One Dark
+  Pro vivid del editor). En listas de estado, viñeta (icono) con el color del estado.
 - **Navegación**: píldora oscura de 68 px con 5 destinos (icono + nombre), indicador lima.
 - Gráfica nueva: evolución del patrimonio (`NetWorthHistoryCard`, línea con relleno suave y
   `Semantics` con inicio/fin).

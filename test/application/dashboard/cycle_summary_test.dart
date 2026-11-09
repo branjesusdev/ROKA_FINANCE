@@ -142,6 +142,26 @@ void main() {
     expect(build().previousLeft, isNull);
   });
 
+  test('lo que sobró del ciclo anterior ya es el ahorro: no se vuelve a '
+      'apartar del sueldo', () {
+    final current = [
+      income(4000000, category: DefaultCategories.salaryId, date: cycle.start),
+    ];
+    final withoutLeftover = build(current: current);
+    final withLeftover = build(
+      current: current,
+      previous: [
+        income(2500000, date: DateTime(2026, 8, 25)),
+        expense(700000, date: DateTime(2026, 9)),
+      ],
+    );
+
+    expect(withoutLeftover.savingsPending, const Money.pesos(400000));
+    expect(withLeftover.previousLeft, const Money.pesos(1800000));
+    expect(withLeftover.savingsPending, Money.zero);
+    expect(withLeftover.dailyCap!.reserved, Money.zero);
+  });
+
   test('tope diario: aparta fijos, mercado presupuestado y ahorro; ignora '
       'el mercado del día', () {
     final groceries = DefaultCategories.groceries.id;

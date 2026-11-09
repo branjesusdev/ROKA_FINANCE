@@ -17,11 +17,24 @@ import '../../support/fakes.dart';
 import '../../support/test_database.dart';
 
 void main() {
-  test('desbalance: menos de 50 mil normal, hasta 100 mil aviso, más rojo', () {
+  test('faltante: menos de 50 mil normal, hasta 100 mil aviso, más rojo', () {
     expect(RecountLevel.of(const Money.pesos(-49999)), RecountLevel.fine);
     expect(RecountLevel.of(const Money.pesos(-50000)), RecountLevel.warning);
-    expect(RecountLevel.of(const Money.pesos(100000)), RecountLevel.warning);
+    expect(RecountLevel.of(const Money.pesos(-100000)), RecountLevel.warning);
     expect(RecountLevel.of(const Money.pesos(-100001)), RecountLevel.alert);
+  });
+
+  test('tener más de lo registrado es buena noticia, nunca alerta', () {
+    expect(RecountLevel.of(const Money.pesos(49999)), RecountLevel.fine);
+    expect(RecountLevel.of(const Money.pesos(50000)), RecountLevel.bonus);
+    // 2.500.000 reales frente a 1.800.000 registrados.
+    expect(
+      CycleRecount.measure(
+        registered: const Money.pesos(1800000),
+        actual: const Money.pesos(2500000),
+      ).level,
+      RecountLevel.bonus,
+    );
   });
 
   test(

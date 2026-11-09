@@ -75,6 +75,7 @@ final class CycleSummary {
     required this.savingsTarget,
     this.monthlyFixedExpenses = Money.zero,
     this.plannedReserve = Money.zero,
+    this.savingsPending = Money.zero,
     this.previousCycle,
     this.usageLight,
     this.dailyCap,
@@ -109,6 +110,10 @@ final class CycleSummary {
   /// Presupuesto del mes que falta gastar (mercado, servicios…) más el
   /// colchón de los niños: se protege del gasto del día a día.
   final Money plannedReserve;
+
+  /// Lo que falta del ahorro de referencia del ciclo. Lo que sobró del
+  /// ciclo anterior ya cuenta como ahorro: no se vuelve a pedir del sueldo.
+  final Money savingsPending;
 
   /// Tope del gasto del día a día. `null` si el ciclo ya terminó.
   final DailySpendingCap? dailyCap;
@@ -217,9 +222,20 @@ final class CycleSummaryBuilder {
       cycle: cycle,
       today: today,
     );
+    final previousLeft = previousCycleTransactions.isEmpty
+        ? null
+        : previous.adjustments +
+              previous.income -
+              previous.expenses -
+              previous.savingContributions;
     // Lo apartado para pagos no mensuales no cuenta para la meta de ahorro.
+    // El sobrante del ciclo anterior es ahorro: se toma el mayor de los dos
+    // (si lo moviste a una meta ya está en los aportes, no se cuenta doble).
     final savedThisCycle =
-        cashFlow.savingContributions - provisionPlan.setAsideThisCycle;
+        (cashFlow.savingContributions - provisionPlan.setAsideThisCycle).max(
+          (previousLeft ?? Money.zero).max(Money.zero),
+        );
+    final savingsPending = (savingsTarget - savedThisCycle).max(Money.zero);
     final leftAfterFixed =
         cashFlow.adjustments +
         cashFlow.income -
@@ -256,12 +272,13 @@ final class CycleSummaryBuilder {
             .map((m) => m.amount),
       ),
       plannedReserve: plannedReserve,
+      savingsPending: savingsPending,
       dailyCap: const DailySpendingCapCalculator().calculate(
         available: leftAfterFixed,
         daysLeft: cycle.daysLeft(today),
         spentToday: _dayToDaySpentOn(today, cycleTransactions, savingIds),
         monthlyReserve: plannedReserve + provisionPlan.pendingThisCycle,
-        savingsReserve: (savingsTarget - savedThisCycle).max(Money.zero),
+        savingsReserve: savingsPending,
         thresholds: settings.thresholds,
         trackedDays: _trackedDays(cycle, cycleTransactions),
         spentBeforeToday: Money.sum(
@@ -270,12 +287,7 @@ final class CycleSummaryBuilder {
               .map((t) => t.amount),
         ),
       ),
-      previousLeft: previousCycleTransactions.isEmpty
-          ? null
-          : previous.adjustments +
-                previous.income -
-                previous.expenses -
-                previous.savingContributions,
+      previousLeft: previousLeft,
       usageLight: usage == null
           ? null
           : settings.thresholds.classifyUsage(usage),

@@ -395,6 +395,142 @@ abstract final class WealthWisdom {
       'Proverbio chino',
       today: 'Empieza hoy tu ahorro, aunque sea con lo mínimo.',
     ),
+    Quote(
+      'Si no te levantas para ser mejor, no te levantes.',
+      'Frase popular',
+      today:
+          'Elige una sola cosa en la que hoy vas a ser mejor que ayer '
+          '(aunque sea anotar todos tus gastos).',
+    ),
+    Quote(
+      'La disciplina es elegir entre lo que quieres ahora y lo que más '
+          'quieres.',
+      'Abraham Lincoln (atribuida)',
+      today: 'Antes de un antojo, mira tu meta y decide cuál quieres más.',
+    ),
+    Quote(
+      'Nadie va a venir a salvarte. Ese trabajo es tuyo.',
+      'Frase popular',
+      today: 'Haz hoy la tarea de dinero que llevas días aplazando.',
+    ),
+    Quote(
+      'El éxito es la suma de pequeños esfuerzos repetidos día tras día.',
+      'Robert Collier',
+      today: 'Registra todo lo que gastes hoy, sin excepción.',
+    ),
+    Quote(
+      'No cuentes los días: haz que los días cuenten.',
+      'Muhammad Ali',
+      today: 'Termina el día con algo de tu tope sin gastar.',
+    ),
+    Quote(
+      'La motivación te pone en marcha; el hábito te mantiene en el camino.',
+      'Jim Ryun',
+      today:
+          'Aparta hoy una cantidad fija, por pequeña que sea, a la misma hora.',
+    ),
+    Quote(
+      'Sufre ahora y vive el resto de tu vida como un campeón.',
+      'Muhammad Ali',
+      today: 'Di que no a un gasto que no estaba en tu plan.',
+    ),
+    Quote(
+      'Lo que haces cada día importa más que lo que haces de vez en cuando.',
+      'Gretchen Rubin',
+      today: 'Revisa tu tope del día antes de salir de casa.',
+    ),
+    Quote(
+      'El dolor de la disciplina pesa gramos; el del arrepentimiento pesa '
+          'toneladas.',
+      'Jim Rohn',
+      today: 'Paga hoy primero lo que más te pesa, aunque cueste.',
+    ),
+    Quote(
+      'Disciplina es igual a libertad.',
+      'Jocko Willink',
+      today: 'Cumple tu tope hoy: mañana tendrás más opciones.',
+    ),
+    Quote(
+      'Ganar no lo es todo, pero querer ganar sí.',
+      'Vince Lombardi',
+      today: 'Escribe cuánto quieres tener ahorrado en 6 meses.',
+    ),
+    Quote(
+      'Tu futuro se crea con lo que haces hoy, no mañana.',
+      'Robert Kiyosaki',
+      today: 'Mueve hoy a ahorro lo que te sobró del ciclo pasado.',
+    ),
+    Quote(
+      'Si quieres algo que nunca has tenido, haz algo que nunca has hecho.',
+      'Frase popular',
+      today: 'Prueba una semana sin compras por impulso.',
+    ),
+    Quote(
+      'Cuida los centavos, que los pesos se cuidan solos.',
+      'Benjamin Franklin',
+      today: 'Revisa tus gastos pequeños de la semana y suma cuánto fue.',
+    ),
+    Quote(
+      'Quien no controla su dinero, termina controlado por él.',
+      'Frase popular',
+      today: 'Cuadra hoy la app con tu dinero real.',
+    ),
+    Quote(
+      'Hazlo con miedo, pero hazlo.',
+      'Frase popular',
+      today: 'Da hoy el primer paso de esa meta que te asusta.',
+    ),
+    Quote(
+      'El que es fiel en lo poco, también en lo mucho es fiel.',
+      'Lucas 16:10',
+      today: 'Cumple tu presupuesto de mercado esta semana al peso.',
+    ),
+    Quote(
+      'La riqueza se construye en silencio; el ruido es para los que gastan.',
+      'Frase popular',
+      today: 'Celebra tu avance sin comprar nada para mostrarlo.',
+    ),
+    Quote(
+      'Un día o el día uno: tú decides.',
+      'Frase popular',
+      today:
+          'Empieza hoy tu fondo de emergencia, aunque sea con diez mil pesos.',
+    ),
+    Quote(
+      'Lo que no se mide no se puede mejorar.',
+      'Peter Drucker',
+      today: 'Mira Tu huella de gasto y elige una categoría para bajar.',
+    ),
+    Quote(
+      'Primero formamos hábitos; luego ellos nos forman a nosotros.',
+      'Charles C. Noble',
+      today: 'Pon un recordatorio para anotar tus gastos cada noche.',
+    ),
+    Quote(
+      'Trabaja duro en silencio y deja que el éxito haga el ruido.',
+      'Frank Ocean (atribuida)',
+      today: 'Haz hoy tu mejor trabajo sin esperar que nadie lo vea.',
+    ),
+    Quote(
+      'No te compares con otros; compárate con quien eras ayer.',
+      'Jordan Peterson',
+      today: 'Compara este ciclo con el anterior en Así vas este ciclo.',
+    ),
+    Quote(
+      'La paciencia es amarga, pero su fruto es dulce.',
+      'Jean-Jacques Rousseau',
+      today: 'No toques hoy tu ahorro, pase lo que pase.',
+    ),
+    Quote(
+      'Cada peso que ahorras es un soldado que trabaja para tu libertad.',
+      'George S. Clason (idea de)',
+      today: 'Ponle nombre a tu ahorro: ¿para qué es?',
+    ),
+    Quote(
+      'Levántate, aunque nadie te aplauda.',
+      'Frase popular',
+      today: 'Termina hoy algo que empezaste.',
+    ),
   ];
 
   static const principles = <WealthPrinciple>[

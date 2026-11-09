@@ -59,8 +59,9 @@ final class FinanceSettings {
   static const fixedHeadsUpHour = 19;
   static const fixedDueHour = 8;
 
-  /// Reconteo al llegar el sueldo: diferencia sin registrar que ya merece
-  /// revisarse (aviso) y la que es un desbalance grande (rojo).
+  /// Reconteo al llegar el sueldo: faltante sin registrar que ya merece
+  /// revisarse (aviso) y el que es un desbalance grande (rojo). Si sobra
+  /// desde [recountWarningGap], es buena noticia (verde).
   static const recountWarningGap = Money.pesos(50000);
   static const recountAlertGap = Money.pesos(100000);
   static const cycleCloseHour = 19;

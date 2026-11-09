@@ -7,14 +7,22 @@ enum RecountLevel {
   /// Menos de [FinanceSettings.recountWarningGap]: normal, no afecta.
   fine,
 
-  /// Entre los dos umbrales: vale la pena revisar.
+  /// Tenías [FinanceSettings.recountWarningGap] o más por encima de lo
+  /// registrado: buena noticia, no una alerta.
+  bonus,
+
+  /// Faltante entre los dos umbrales: vale la pena revisar.
   warning,
 
-  /// Más de [FinanceSettings.recountAlertGap]: algo grande se escapó.
+  /// Faltante de más de [FinanceSettings.recountAlertGap]: algo grande se
+  /// escapó.
   alert;
 
+  /// Solo el faltante (negativo) es aviso o alerta.
   static RecountLevel of(Money difference) {
     final gap = difference.abs;
+    if (gap < FinanceSettings.recountWarningGap) return fine;
+    if (difference.isPositive) return bonus;
     if (gap > FinanceSettings.recountAlertGap) return alert;
     if (gap >= FinanceSettings.recountWarningGap) return warning;
     return fine;

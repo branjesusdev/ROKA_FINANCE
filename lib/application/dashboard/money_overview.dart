@@ -102,14 +102,11 @@ final class MoneyOverviewBuilder {
       cycleTransactions: cycleTransactions,
       available: summary.left,
     );
-    final savedThisCycle =
-        summary.cashFlow.savingContributions -
-        summary.provisionPlan.setAsideThisCycle;
     return MoneyOverview(
       available: summary.left,
       committed: coverage.committed,
       provisionsPending: summary.provisionPlan.pendingThisCycle,
-      savingsPending: (summary.savingsTarget - savedThisCycle).max(Money.zero),
+      savingsPending: summary.savingsPending,
       plannedPending: summary.plannedReserve,
       provisionsSaved: summary.provisionPlan.saved.max(Money.zero),
       provisionsToday: summary.provisionPlan.todaySetAside,

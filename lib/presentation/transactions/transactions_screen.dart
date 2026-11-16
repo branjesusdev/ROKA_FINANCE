@@ -7,6 +7,7 @@ import 'package:finance_app/domain/categories/category.dart';
 import 'package:finance_app/domain/cycles/cycle_recount.dart';
 import 'package:finance_app/domain/cycles/pay_cycle.dart';
 import 'package:finance_app/domain/shared/money.dart';
+import 'package:finance_app/domain/shared/traffic_light.dart';
 import 'package:finance_app/domain/transactions/transaction.dart';
 import 'package:finance_app/presentation/insights/category_report_screen.dart';
 import 'package:finance_app/presentation/shared/async_view.dart';
@@ -17,6 +18,7 @@ import 'package:finance_app/presentation/shared/formatters.dart';
 import 'package:finance_app/presentation/shared/motion.dart';
 import 'package:finance_app/presentation/shared/recount_badge.dart';
 import 'package:finance_app/presentation/shared/section_card.dart';
+import 'package:finance_app/presentation/shared/traffic_light_badge.dart';
 import 'package:finance_app/presentation/shared/transaction_tile.dart';
 import 'package:finance_app/presentation/transactions/spend_check_sheet.dart';
 import 'package:flutter/material.dart';
@@ -285,12 +287,10 @@ class _CycleView extends ConsumerWidget {
             ],
           ),
           for (final MapEntry(key: day, value: items) in byDay.entries) ...[
-            Padding(
-              padding: const EdgeInsets.only(top: 12, bottom: 4),
-              child: Text(
-                Formatters.longDate(day),
-                style: theme.textTheme.labelLarge,
-              ),
+            _DayHeader(
+              day: day,
+              spend: isExpense ? movements.daySpends[day] : null,
+              income: isExpense ? null : Money.sum(items.map((t) => t.amount)),
             ),
             for (final t in items)
               // Al cambiar Gastos/Ingresos o el filtro, la lista entra de nuevo.
@@ -646,6 +646,85 @@ class _RecountCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             RecountBadge(recount: recount),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Fecha del día con lo gastado: verde si te mantuviste, ámbar o rojo si te
+/// pasaste del promedio del ciclo (color + icono + texto).
+class _DayHeader extends StatelessWidget {
+  const new({required this.day, this.spend, this.income});
+
+  final DateTime day;
+  final DaySpend? spend;
+  final Money? income;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final spend = this.spend;
+    final light = spend?.light;
+    final color = light == null
+        ? theme.colorScheme.onSurfaceVariant
+        : TrafficLightStyle.color(light, theme.colorScheme);
+    final amount = spend?.total ?? income;
+    final label = switch (light) {
+      TrafficLight.ok => 'Dentro de tu promedio',
+      TrafficLight.warning => 'Un poco por encima',
+      TrafficLight.critical => 'Te pasaste',
+      null => 'Ingresos',
+    };
+    return Padding(
+      padding: const EdgeInsets.only(top: 12, bottom: 4),
+      child: Semantics(
+        label:
+            '${Formatters.longDate(day)}: $label'
+            '${amount == null ? '' : ', ${Formatters.money(amount)}'}',
+        excludeSemantics: true,
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                Formatters.longDate(day),
+                style: theme.textTheme.labelLarge,
+              ),
+            ),
+            if (amount != null)
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        light == null
+                            ? Icons.south_west
+                            : TrafficLightStyle.icon(light),
+                        size: 16,
+                        color: color,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        Formatters.money(amount),
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: color,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
       ),

@@ -9,6 +9,7 @@ import 'package:finance_app/domain/categories/category_repository.dart';
 import 'package:finance_app/domain/debts/debt_repository.dart';
 import 'package:finance_app/domain/fixed/fixed_movement_repository.dart';
 import 'package:finance_app/domain/investments/investment_repository.dart';
+import 'package:finance_app/domain/loans/person_loan_repository.dart';
 import 'package:finance_app/domain/markets/market_quote.dart';
 import 'package:finance_app/domain/provisions/provision_repository.dart';
 import 'package:finance_app/domain/savings/savings_goal_repository.dart';
@@ -34,6 +35,7 @@ import 'package:finance_app/infrastructure/repositories/drift_debt_repository.da
 import 'package:finance_app/infrastructure/repositories/drift_fixed_movement_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_investment_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_net_worth_history_repository.dart';
+import 'package:finance_app/infrastructure/repositories/drift_person_loan_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_provision_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_savings_goal_repository.dart';
 import 'package:finance_app/infrastructure/repositories/drift_settings_repository.dart';
@@ -81,6 +83,10 @@ final assetRepositoryProvider = Provider<AssetRepository>(
 
 final debtRepositoryProvider = Provider<DebtRepository>(
   (ref) => DriftDebtRepository(ref.watch(appDatabaseProvider)),
+);
+
+final personLoanRepositoryProvider = Provider<PersonLoanRepository>(
+  (ref) => DriftPersonLoanRepository(ref.watch(appDatabaseProvider)),
 );
 
 final savingsGoalRepositoryProvider = Provider<SavingsGoalRepository>(

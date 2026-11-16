@@ -4,6 +4,7 @@ import 'package:finance_app/domain/categories/category.dart';
 import 'package:finance_app/domain/debts/debt.dart';
 import 'package:finance_app/domain/debts/interest_rate.dart';
 import 'package:finance_app/domain/investments/investment.dart';
+import 'package:finance_app/domain/loans/person_loan.dart';
 import 'package:finance_app/domain/savings/finance_settings.dart';
 import 'package:finance_app/domain/savings/savings_goal.dart';
 import 'package:finance_app/domain/transactions/transaction.dart';
@@ -141,6 +142,31 @@ class ExtraPayments extends Table {
   TextColumn get id => text()();
   TextColumn get debtId =>
       text().references(Debts, #id, onDelete: KeyAction.cascade)();
+  IntColumn get amountCents => integer()();
+  DateTimeColumn get date => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+@DataClassName('PersonLoanRow')
+class PersonLoans extends Table {
+  TextColumn get id => text()();
+  TextColumn get person => text()();
+  TextColumn get direction => textEnum<LoanDirection>()();
+  IntColumn get amountCents => integer()();
+  DateTimeColumn get date => dateTime()();
+  TextColumn get note => text().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+@DataClassName('LoanRepaymentRow')
+class LoanRepayments extends Table {
+  TextColumn get id => text()();
+  TextColumn get loanId =>
+      text().references(PersonLoans, #id, onDelete: KeyAction.cascade)();
   IntColumn get amountCents => integer()();
   DateTimeColumn get date => dateTime()();
 

@@ -8,6 +8,7 @@ import 'package:finance_app/application/cycles/reconcile_balance.dart';
 import 'package:finance_app/application/dashboard/set_aside_plan.dart';
 import 'package:finance_app/application/debts/debt_use_cases.dart';
 import 'package:finance_app/application/fixed/fixed_movement_use_cases.dart';
+import 'package:finance_app/application/loans/person_loan_use_cases.dart';
 import 'package:finance_app/application/markets/load_usd_rate.dart';
 import 'package:finance_app/application/markets/load_watchlist.dart';
 import 'package:finance_app/application/markets/value_investments.dart';
@@ -120,6 +121,29 @@ final registerExtraPaymentProvider = Provider(
     clock: ref.watch(clockProvider),
     ids: ref.watch(idGeneratorProvider),
   ),
+);
+
+final savePersonLoanProvider = Provider(
+  (ref) => SavePersonLoan(
+    loans: ref.watch(personLoanRepositoryProvider),
+    ids: ref.watch(idGeneratorProvider),
+  ),
+);
+
+final deletePersonLoanProvider = Provider(
+  (ref) => DeletePersonLoan(ref.watch(personLoanRepositoryProvider)),
+);
+
+final registerLoanRepaymentProvider = Provider(
+  (ref) => RegisterLoanRepayment(
+    loans: ref.watch(personLoanRepositoryProvider),
+    clock: ref.watch(clockProvider),
+    ids: ref.watch(idGeneratorProvider),
+  ),
+);
+
+final deleteLoanRepaymentProvider = Provider(
+  (ref) => DeleteLoanRepayment(ref.watch(personLoanRepositoryProvider)),
 );
 
 final updateSavingsTargetProvider = Provider(

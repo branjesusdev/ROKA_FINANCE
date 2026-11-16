@@ -15,6 +15,7 @@ import 'package:finance_app/application/dashboard/spending_radar.dart';
 import 'package:finance_app/application/fixed/fixed_cycle_status.dart';
 import 'package:finance_app/application/insights/category_report.dart';
 import 'package:finance_app/application/insights/financial_health.dart';
+import 'package:finance_app/application/loans/person_loan_overview.dart';
 import 'package:finance_app/application/markets/load_watchlist.dart';
 import 'package:finance_app/application/markets/value_investments.dart';
 import 'package:finance_app/application/reminders/reminder_scheduler.dart';
@@ -36,6 +37,8 @@ import 'package:finance_app/domain/insights/cash_flow_calculator.dart';
 import 'package:finance_app/domain/insights/spending_insights_analyzer.dart';
 import 'package:finance_app/domain/investments/investment.dart';
 import 'package:finance_app/domain/investments/portfolio_calculator.dart';
+import 'package:finance_app/domain/loans/person_loan.dart';
+import 'package:finance_app/domain/loans/person_loan_repository.dart';
 import 'package:finance_app/domain/markets/watchlist.dart';
 import 'package:finance_app/domain/provisions/provision.dart';
 import 'package:finance_app/domain/savings/essential_expense_estimator.dart';
@@ -96,6 +99,35 @@ final assetsProvider = StreamProvider<List<Asset>>(
 final debtsProvider = StreamProvider<List<Debt>>(
   (ref) => ref.watch(debtRepositoryProvider).watchAll(),
 );
+
+/// Préstamos con personas: "me deben" y "debo".
+final personLoanOverviewProvider = Provider<AsyncValue<PersonLoanOverview>>((
+  ref,
+) {
+  final repo = ref.watch(personLoanRepositoryProvider);
+  final loans = ref.watch(_personLoansProvider(repo));
+  final repayments = ref.watch(_loanRepaymentsProvider(repo));
+  if (loans.hasError) return AsyncError(loans.error!, loans.stackTrace!);
+  if (repayments.hasError) {
+    return AsyncError(repayments.error!, repayments.stackTrace!);
+  }
+  final l = loans.value;
+  final r = repayments.value;
+  if (l == null || r == null) return const AsyncLoading();
+  return AsyncData(
+    const PersonLoanOverviewBuilder().build(loans: l, repayments: r),
+  );
+});
+
+final _personLoansProvider =
+    StreamProvider.family<List<PersonLoan>, PersonLoanRepository>(
+      (ref, repo) => repo.watchAll(),
+    );
+
+final _loanRepaymentsProvider =
+    StreamProvider.family<List<LoanRepayment>, PersonLoanRepository>(
+      (ref, repo) => repo.watchRepayments(),
+    );
 
 final investmentsProvider = StreamProvider<List<Investment>>(
   (ref) => ref.watch(investmentRepositoryProvider).watchAll(),

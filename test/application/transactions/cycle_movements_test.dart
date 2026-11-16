@@ -2,6 +2,7 @@ import 'package:finance_app/application/transactions/cycle_movements.dart';
 import 'package:finance_app/domain/categories/default_categories.dart';
 import 'package:finance_app/domain/cycles/pay_cycle.dart';
 import 'package:finance_app/domain/shared/money.dart';
+import 'package:finance_app/domain/shared/traffic_light.dart';
 import 'package:finance_app/domain/transactions/transaction.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -68,5 +69,32 @@ void main() {
       const Money.pesos(3000000),
     );
     expect(movements.expenseTotals.first.categoryId, groceries);
+  });
+
+  group('gasto por día', () {
+    final days = const CycleMovementsBuilder()
+        .build(
+          cycle: cycle,
+          categories: DefaultCategories.all,
+          transactions: [
+            tx(10000, DateTime(2026, 10), food),
+            tx(10000, DateTime(2026, 10, 2), food),
+            tx(80000, DateTime(2026, 10, 3), food),
+            // El mercado se planea por mes: suma al total pero no al día a día.
+            tx(250000, DateTime(2026, 10, 2), groceries),
+          ],
+        )
+        .daySpends;
+
+    test('suma todo lo gastado del día, planeado incluido', () {
+      expect(days[DateTime(2026, 10, 2)]!.total, const Money.pesos(260000));
+      expect(days[DateTime(2026, 10, 2)]!.dayToDay, const Money.pesos(10000));
+    });
+
+    test('verde si te mantuviste y rojo si te pasaste del promedio', () {
+      expect(days[DateTime(2026, 10)]!.light, TrafficLight.ok);
+      expect(days[DateTime(2026, 10, 2)]!.light, TrafficLight.ok);
+      expect(days[DateTime(2026, 10, 3)]!.light, TrafficLight.critical);
+    });
   });
 }

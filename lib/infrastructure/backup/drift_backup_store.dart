@@ -124,6 +124,24 @@ final class DriftBackupStore implements BackupStore {
       refs: const {'debtId': 'debts'},
       naturalKey: (r) => _key([r['debtId'], r['amountCents'], _day(r['date'])]),
     ),
+    _Section<PersonLoanRow>(
+      key: 'personLoans',
+      table: _db.personLoans,
+      fromJson: PersonLoanRow.fromJson,
+      naturalKey: (r) => _key([
+        r['person'],
+        r['direction'],
+        r['amountCents'],
+        _day(r['date']),
+      ]),
+    ),
+    _Section<LoanRepaymentRow>(
+      key: 'loanRepayments',
+      table: _db.loanRepayments,
+      fromJson: LoanRepaymentRow.fromJson,
+      refs: const {'loanId': 'personLoans'},
+      naturalKey: (r) => _key([r['loanId'], r['amountCents'], _day(r['date'])]),
+    ),
     _Section<GoalContributionRow>(
       key: 'goalContributions',
       table: _db.goalContributions,

@@ -5,7 +5,25 @@ import 'package:finance_app/domain/cycles/cycle_recount.dart';
 import 'package:finance_app/domain/cycles/pay_cycle.dart';
 import 'package:finance_app/domain/insights/cash_flow_calculator.dart';
 import 'package:finance_app/domain/shared/money.dart';
+import 'package:finance_app/domain/shared/traffic_light.dart';
 import 'package:finance_app/domain/transactions/transaction.dart';
+import 'package:meta/meta.dart';
+
+/// Lo gastado en un día y cómo va contra el promedio del ciclo.
+@immutable
+final class DaySpend {
+  const new({required this.total, required this.dayToDay, required this.light});
+
+  /// Todos los gastos del día.
+  final Money total;
+
+  /// Solo el gasto del día a día (lo que mide el tope diario).
+  final Money dayToDay;
+
+  /// Verde: dentro del promedio del ciclo; ámbar: un poco encima; rojo:
+  /// bastante encima.
+  final TrafficLight light;
+}
 
 /// Movimientos de un ciclo de sueldo con sus totales por categoría: la
 /// dona, la lista por categoría y la lista de movimientos salen de aquí,
@@ -18,6 +36,7 @@ final class CycleMovements {
     required this.expenseTotals,
     required this.incomeTotals,
     this.recount,
+    this.daySpends = const {},
   });
 
   final PayCycle cycle;
@@ -32,6 +51,9 @@ final class CycleMovements {
 
   /// Reconteo hecho al llegar el sueldo siguiente; `null` si no se hizo.
   final CycleRecount? recount;
+
+  /// Gasto de cada día con movimientos (fecha sin hora).
+  final Map<DateTime, DaySpend> daySpends;
 
   List<CategoryTotal> totalsOf(TransactionKind kind) =>
       kind == TransactionKind.expense ? expenseTotals : incomeTotals;
@@ -80,6 +102,7 @@ final class CycleMovementsBuilder {
       transactions: mine,
       cashFlow: cashFlow,
       recount: _recount(mine, cashFlow),
+      daySpends: _daySpends(mine, categories),
       expenseTotals: CycleSummaryBuilder.categoryTotals(
         mine.where((t) => t.isExpense),
         byId,
@@ -89,6 +112,50 @@ final class CycleMovementsBuilder {
         byId,
       ),
     );
+  }
+
+  /// Un día se pasa si su día a día supera el promedio diario del ciclo
+  /// (de la primera a la última anotación).
+  static const _overFactor = 1.25;
+
+  Map<DateTime, DaySpend> _daySpends(
+    List<Transaction> mine,
+    List<Category> categories,
+  ) {
+    final savingIds = {
+      for (final c in categories)
+        if (c.countsAsSaving) c.id,
+    };
+    DateTime dayOf(Transaction t) =>
+        DateTime(t.date.year, t.date.month, t.date.day);
+    final total = <DateTime, Money>{};
+    final dayToDay = <DateTime, Money>{};
+    for (final t in mine.where((t) => t.isExpense)) {
+      final day = dayOf(t);
+      total[day] = (total[day] ?? Money.zero) + t.amount;
+      if (CycleSummaryBuilder.isDayToDay(t, savingIds)) {
+        dayToDay[day] = (dayToDay[day] ?? Money.zero) + t.amount;
+      }
+    }
+    if (total.isEmpty) return const {};
+    final days = total.keys.toList()..sort();
+    final span = days.last.difference(days.first).inDays + 1;
+    final average = Money.sum(dayToDay.values).divide(span);
+    return {
+      for (final day in days)
+        day: DaySpend(
+          total: total[day]!,
+          dayToDay: dayToDay[day] ?? Money.zero,
+          light: _light(dayToDay[day] ?? Money.zero, average),
+        ),
+    };
+  }
+
+  static TrafficLight _light(Money spent, Money average) {
+    if (spent <= average) return TrafficLight.ok;
+    return spent.cents > average.cents * _overFactor
+        ? TrafficLight.critical
+        : TrafficLight.warning;
   }
 
   CycleRecount? _recount(List<Transaction> mine, CashFlow flow) {

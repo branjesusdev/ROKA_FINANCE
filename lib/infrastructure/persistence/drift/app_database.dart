@@ -8,6 +8,7 @@ import 'package:finance_app/domain/categories/default_categories.dart';
 import 'package:finance_app/domain/debts/debt.dart';
 import 'package:finance_app/domain/debts/interest_rate.dart';
 import 'package:finance_app/domain/investments/investment.dart';
+import 'package:finance_app/domain/loans/person_loan.dart';
 import 'package:finance_app/domain/savings/finance_settings.dart';
 import 'package:finance_app/domain/savings/savings_goal.dart';
 import 'package:finance_app/domain/transactions/transaction.dart';
@@ -28,6 +29,8 @@ part 'app_database.g.dart';
     Assets,
     Debts,
     ExtraPayments,
+    PersonLoans,
+    LoanRepayments,
     SavingsGoals,
     GoalContributions,
     Investments,
@@ -48,7 +51,7 @@ class AppDatabase extends _$AppDatabase {
   static const fileName = 'finance_app';
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -202,6 +205,11 @@ class AppDatabase extends _$AppDatabase {
           financeSettingsTable,
           financeSettingsTable.monthlySalaryCents,
         );
+      }
+      // v15: préstamos con personas (me deben / debo) y sus abonos.
+      if (from < 15) {
+        await migrator.createTable(personLoans);
+        await migrator.createTable(loanRepayments);
       }
     },
     beforeOpen: (_) => customStatement('PRAGMA foreign_keys = ON'),

@@ -6,6 +6,7 @@ import 'package:finance_app/presentation/shared/forecast_chart.dart';
 import 'package:finance_app/presentation/shared/form_widgets.dart';
 import 'package:finance_app/presentation/shared/formatters.dart';
 import 'package:finance_app/presentation/shared/status_style.dart';
+import 'package:finance_app/presentation/transactions/spend_situation_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -47,6 +48,7 @@ class _SpendCheckSheetState extends ConsumerState<SpendCheckSheet> {
       saveLabel: 'Listo',
       onSave: () => Navigator.pop(context),
       children: [
+        const SpendSituationPanel(),
         MoneyField(
           controller: _amount,
           label: '¿Cuánto quieres gastar?',

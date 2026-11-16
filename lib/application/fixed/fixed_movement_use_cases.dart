@@ -130,6 +130,7 @@ final class ConfirmVariableFixed {
     return guardUseCase(() async {
       final now = _clock.now();
       final today = DateTime(now.year, now.month, now.day);
+      final debtId = await resolveDebtId(_debts, movement);
       final transaction = Transaction(
         id: _ids.next(),
         kind: movement.kind,
@@ -141,10 +142,10 @@ final class ConfirmVariableFixed {
         description: movement.name,
         nature: movement.isExpense ? ExpenseNature.essential : null,
         fixedMovementId: movement.id,
-        debtId: movement.isExpense ? movement.debtId : null,
+        debtId: debtId,
       );
       await _transactions.save(transaction);
-      await payLinkedDebt(_debts, movement, amount);
+      await payLinkedDebt(_debts, movement, amount, debtId: debtId);
       if (!movement.isVariable) {
         await _fixed.save(
           movement.copyWith(lastPostedOn: scheduledDate).remindedOn(null),
@@ -303,6 +304,7 @@ final class PostDueFixedMovements {
     schedule.covered.forEach(markPosted);
     for (final item in schedule.due) {
       final movement = item.movement;
+      final debtId = await resolveDebtId(_debts, movement);
       await _transactions.save(
         Transaction(
           id: _ids.next(),
@@ -314,10 +316,10 @@ final class PostDueFixedMovements {
           description: movement.name,
           nature: movement.isExpense ? ExpenseNature.essential : null,
           fixedMovementId: movement.id,
-          debtId: movement.isExpense ? movement.debtId : null,
+          debtId: debtId,
         ),
       );
-      await payLinkedDebt(_debts, movement, movement.amount);
+      await payLinkedDebt(_debts, movement, movement.amount, debtId: debtId);
       markPosted(item);
     }
     for (final item in postedUntil.values) {
@@ -327,14 +329,36 @@ final class PostDueFixedMovements {
   });
 }
 
-/// Si el fijo paga un crédito, baja su saldo y suma la cuota pagada.
+/// Crédito al que paga un fijo: el enlazado o, si es un gasto de categoría
+/// Deudas sin enlazar, el único crédito con saldo cuyo nombre aparece en el
+/// del fijo (así un pago de más igual baja el saldo). `null` si no hay uno
+/// claro.
+Future<String?> resolveDebtId(
+  DebtRepository debts,
+  FixedMovement movement,
+) async {
+  if (!movement.isExpense) return null;
+  final linked = movement.debtId;
+  if (linked != null) return linked;
+  if (movement.categoryId != DefaultCategories.debtsId) return null;
+  final name = movement.name.toLowerCase();
+  final matches = [
+    for (final d in await debts.getAll())
+      if (d.currentBalance.isPositive && name.contains(d.name.toLowerCase())) d,
+  ];
+  return matches.length == 1 ? matches.single.id : null;
+}
+
+/// Si el fijo paga un crédito, baja su saldo (lo que sobra de la cuota es
+/// abono a capital) y suma la cuota pagada.
 Future<void> payLinkedDebt(
   DebtRepository debts,
   FixedMovement movement,
-  Money amount,
-) async {
-  final id = movement.debtId;
-  if (id == null || !movement.isExpense) return;
+  Money amount, {
+  String? debtId,
+}) async {
+  final id = debtId ?? await resolveDebtId(debts, movement);
+  if (id == null) return;
   final debt = await debts.getById(id);
   if (debt == null || !debt.currentBalance.isPositive) return;
   await debts.save(debt.afterInstallment(amount));
